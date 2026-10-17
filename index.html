@@ -1,0 +1,1821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b2235">
+<title>Book Fair</title>
+<!--
+  ============================================================
+  COZY BOOK FAIR — single-file Phaser game
+  ------------------------------------------------------------
+  Phase 2 (this file): illustrated art (drawn in code as SVG,
+  following the art style guide), depth-sorted top-down
+  three-quarter room, walking (keyboard + tap/click),
+  look-at interactions, Arrange mode, autosave, export/import.
+
+  Code sections (search for "=====" to jump):
+    1. CONFIG
+    2. FURNITURE CATALOG
+    3. DEFAULT ROOM LAYOUT
+    4. SAVE / LOAD
+    5. GRID HELPERS
+    6. PATHFINDING
+    7. ART  (palette, drawing helpers, every piece, room background)
+    8. BOOK CATALOG (genres + every book)
+    9. INTERACTIONS
+   10. DOM UI
+   11. BOOT SCENE  (turns the art into textures)
+   12. ROOM SCENE
+   13. FUTURE PHASES (stubs / notes)
+   14. START GAME
+  ============================================================
+-->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+  :root {
+    --bg: #2b2235;
+    --panel: #fff8ec;
+    --panel-edge: #e9dcc4;
+    --ink: #3b2f3f;
+    --muted: #8a7f8f;
+    --accent: #e07a5f;
+    --accent-ink: #ffffff;
+    --shadow: 0 4px 14px rgba(20, 10, 30, .35);
+    --radius: 14px;
+  }
+  [hidden] { display: none !important; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #game { position: fixed; inset: 0; touch-action: none; }
+  #game canvas { display: block; }
+
+  button {
+    font: inherit; font-size: 14px; font-weight: 600;
+    border: 0; border-radius: 999px; padding: 9px 14px;
+    background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); cursor: pointer;
+    touch-action: manipulation;
+  }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: var(--accent-ink); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .topbar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .title {
+    background: var(--panel); border-radius: 999px; padding: 8px 14px;
+    font-weight: 700; box-shadow: var(--shadow); font-size: 15px;
+  }
+  .spacer { flex: 1; pointer-events: none; }
+
+  .toast {
+    position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 64px);
+    transform: translate(-50%, -8px); opacity: 0;
+    max-width: min(88vw, 420px); text-align: center;
+    background: var(--panel); border: 2px solid var(--panel-edge);
+    border-radius: var(--radius); padding: 10px 14px;
+    box-shadow: var(--shadow); font-size: 14px; line-height: 1.35;
+    transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .act {
+    position: fixed; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 16px);
+    padding: 14px 18px; font-size: 15px;
+  }
+
+  .loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #fff8ec; font-weight: 700; font-size: 16px; pointer-events: none;
+  }
+
+  .editbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding: 10px 10px calc(env(safe-area-inset-bottom) + 10px);
+    background: var(--panel); border-top: 2px solid var(--panel-edge);
+    box-shadow: 0 -4px 14px rgba(20,10,30,.25);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .palette { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .palette button {
+    flex: 0 0 auto; box-shadow: none; border: 2px solid var(--panel-edge);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 5px 8px; font-size: 11px; border-radius: 12px; min-width: 64px;
+  }
+  .palette button img { height: 34px; width: auto; max-width: 64px; object-fit: contain; display: block; }
+  .palette button.on { border-color: var(--accent); background: #fde8e1; }
+  .tools { display: flex; gap: 8px; align-items: center; }
+  .tools button { box-shadow: none; border: 2px solid var(--panel-edge); }
+  .hint { color: var(--muted); font-size: 12px; flex: 1; text-align: right; }
+
+  .menu {
+    position: fixed; inset: 0; background: rgba(20, 10, 30, .55);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .card {
+    background: var(--panel); border-radius: 18px; padding: 18px;
+    width: min(92vw, 380px); box-shadow: var(--shadow);
+  }
+  .card h2 { margin: 0 0 8px; font-size: 20px; }
+  .card p { margin: 6px 0; font-size: 14px; line-height: 1.4; }
+  .card .muted { color: var(--muted); font-size: 13px; }
+  .card .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .card .row button { box-shadow: none; border: 2px solid var(--panel-edge); }
+</style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="loading" class="loading">Setting up the fair…</div>
+
+  <div class="topbar">
+    <div class="title">📚 Book Fair</div>
+    <div class="spacer"></div>
+    <button id="btnEdit">Arrange</button>
+    <button id="btnMenu" aria-label="Menu">☰</button>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <button id="btnAct" class="act primary" hidden>Look</button>
+
+  <div id="editBar" class="editbar" hidden>
+    <div id="palette" class="palette"></div>
+    <div class="tools">
+      <button id="btnRotate">⟳ Rotate</button>
+      <button id="btnDelete">Remove</button>
+      <span id="editHint" class="hint">Pick an item, then tap the floor.</span>
+    </div>
+  </div>
+
+  <div id="menu" class="menu" hidden>
+    <div class="card">
+      <h2>Book Fair</h2>
+      <p><b>Walk:</b> tap or click a spot. Keyboard: WASD or arrow keys.</p>
+      <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
+      <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
+      <p class="muted">Arrange shortcuts: R rotate, Delete remove, Esc deselect.</p>
+      <div class="row">
+        <button id="btnExport">Export room</button>
+        <button id="btnImport">Import room</button>
+        <button id="btnReset">Reset room</button>
+        <button id="btnClose" class="primary">Close</button>
+      </div>
+      <input id="fileImport" type="file" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+// ============================================================
+// 1. CONFIG
+// ============================================================
+const CONFIG = {
+  TILE: 32,                       // tile size in px (world units)
+  STEP_MS: 150,                   // time to walk one tile
+  SAVE_KEY: 'bookfair.layout.v1', // localStorage key for the room
+  LAYOUT_VERSION: 2,
+  ZOOM_MIN: 1,
+  ZOOM_MAX: 2.5,
+  HUD_TOP: 60,                    // screen px reserved for the top bar
+  HUD_BOTTOM: 110,                // screen px reserved for bottom UI
+  ART_RES: 3,                     // art is rendered at 3x for crisp zooming
+  WALL_UP: 40,                    // how far the back wall rises above row 0
+  WALL_DOWN: 10,                  // front face of the bottom wall below the last row
+};
+
+// Draw at the screen's real pixel density so art stays sharp on phones.
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+const COLORS = {
+  ghostOk: 0x81b29a,
+  ghostBad: 0xe63946,
+  select: 0xffd166,
+};
+
+// ============================================================
+// 2. FURNITURE CATALOG
+// Every placeable thing. Add new types here plus a drawing in
+// section 7 (ART). The palette, collision and saving all read
+// from this list.
+//   w, h   : footprint in tiles (at rotation 0)
+//   layer  : 'solid' blocks walking, 'floor' sits under things
+//   dir    : has front / back / side art (turns when rotated)
+// ============================================================
+const FURNITURE = {
+  shelf:    { label: 'Bookshelf',     w: 3, h: 1, layer: 'solid', dir: true,
+              blurb: 'An empty bookshelf. Boxes of books will arrive soon.' },
+  table:    { label: 'Display Table', w: 2, h: 2, layer: 'solid',
+              blurb: 'A display table with neat stacks of featured books.' },
+  register: { label: 'Checkout',      w: 2, h: 1, layer: 'solid', dir: true,
+              blurb: 'The checkout counter. Ringing up customers comes in a later phase.' },
+  posters:  { label: 'Poster Rack',   w: 2, h: 1, layer: 'solid', dir: true,
+              blurb: 'Posters of kittens, rainbows and outer space.' },
+  spinner:  { label: 'Spinner Rack',  w: 1, h: 1, layer: 'solid',
+              blurb: 'A spinner rack full of bookmarks.' },
+  merch:    { label: 'Merch Bin',     w: 1, h: 1, layer: 'solid',
+              blurb: 'Pencils, erasers, and tiny tchotchkes.' },
+  beanbag:  { label: 'Beanbag',       w: 1, h: 1, layer: 'solid',
+              blurb: 'A squishy beanbag for browsing.' },
+  plant:    { label: 'Plant',         w: 1, h: 1, layer: 'solid',
+              blurb: 'A cheerful potted plant.' },
+  cactus:   { label: 'Cactus',        w: 1, h: 1, layer: 'solid',
+              blurb: 'A tiny cactus with a pink flower.' },
+  rug:      { label: 'Reading Rug',   w: 3, h: 2, layer: 'floor',
+              blurb: 'A soft rug. Perfect for story time.' },
+};
+
+// ============================================================
+// 3. DEFAULT ROOM LAYOUT
+// The room is data, not a fixed map. This is only the starting
+// point; the player's own layout is loaded from storage.
+//   Walls ring the room. Interior is x 1..cols-2, y 1..rows-2.
+//   rot: 0 = front faces down, 1 = left, 2 = up, 3 = right
+//   decor: floor 'wood' | 'checker' | 'carpet'
+//          wall  'sage' | 'stripes' | 'stars'
+// ============================================================
+const DEFAULT_LAYOUT = {
+  version: 2,
+  name: 'School Library',
+  cols: 22,
+  rows: 15,
+  decor: { floor: 'wood', wall: 'sage' },
+  doors: [{ x: 10, y: 14 }, { x: 11, y: 14 }],
+  spawn: { x: 10, y: 12 },
+  items: [
+    { id: 'd1',  type: 'plant',    x: 1,  y: 1,  rot: 0 },
+    { id: 'd2',  type: 'shelf',    x: 2,  y: 1,  rot: 0 },
+    { id: 'd3',  type: 'shelf',    x: 6,  y: 1,  rot: 0 },
+    { id: 'd4',  type: 'shelf',    x: 13, y: 1,  rot: 0 },
+    { id: 'd5',  type: 'shelf',    x: 17, y: 1,  rot: 0 },
+    { id: 'd6',  type: 'plant',    x: 20, y: 1,  rot: 0 },
+    { id: 'd7',  type: 'shelf',    x: 1,  y: 4,  rot: 3 },
+    { id: 'd8',  type: 'shelf',    x: 1,  y: 8,  rot: 3 },
+    { id: 'd9',  type: 'shelf',    x: 20, y: 4,  rot: 1 },
+    { id: 'd10', type: 'shelf',    x: 20, y: 8,  rot: 1 },
+    { id: 'd11', type: 'table',    x: 6,  y: 6,  rot: 0 },
+    { id: 'd12', type: 'rug',      x: 10, y: 6,  rot: 0 },
+    { id: 'd13', type: 'table',    x: 14, y: 6,  rot: 0 },
+    { id: 'd14', type: 'posters',  x: 3,  y: 11, rot: 0 },
+    { id: 'd15', type: 'merch',    x: 5,  y: 12, rot: 0 },
+    { id: 'd16', type: 'spinner',  x: 7,  y: 12, rot: 0 },
+    { id: 'd17', type: 'register', x: 14, y: 11, rot: 0 },
+    { id: 'd18', type: 'beanbag',  x: 18, y: 11, rot: 0 },
+    { id: 'd19', type: 'beanbag',  x: 19, y: 11, rot: 0 },
+    { id: 'd20', type: 'plant',    x: 20, y: 13, rot: 0 },
+    { id: 'd21', type: 'cactus',   x: 13, y: 13, rot: 0 },
+  ],
+};
+
+// ============================================================
+// 4. SAVE / LOAD
+// localStorage can be missing or blocked (private windows),
+// so every access is wrapped. The game always works without it.
+// ============================================================
+function cloneLayout(layout) { return JSON.parse(JSON.stringify(layout)); }
+
+function newId() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+const DECOR_OPTIONS = { floor: ['wood', 'checker', 'carpet'], wall: ['sage', 'stripes', 'stars'] };
+
+// Cleans up a layout from storage or a file. Returns null if unusable.
+function validateLayout(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const cols = raw.cols | 0, rows = raw.rows | 0;
+  if (cols < 6 || rows < 6 || cols > 80 || rows > 80) return null;
+  if (!Array.isArray(raw.items)) return null;
+  const seen = new Set();
+  const items = raw.items
+    .filter(it => it && FURNITURE[it.type] && Number.isInteger(it.x) && Number.isInteger(it.y))
+    .map(it => {
+      let id = typeof it.id === 'string' && it.id ? it.id : newId();
+      if (seen.has(id)) id = newId();
+      seen.add(id);
+      return { ...it, id, rot: ((it.rot | 0) % 4 + 4) % 4 };
+    });
+  const doors = Array.isArray(raw.doors)
+    ? raw.doors.filter(d => d && Number.isInteger(d.x) && Number.isInteger(d.y)) : [];
+  const spawn = raw.spawn && Number.isInteger(raw.spawn.x) && Number.isInteger(raw.spawn.y)
+    ? { x: raw.spawn.x, y: raw.spawn.y } : { x: 1, y: 1 };
+  const d = raw.decor || {};
+  const decor = {
+    floor: DECOR_OPTIONS.floor.includes(d.floor) ? d.floor : 'wood',
+    wall: DECOR_OPTIONS.wall.includes(d.wall) ? d.wall : 'sage',
+  };
+  return { ...raw, version: CONFIG.LAYOUT_VERSION, cols, rows, doors, spawn, items, decor };
+}
+
+// Upgrades older saves. v1 -> v2: poster rack became 2 wide x 1 deep; add decor.
+function migrateLayout(raw) {
+  if (raw && (raw.version | 0) < 2) {
+    raw.decor = raw.decor || { floor: 'wood', wall: 'sage' };
+    raw.version = 2;
+  }
+  return raw;
+}
+
+function loadLayout() {
+  try {
+    const text = localStorage.getItem(CONFIG.SAVE_KEY);
+    if (text) {
+      const layout = validateLayout(migrateLayout(JSON.parse(text)));
+      if (layout) return layout;
+    }
+  } catch (e) { /* storage unavailable or corrupt: fall through */ }
+  return cloneLayout(DEFAULT_LAYOUT);
+}
+
+function saveLayout(layout) {
+  try { localStorage.setItem(CONFIG.SAVE_KEY, JSON.stringify(layout)); return true; }
+  catch (e) { return false; }
+}
+
+function exportLayout(layout) {
+  const blob = new Blob([JSON.stringify(layout, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'book-fair-room.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+// ============================================================
+// 5. GRID HELPERS
+// ============================================================
+function itemDims(item) {
+  const d = FURNITURE[item.type];
+  return item.rot % 2 === 0 ? { w: d.w, h: d.h } : { w: d.h, h: d.w };
+}
+
+function itemTiles(item) {
+  const { w, h } = itemDims(item);
+  const out = [];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) out.push({ x: item.x + i, y: item.y + j });
+  return out;
+}
+
+function isInterior(layout, x, y) {
+  return x >= 1 && y >= 1 && x <= layout.cols - 2 && y <= layout.rows - 2;
+}
+
+function isDoor(layout, x, y) {
+  return layout.doors.some(d => d.x === x && d.y === y);
+}
+
+// Builds lookup arrays: which item (by id) occupies each tile, per layer.
+function buildGrid(layout) {
+  const { cols, rows } = layout;
+  const solid = new Array(cols * rows).fill(null);
+  const floor = new Array(cols * rows).fill(null);
+  for (const it of layout.items) {
+    const def = FURNITURE[it.type];
+    if (!def) continue;
+    const arr = def.layer === 'floor' ? floor : solid;
+    for (const t of itemTiles(it)) {
+      if (t.x < 0 || t.y < 0 || t.x >= cols || t.y >= rows) continue;
+      arr[t.y * cols + t.x] = it.id;
+    }
+  }
+  return {
+    cols, rows, solid, floor,
+    inBounds(x, y) { return x >= 0 && y >= 0 && x < cols && y < rows; },
+    solidAt(x, y) { return this.inBounds(x, y) ? this.solid[y * cols + x] : null; },
+    floorAt(x, y) { return this.inBounds(x, y) ? this.floor[y * cols + x] : null; },
+    walkable(x, y) { return isInterior(layout, x, y) && this.solid[y * cols + x] === null; },
+  };
+}
+
+// Can `cand` sit here? Same-layer items can't overlap; solids can't land on the player.
+function canPlace(layout, cand, ignoreId, playerTile) {
+  const def = FURNITURE[cand.type];
+  if (!def) return false;
+  const tiles = itemTiles(cand);
+  if (!tiles.every(t => isInterior(layout, t.x, t.y))) return false;
+  const taken = new Set();
+  for (const it of layout.items) {
+    if (it.id === ignoreId) continue;
+    const d = FURNITURE[it.type];
+    if (!d || d.layer !== def.layer) continue;
+    for (const t of itemTiles(it)) taken.add(t.x + ',' + t.y);
+  }
+  for (const t of tiles) {
+    if (taken.has(t.x + ',' + t.y)) return false;
+    if (def.layer === 'solid' && playerTile && t.x === playerTile.x && t.y === playerTile.y) return false;
+  }
+  return true;
+}
+
+function tileCenter(x, y) {
+  return { x: x * CONFIG.TILE + CONFIG.TILE / 2, y: y * CONFIG.TILE + CONFIG.TILE / 2 };
+}
+
+const DIRS = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+
+// ============================================================
+// 6. PATHFINDING
+// Breadth-first search on the 4-way grid. Returns the list of
+// tiles to step through (not including start), [] if already
+// there, or null if unreachable.
+// ============================================================
+function findPath(grid, start, isGoal) {
+  if (isGoal(start.x, start.y)) return [];
+  const { cols, rows } = grid;
+  const startIdx = start.y * cols + start.x;
+  const prev = new Int32Array(cols * rows).fill(-1);
+  const seen = new Uint8Array(cols * rows);
+  const queue = [startIdx];
+  seen[startIdx] = 1;
+  for (let head = 0; head < queue.length; head++) {
+    const cur = queue[head];
+    const cx = cur % cols, cy = (cur / cols) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!grid.walkable(nx, ny)) continue;
+      const ni = ny * cols + nx;
+      if (seen[ni]) continue;
+      seen[ni] = 1;
+      prev[ni] = cur;
+      if (isGoal(nx, ny)) {
+        const path = [];
+        for (let p = ni; p !== startIdx; p = prev[p]) path.push({ x: p % cols, y: (p / cols) | 0 });
+        return path.reverse();
+      }
+      queue.push(ni);
+    }
+  }
+  return null;
+}
+
+// Closest walkable tile to (x, y), used if the player ends up boxed in by a layout change.
+function nearestWalkable(grid, x, y) {
+  if (grid.walkable(x, y)) return { x, y };
+  const { cols, rows } = grid;
+  const seen = new Uint8Array(cols * rows);
+  const sx = Math.max(0, Math.min(cols - 1, x)), sy = Math.max(0, Math.min(rows - 1, y));
+  const queue = [{ x: sx, y: sy }];
+  seen[sy * cols + sx] = 1;
+  for (let head = 0; head < queue.length; head++) {
+    const c = queue[head];
+    if (grid.walkable(c.x, c.y)) return c;
+    for (const [dx, dy] of DIRS) {
+      const nx = c.x + dx, ny = c.y + dy;
+      if (!grid.inBounds(nx, ny) || seen[ny * cols + nx]) continue;
+      seen[ny * cols + nx] = 1;
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return { x: 1, y: 1 };
+}
+
+// Tiles you can stand on to reach an item (4-way neighbours of its footprint).
+function approachTiles(grid, item) {
+  const own = new Set(itemTiles(item).map(t => t.x + ',' + t.y));
+  const out = new Set();
+  for (const t of itemTiles(item)) {
+    for (const [dx, dy] of DIRS) {
+      const nx = t.x + dx, ny = t.y + dy;
+      if (!own.has(nx + ',' + ny) && grid.walkable(nx, ny)) out.add(nx + ',' + ny);
+    }
+  }
+  return out;
+}
+
+// ============================================================
+// 7. ART
+// Everything is drawn here as SVG, following the art style
+// guide: flat fills, thick plum outlines, one darker shade,
+// rounded shapes, top-down three-quarter view, tidy and grounded.
+//
+// Each drawing returns { box: [x, y, w, h], body: '<svg markup>' }
+// in world pixels, with (0,0) = top-left of the item's FOOTPRINT
+// at rotation 0. Tall things draw above it (negative y).
+// Directional furniture has 'front', 'back' and 'side' drawings;
+// 'side' faces right, and is mirrored for facing left.
+// ============================================================
+const INK = '#3b2f3f';
+const SW = 1.25;
+const ST = `stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round"`;
+const PAL = {
+  cream: '#fff8ec', coral: '#e07a5f', butter: '#f2cc8f', sage: '#81b29a', navy: '#3d5a80',
+  lavender: '#9c89b8', pink: '#f08fb3', woodLight: '#d39a68', wood: '#a96a3e',
+  woodDark: '#7a4a2b', woodInner: '#5c3a24',
+};
+
+// Genre colors live with the book catalog (section 8).
+
+// ---- drawing helpers ----
+function shade(hex, f) {
+  const v = [1, 3, 5].map(i => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * f))));
+  return '#' + v.map(n => n.toString(16).padStart(2, '0')).join('');
+}
+function R(x, y, w, h, fill, rx = 0, extra = '') {   // outlined; `extra` may override the outline width
+  const outline = /stroke-width/.test(extra) ? `stroke="${INK}" stroke-linejoin="round"` : ST;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" ${outline} ${extra}/>`;
+}
+function RF(x, y, w, h, fill, rx = 0, extra = '') {   // no outline
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" ${extra}/>`;
+}
+function shadow(cx, cy, rx, ry, op = 0.12) {
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#000" opacity="${op}"/>`;
+}
+function txt(x, y, t, size, fill, anchor = 'middle', weight = 'bold') {
+  return `<text x="${x}" y="${y}" font-size="${size}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${t}</text>`;
+}
+function star(cx, cy, r, fill, stroke = true) {
+  let d = '';
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+    d += (i ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(2) + ' ' + (cy + rr * Math.sin(a)).toFixed(2);
+  }
+  return `<path d="${d}Z" fill="${fill}" ${stroke ? `stroke="${INK}" stroke-width=".9" stroke-linejoin="round"` : ''}/>`;
+}
+function leaf(cx, cy, ang, ln, fill) {
+  return `<g transform="rotate(${ang} ${cx} ${cy})"><path d="M${cx} ${cy} C${cx - 6} ${cy - ln * .4} ${cx - 5} ${cy - ln} ${cx} ${cy - ln - 2} C${cx + 5} ${cy - ln} ${cx + 6} ${cy - ln * .4} ${cx} ${cy} Z" fill="${fill}" ${ST}/><path d="M${cx} ${cy - 1} L${cx} ${cy - ln + 1}" stroke="${shade(fill, .75)}" stroke-width="1" fill="none"/></g>`;
+}
+
+// ---- furniture ----
+const ART = {
+  // Bookshelf, 3 wide x 1 deep, rises 48px above its footprint
+  'shelf-front': () => ({ box: [-4, -50, 104, 86], body:
+    shadow(48, 31, 50, 4) +
+    R(0, -48, 96, 80, PAL.wood, 3) + R(0, -48, 96, 8, PAL.woodLight, 3) +
+    R(5, -37, 86, 63, PAL.woodInner, 1.5) +
+    R(5, -18, 86, 3, PAL.woodLight, .5) + R(5, 3, 86, 3, PAL.woodLight, .5) +
+    R(0, 26, 96, 6, PAL.woodDark, 1.5) +
+    `<line x1="3" y1="-44" x2="93" y2="-44" stroke="#eab88a" stroke-width="1.2"/>` }),
+  'shelf-back': () => ({ box: [-4, -50, 104, 86], body:
+    shadow(48, 31, 50, 4) +
+    R(0, -48, 96, 80, PAL.wood, 3) + R(0, -48, 96, 8, PAL.woodLight, 3) +
+    [24, 48, 72].map(x => `<line x1="${x}" y1="-38" x2="${x}" y2="24" stroke="#94592f" stroke-width="1.2"/>`).join('') +
+    R(0, 26, 96, 6, PAL.woodDark, 1.5) }),
+  'shelf-side': () => ({ box: [-4, -50, 40, 150], body:   // footprint 1 wide x 3 deep, open side faces right
+    shadow(16, 95, 18, 4) +
+    R(0, -48, 32, 74, PAL.woodLight, 3) +
+    `<line x1="28" y1="-44" x2="28" y2="22" stroke="#eab88a" stroke-width="1.2"/>` +
+    `<line x1="10" y1="-30" x2="10" y2="-12" stroke="#c28652" stroke-width="1"/><line x1="18" y1="0" x2="18" y2="16" stroke="#c28652" stroke-width="1"/>` +
+    R(0, 24, 32, 72, PAL.wood, 3) +
+    R(21, 30, 8, 56, PAL.woodInner, 1) +
+    `<line x1="21" y1="49" x2="29" y2="49" stroke="${PAL.woodLight}" stroke-width="2"/><line x1="21" y1="68" x2="29" y2="68" stroke="${PAL.woodLight}" stroke-width="2"/>` +
+    R(0, 88, 32, 8, PAL.woodDark, 1.5) }),
+
+  // Display table, 2x2, blue tablecloth, books in neat stacks
+  'table': () => {
+    let b = shadow(32, 63, 33, 4) + R(0, 46, 64, 17, '#3f6596', 2);
+    for (const x of [16, 32, 48]) b += `<line x1="${x}" y1="48" x2="${x}" y2="62" stroke="#34557f" stroke-width="1.2"/>`;
+    b += R(0, 2, 64, 46, '#5b82b8', 3);
+    const stacks = [[5, 9, ['#8e6cc0', '#a98ad4', '#8e6cc0']], [24, 9, ['#e07a5f', '#ec9479']],
+                    [43, 9, ['#4c9a7a', '#62b08f', '#4c9a7a', '#62b08f']],
+                    [5, 29, ['#f2b84b', '#f2b84b']], [24, 29, ['#34507a', '#4a6896', '#34507a']]];
+    for (const [x, y, cols] of stacks) {
+      const n = cols.length, top = y + 4 - (n - 1) * 2.6;
+      cols.forEach((c, i) => {
+        const yy = y + 4 - i * 2.6;
+        b += R(x, yy + 12, 16, 3, PAL.cream, .6, 'stroke-width=".9"') + RF(x, yy + 12, 2, 3, c);
+      });
+      const c = cols[n - 1];
+      b += R(x, top - 1, 16, 14, c, 1.5) + RF(x + 3, top + 2, 10, 2, '#fff', 1, 'opacity=".75"') +
+           `<circle cx="${x + 8}" cy="${top + 8}" r="2.6" fill="${shade(c, .72)}"/>`;
+    }
+    b += `<path d="M46 44 L50 30 M58 44 L54 30" ${ST} fill="none"/>` + R(44.5, 26, 15, 15, '#f08fb3', 1.5) +
+         RF(47.5, 29, 9, 2, '#fff', 1, 'opacity=".8"') + star(52, 35.5, 3.6, PAL.cream, false);
+    return { box: [-2, 0, 68, 68], body: b };
+  },
+
+  // Checkout counter, 2 wide x 1 deep
+  'register-front': () => {
+    let b = shadow(32, 31, 34, 4) + R(0, 2, 64, 28, '#4f8279', 3) + R(0, 12, 64, 7, PAL.butter) +
+      txt(32, 17.6, 'BOOK FAIR', 5, INK) + R(0, -12, 64, 15, '#f3e3c8', 3) +
+      R(6, -24, 24, 16, '#d9d4cc', 2) + R(9, -21, 18, 6, '#6aa5c9', 1);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) b += RF(10 + i * 6, -13 + j * 2.5, 4, 1.6, '#8a8494', .6);
+    b += R(40, -20, 10, 12, '#e5989b', 1.5);
+    ['#f2cc8f', '#81b29a', '#9c89b8'].forEach((c, i) => { b += R(41.5 + i * 3, -27, 2.4, 9, c, .8, 'stroke-width=".8"'); });
+    b += R(54, -16, 7, 8, PAL.cream, 1);
+    return { box: [-4, -30, 72, 66], body: b };
+  },
+  'register-back': () => {
+    let b = shadow(32, 31, 34, 4) + R(0, 2, 64, 28, '#4f8279', 3) +
+      R(5, 7, 25, 18, '#3b5f59', 2) + R(34, 7, 25, 18, '#3b5f59', 2);
+    ['#f2b84b', '#e07a5f', '#8e6cc0'].forEach((c, i) => { b += R(8 + i * 5, 12, 4, 13, c, .8, 'stroke-width=".8"'); });
+    b += R(38, 18, 16, 7, '#d9a066', 1, 'stroke-width=".9"') +
+      R(0, -12, 64, 15, '#f3e3c8', 3) + R(6, -24, 24, 16, '#c9c3bb', 2) +
+      [-20, -17, -14].map(y => `<line x1="10" y1="${y}" x2="26" y2="${y}" stroke="#a9a3ab" stroke-width="1"/>`).join('') +
+      R(40, -20, 10, 12, '#e5989b', 1.5);
+    return { box: [-4, -30, 72, 66], body: b };
+  },
+  'register-side': () => ({ box: [-4, -16, 40, 82], body:   // 1 wide x 2 deep, front faces right
+    shadow(16, 63, 18, 4) + R(0, -12, 32, 48, '#f3e3c8', 3) +
+    R(5, -6, 18, 14, '#d9d4cc', 2) + R(20, -3, 4, 8, '#6aa5c9', 1) +
+    R(9, 16, 10, 12, '#e5989b', 1.5) +
+    R(0, 34, 32, 28, '#4f8279', 3) + R(0, 42, 32, 7, PAL.butter) }),
+
+  // Poster rack, 2 wide x 1 deep
+  'posters-front': () => {
+    let b = shadow(32, 30.5, 30, 3.5) +
+      `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` +
+      `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="#8a7f8f" stroke-width="2" stroke-linecap="round"/>` +
+      R(3, -33, 58, 6, PAL.coral, 2) + txt(32, -28.6, 'POSTERS', 4.2, PAL.cream) +
+      posterFace(9, -22, 15, 22, 'cat') + posterFace(24.5, -20, 15, 22, 'rainbow') + posterFace(40, -22, 15, 22, 'space') +
+      R(8, 6, 48, 18, '#6d597a', 2);
+    ['#f2cc8f', '#81b29a', '#f08fb3', '#5b82b8', '#f4a261', '#9c89b8'].forEach((c, i) => {
+      b += `<circle cx="${13 + i * 7.5}" cy="7" r="3" fill="${c}" stroke="${INK}" stroke-width="1"/><circle cx="${13 + i * 7.5}" cy="7" r="1" fill="${shade(c, .7)}"/>`;
+    });
+    return { box: [-2, -36, 68, 70], body: b };
+  },
+  'posters-back': () => ({ box: [-2, -36, 68, 70], body:
+    shadow(32, 30.5, 30, 3.5) +
+    `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` +
+    `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="#8a7f8f" stroke-width="2" stroke-linecap="round"/>` +
+    R(3, -33, 58, 6, PAL.coral, 2) + R(9, -22, 46, 22, '#e9dcc4', 1) +
+    R(8, 6, 48, 18, '#6d597a', 2) }),
+  'posters-side': () => {   // 1 wide x 2 deep, faces right
+    let b = shadow(16, 62, 14, 3.5) +
+      `<path d="M16 60 L16 -36" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M16 60 L16 -36" stroke="#8a7f8f" stroke-width="2" stroke-linecap="round"/>`;
+    [['#cfe3f2', -30], ['#fff1cf', -24], ['#2d3a6b', -18]].forEach(([c, y], i) => { b += R(14 + i * 3, y, 4, 30, c, 1, 'stroke-width="1"'); });
+    b += R(13, -40, 6, 7, PAL.coral, 1.5) + R(6, 6, 20, 40, '#7d6a8a', 2) + R(6, 42, 20, 18, '#6d597a', 2);
+    ['#f2cc8f', '#81b29a', '#f08fb3', '#5b82b8'].forEach((c, i) => { b += `<circle cx="16" cy="${12 + i * 8}" r="3" fill="${c}" stroke="${INK}" stroke-width="1"/>`; });
+    return { box: [-2, -44, 36, 112], body: b };
+  },
+
+  // Spinner rack, 1x1
+  'spinner': () => {
+    const cols = ['#f08fb3', '#81b29a', '#f2b84b', '#8e6cc0', '#5b82b8', '#e07a5f'];
+    let b = shadow(16, 30.5, 12, 3) + `<ellipse cx="16" cy="29" rx="10" ry="3" fill="#8a7f8f" ${ST}/>` +
+      `<path d="M16 28 L16 -44" stroke="${INK}" stroke-width="3.5"/><path d="M16 28 L16 -44" stroke="#c9c2cf" stroke-width="1.6"/>`;
+    [-34, -16, 2].forEach((y, t) => {
+      b += `<path d="M3 ${y + 15} L29 ${y + 15}" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+      for (let i = 0; i < 4; i++) {
+        const x = 4.5 + i * 6;
+        b += R(x, y, 5, 14, cols[(i + t * 2) % cols.length], 1, 'stroke-width=".9"') + `<circle cx="${x + 2.5}" cy="${y + 3}" r="1.2" fill="${PAL.cream}"/>`;
+      }
+    });
+    b += `<circle cx="16" cy="-46" r="6" fill="#f2b84b" ${ST}/>` + star(16, -46, 3.4, PAL.cream, false);
+    return { box: [0, -54, 32, 88], body: b };
+  },
+
+  // Merch bin, 1x1: a crate of pencils and animal erasers
+  'merch': () => ({ box: [0, -6, 32, 40], body:
+    shadow(16, 30.5, 14, 3) +
+    RF(5, 8, 22, 8, '#6e4a2c', 1) +
+    R(7, -2, 3, 14, '#f2b84b', .8, 'stroke-width=".9"') + R(11, 0, 3, 12, '#5b82b8', .8, 'stroke-width=".9"') +
+    `<path d="M8.5 -2 L8.5 -4.5" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<path d="M17 6 L18 2 L21 5 L23 5 L26 2 L27 6 Z" fill="#f4a3c0" stroke="${INK}" stroke-width=".9" stroke-linejoin="round"/>` +
+    `<circle cx="22" cy="8" r="5" fill="#f4a3c0" stroke="${INK}" stroke-width=".9"/>` +
+    `<circle cx="20.3" cy="7.6" r=".8" fill="${INK}"/><circle cx="23.7" cy="7.6" r=".8" fill="${INK}"/>` +
+    R(4, 11, 24, 4, '#e0ad74', 1.5) + R(4, 14, 24, 16, '#c48a52', 2) +
+    `<line x1="5" y1="20" x2="27" y2="20" stroke="#a87443" stroke-width="1"/><line x1="5" y1="25" x2="27" y2="25" stroke="#a87443" stroke-width="1"/>` +
+    R(10, 17, 12, 7, PAL.cream, 1, 'stroke-width=".9"') + txt(16, 22.4, '50¢', 4.4, PAL.coral) }),
+
+  // Beanbag, 1x1
+  'beanbag': () => ({ box: [-2, 0, 36, 34], body:
+    shadow(16, 29, 15, 3.5) +
+    `<path d="M4 26 Q1 13 11 10 Q16 4 22 9 Q32 12 28 26 Q16 31 4 26 Z" fill="#6a9fb5" ${ST}/>` +
+    `<ellipse cx="17" cy="15" rx="7" ry="3.5" fill="#5a8ca1"/>` +
+    `<path d="M8 23 Q16 27 25 23" fill="none" stroke="#8ab8cb" stroke-width="1.4" stroke-linecap="round"/>` }),
+
+  // Potted plant, 1x1: leaves grow out of the soil
+  'plant': () => {
+    let b = shadow(16, 30.5, 11, 3);
+    for (const [a, l] of [[-38, 12], [36, 12], [-8, 15], [14, 14]]) b += leaf(16, 14, a, l, '#5d8c44');
+    b += `<path d="M8 15 L24 15 L22 30 L10 30 Z" fill="${PAL.coral}" ${ST}/>` + R(7, 12, 18, 4.5, '#f08a6e', 1.5) +
+      `<ellipse cx="16" cy="13.2" rx="7.5" ry="1.6" fill="#6b4a33"/>`;
+    for (const [a, l] of [[-62, 10], [60, 10]]) b += leaf(16, 13.5, a, l, '#6a994e');
+    return { box: [-6, -10, 44, 44], body: b };
+  },
+  'cactus': () => ({ box: [0, -8, 32, 42], body:
+    shadow(16, 30.5, 9, 2.6) +
+    `<rect x="12" y="-2" width="8" height="18" rx="4" fill="#81b29a" ${ST}/>` +
+    `<path d="M12 8 h-3 a2.5 2.5 0 0 1 -2.5 -2.5 v-4" fill="none" stroke="${INK}" stroke-width="5.5" stroke-linecap="round"/>` +
+    `<path d="M12 8 h-3 a2.5 2.5 0 0 1 -2.5 -2.5 v-4" fill="none" stroke="#81b29a" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M16 1 v12" stroke="#6a9a83" stroke-width="1"/>` +
+    `<circle cx="16" cy="-2.5" r="2" fill="#f08fb3" stroke="${INK}" stroke-width=".9"/>` +
+    `<path d="M9 15 L23 15 L21.5 30 L10.5 30 Z" fill="#f2cc8f" ${ST}/>` + R(8, 13, 16, 4, '#f6dba6', 1.5) }),
+
+  // Reading rug, 3x2, lies on the floor
+  'rug': () => {
+    let b = R(5, 5, 86, 54, '#cdb4db', 12) +
+      `<rect x="11" y="11" width="74" height="42" rx="8" fill="none" stroke="#e6d6ef" stroke-width="1.6"/>`;
+    for (let x = 22; x <= 74; x += 13) b += star(x, 32, 3.2, '#f6eefb', false);
+    return { box: [0, 0, 96, 64], body: b };
+  },
+};
+
+function posterFace(x, y, w, h, kind) {
+  let g = R(x, y, w, h, { cat: '#cfe3f2', rainbow: '#fff1cf', space: '#2d3a6b' }[kind], 1);
+  if (kind === 'cat') {
+    g += `<path d="M${x + w * .28} ${y + h * .46} l2 -4 2 3 M${x + w * .72} ${y + h * .46} l-2 -4 -2 3" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${x + w / 2}" cy="${y + h * .58}" r="${w * .26}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${x + w * .42}" cy="${y + h * .56}" r=".8" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .56}" r=".8" fill="${INK}"/>`;
+  } else if (kind === 'rainbow') {
+    ['#e76f51', '#f4a261', '#e9c46a', '#81b29a', '#5b82b8'].forEach((c, i) => {
+      const rr = w * .38 - i * 1.6;
+      g += `<path d="M${x + w / 2 - rr} ${y + h * .7} A${rr} ${rr} 0 0 1 ${x + w / 2 + rr} ${y + h * .7}" fill="none" stroke="${c}" stroke-width="1.6"/>`;
+    });
+  } else {
+    g += `<circle cx="${x + w * .45}" cy="${y + h * .55}" r="${w * .2}" fill="#f2b84b" stroke="${INK}" stroke-width=".8"/>` +
+      `<ellipse cx="${x + w * .45}" cy="${y + h * .55}" rx="${w * .33}" ry="${w * .08}" fill="none" stroke="#f08fb3" stroke-width="1"/>`;
+    for (const [sx, sy] of [[.2, .2], [.8, .3], [.75, .8]]) g += `<circle cx="${x + w * sx}" cy="${y + h * sy}" r=".7" fill="#fff"/>`;
+  }
+  return g;
+}
+
+// ---- people ----
+// One body, recolored for every character. Feet sit at the bottom of the tile.
+const PLAYER_LOOK = { shirt: '#e07a5f', hair: '#5a3825', skin: '#f1c27d', pants: '#3d5a80' };
+const CUSTOMER_LOOKS = [   // ready for the customers phase
+  { shirt: '#81b29a', hair: '#2b2b2b', skin: '#c68642', pants: '#6d597a' },
+  { shirt: '#9c89b8', hair: '#e0b04a', skin: '#ffe0bd', pants: '#457b9d' },
+  { shirt: '#f2cc8f', hair: '#8d5524', skin: '#8d5524', pants: '#2a9d8f' },
+  { shirt: '#3d5a80', hair: '#b56576', skin: '#f1c27d', pants: '#e07a5f' },
+];
+
+function personArt(view, look) {
+  const { shirt, hair, skin, pants } = look;
+  let g = `<ellipse cx="16" cy="30" rx="8" ry="2.6" fill="#000" opacity=".15"/>`;
+  if (view === 'side') {   // facing right
+    g += `<rect x="12" y="20" width="5" height="10" rx="2" fill="${pants}" ${ST}/>` +
+      `<rect x="15" y="21" width="5" height="9" rx="2" fill="${shade(pants, .8)}" ${ST}/>` +
+      `<rect x="10" y="9" width="12" height="14" rx="5" fill="${shirt}" ${ST}/>` +
+      `<rect x="14" y="11" width="4.5" height="10" rx="2.2" fill="${shade(shirt, .85)}" ${ST}/>` +
+      `<circle cx="16.5" cy="1" r="10" fill="${skin}" ${ST}/>` +
+      `<path d="M6.8 2 C6 -10 22 -12 25.5 -3 C21 -6 17 -5 16 -1 C14 3 10 5 6.8 2 Z" fill="${hair}" ${ST}/>` +
+      `<circle cx="10" cy="4" r="3.2" fill="${hair}" ${ST}/>` +
+      `<circle cx="21.5" cy="1.5" r="1.4" fill="${INK}"/><ellipse cx="21" cy="5" rx="2" ry="1.2" fill="#f4978e" opacity=".7"/>`;
+    return { box: [0, -14, 32, 48], body: g };
+  }
+  g += `<rect x="10.5" y="20" width="5" height="10" rx="2" fill="${pants}" ${ST}/>` +
+    `<rect x="16.5" y="20" width="5" height="10" rx="2" fill="${pants}" ${ST}/>` +
+    `<rect x="6.5" y="11" width="4.5" height="10" rx="2.2" fill="${skin}" ${ST}/>` +
+    `<rect x="21" y="11" width="4.5" height="10" rx="2.2" fill="${skin}" ${ST}/>` +
+    `<rect x="9" y="9" width="14" height="14" rx="5" fill="${shirt}" ${ST}/>`;
+  if (view === 'front') {
+    g += `<path d="M12.5 9.5 L16 15 L19.5 9.5" fill="none" stroke="#f2cc8f" stroke-width="1.2"/>` +
+      `<rect x="14" y="14.5" width="4" height="5" rx=".8" fill="${PAL.cream}" stroke="${INK}" stroke-width=".8"/>`;
+  }
+  g += `<circle cx="16" cy="1" r="10.5" fill="${skin}" ${ST}/>`;
+  if (view === 'front') {
+    g += `<path d="M5.6 2 C4 -12 28 -12 26.4 2 C24 -3 20 -4 16 -2 C12 -4 8 -3 5.6 2 Z" fill="${hair}" ${ST}/>` +
+      `<circle cx="12.3" cy="3" r="1.4" fill="${INK}"/><circle cx="19.7" cy="3" r="1.4" fill="${INK}"/>` +
+      `<ellipse cx="10" cy="6" rx="2" ry="1.2" fill="#f4978e" opacity=".7"/><ellipse cx="22" cy="6" rx="2" ry="1.2" fill="#f4978e" opacity=".7"/>` +
+      `<path d="M14.6 6.5 Q16 7.6 17.4 6.5" fill="none" stroke="${INK}" stroke-width=".9" stroke-linecap="round"/>`;
+  } else {   // back
+    g += `<circle cx="16" cy="1" r="10.5" fill="${hair}" ${ST}/>` +
+      `<path d="M10 -5 Q16 -8 22 -5" fill="none" stroke="${shade(hair, 1.3)}" stroke-width="1.2" stroke-linecap="round"/>`;
+  }
+  return { box: [0, -14, 32, 48], body: g };
+}
+ART['player-front'] = () => personArt('front', PLAYER_LOOK);
+ART['player-side']  = () => personArt('side', PLAYER_LOOK);
+ART['player-back']  = () => personArt('back', PLAYER_LOOK);
+
+// ---- room background (floor + walls), redrawn when size/doors/decor change ----
+function floorArt(kind, x0, y0, w, h) {
+  let g = '';
+  if (kind === 'checker') {
+    for (let y = y0, j = 0; y < y0 + h; y += 16, j++)
+      for (let x = x0, i = 0; x < x0 + w; x += 16, i++) g += RF(x, y, 16, 16, (i + j) % 2 ? '#bfe3d0' : '#fff8ec');
+  } else if (kind === 'carpet') {
+    g += RF(x0, y0, w, h, '#5b82b8');
+    for (let y = y0 + 5, j = 0; y < y0 + h; y += 9, j++)
+      for (let x = x0 + 4 + (j % 2) * 4.5; x < x0 + w; x += 9) g += `<circle cx="${x}" cy="${y}" r="1.1" fill="#7da0cf"/>`;
+  } else {   // wood planks
+    for (let y = y0, i = 0; y < y0 + h; y += 16, i++) {
+      g += RF(x0, y, w, 16, i % 2 ? '#e8c38f' : '#e2bb85');
+      const off = (i * 37) % 48;
+      for (let x = x0 - 48 + off; x < x0 + w; x += 48) if (x > x0) g += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 16}" stroke="#cfa36c" stroke-width="1"/>`;
+      g += `<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="#d3a970" stroke-width="1"/>`;
+    }
+  }
+  return g;
+}
+
+function wallFaceArt(kind, W) {
+  const top = -CONFIG.WALL_UP, T = CONFIG.TILE;
+  let g = RF(0, top, W, 6, '#6d597a');
+  if (kind === 'stripes') {
+    for (let x = 0, i = 0; x < W; x += 8, i++) g += RF(x, top + 6, 8, T - top - 12, i % 2 ? '#f9d5d3' : '#fdecea');
+  } else if (kind === 'stars') {
+    g += RF(0, top + 6, W, T - top - 12, '#3d4a7a');
+    for (let x = 10; x < W; x += 23) g += `<circle cx="${x}" cy="${top + 14 + (x * 7) % 34}" r="1.2" fill="#f2cc8f"/>`;
+  } else {   // sage wainscot
+    g += RF(0, top + 6, W, T - top - 12, '#f6ead3') + RF(0, 2, W, 24, '#8fb3a0');
+    for (let x = 0; x < W; x += 12) g += `<line x1="${x}" y1="4" x2="${x}" y2="24" stroke="#7fa390" stroke-width="1"/>`;
+    g += RF(0, 0, W, 3, PAL.coral);
+  }
+  g += RF(0, T - 6, W, 6, '#6f5a73');
+  // book-fair bunting
+  const flags = ['#e07a5f', '#f2cc8f', '#81b29a', '#3d5a80', '#9c89b8', '#f4a261'];
+  g += `<path d="M0 ${top + 12} L${W} ${top + 12}" stroke="${INK}" stroke-width="1"/>`;
+  for (let i = 0, x = 6; x < W - 8; x += 16, i++)
+    g += `<path d="M${x} ${top + 12} L${x + 12} ${top + 12} L${x + 6} ${top + 21} Z" fill="${flags[i % flags.length]}" stroke="${INK}" stroke-width="1" stroke-linejoin="round"/>`;
+  return g;
+}
+
+function roomArt(layout) {
+  const T = CONFIG.TILE, W = layout.cols * T, H = layout.rows * T;
+  const up = CONFIG.WALL_UP, down = CONFIG.WALL_DOWN;
+  const wallTop = '#6d597a', wallEdge = '#584866', wallFace = '#4e4060';
+  let g = floorArt(layout.decor.floor, 0, 0, W, H);
+  g += wallFaceArt(layout.decor.wall, W);
+  // side walls (seen from above) and bottom wall, with gaps for doors
+  for (let y = -1; y < layout.rows; y++) {
+    for (const x of [0, layout.cols - 1]) {
+      if (y >= 0 && isDoor(layout, x, y)) continue;
+      const yy = y < 0 ? -up : y * T, hh = y < 0 ? up : T;
+      g += RF(x * T, yy, T, hh + 0.5, wallTop);
+    }
+  }
+  for (let x = 0; x < layout.cols; x++) {
+    const y = layout.rows - 1;
+    if (isDoor(layout, x, y)) continue;
+    g += RF(x * T, y * T, T, T, wallTop) + RF(x * T, y * T + T, T, down, wallFace);
+  }
+  g += `<line x1="${T}" y1="${-up}" x2="${T}" y2="${H - T}" stroke="${wallEdge}" stroke-width="2"/>` +
+       `<line x1="${W - T}" y1="${-up}" x2="${W - T}" y2="${H - T}" stroke="${wallEdge}" stroke-width="2"/>` +
+       `<line x1="${T}" y1="${H - T}" x2="${W - T}" y2="${H - T}" stroke="${wallEdge}" stroke-width="2"/>`;
+  // doorways: floor continues, with a welcome mat
+  for (const d of layout.doors) {
+    const x = d.x * T, y = d.y * T;
+    g += floorArt(layout.decor.floor, x, y, T, T + (d.y === layout.rows - 1 ? down : 0)) +
+      R(x + 3, y + 8, T - 6, 16, '#b5654d', 3) +
+      `<line x1="${x + 7}" y1="${y + 13}" x2="${x + T - 7}" y2="${y + 13}" stroke="#d9876c" stroke-width="1.5"/>` +
+      `<line x1="${x + 7}" y1="${y + 19}" x2="${x + T - 7}" y2="${y + 19}" stroke="#d9876c" stroke-width="1.5"/>`;
+  }
+  return { box: [0, -up, W, H + up + down], body: g };
+}
+
+function svgString(art, res) {
+  const [x, y, w, h] = art.box;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(w * res)}" height="${Math.ceil(h * res)}" viewBox="${x} ${y} ${w} ${h}">${art.body}</svg>`;
+}
+function svgDataUrl(art, res) {
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString(art, res));
+}
+
+// Which drawing an item uses, and whether to mirror it.
+function artFor(item) {
+  const def = FURNITURE[item.type];
+  if (!def.dir) return { key: item.type, flip: false };
+  if (item.rot === 0) return { key: item.type + '-front', flip: false };
+  if (item.rot === 2) return { key: item.type + '-back', flip: false };
+  return { key: item.type + '-side', flip: item.rot === 1 };
+}
+function paletteArtKey(type) { return FURNITURE[type].dir ? type + '-front' : type; }
+
+// Turns an ART drawing into a Phaser texture. Resolves when ready.
+function makeTexture(scene, key, art, res = CONFIG.ART_RES) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      if (scene.textures.exists(key)) scene.textures.remove(key);
+      scene.textures.addImage(key, img);
+      resolve(true);
+    };
+    img.onerror = () => { console.warn('Art failed to load:', key); resolve(false); };
+    img.src = svgDataUrl(art, res);
+  });
+}
+
+function roomSignature(layout) {
+  return [layout.cols, layout.rows, layout.decor.floor, layout.decor.wall, JSON.stringify(layout.doors)].join('|');
+}
+
+// ============================================================
+// 8. BOOK CATALOG
+// Every book in the game. Each genre is one color family: spines
+// use shades of it, plus a round genre sticker (see the style guide).
+// Started from Brittney's Goodreads export (Little Free Library
+// books left out), sorted into genres by hand.
+// To add books: append { id, title, author, genre } lines below.
+// Optional fields: subtitle, series, year, rating, staffPick (5 stars),
+// shelf (to-read / did-not-finish / currently-reading), source.
+// ============================================================
+const GENRES = {
+  mystery      : { label: "Mystery & Suspense", color: '#34507a' },
+  fantasy      : { label: "Fantasy & Sci-Fi", color: '#8e6cc0' },
+  romance      : { label: "Romance", color: '#f08fb3' },
+  historical   : { label: "Historical Fiction", color: '#2a9d8f' },
+  fiction      : { label: "Fiction", color: '#d64545' },
+  classics     : { label: "Classics", color: '#8c3b4a' },
+  inspirational: { label: "Inspirational", color: '#6fa8c7' },
+  nonfiction   : { label: "Nonfiction & Memoir", color: '#6a994e' },
+  ya           : { label: "Young Adult", color: '#f08a3c' },
+  middlegrade  : { label: "Middle Grade", color: '#f2b84b' },
+};
+
+const BOOKS = [
+  {"id": "b1", "title": "The House Witch", "author": "Delemhach", "genre": "fantasy", "series": "The House Witch, #1", "year": 2022, "shelf": "currently-reading", "source": "goodreads"},
+  {"id": "b2", "title": "The Marlow Murder Club", "author": "Robert Thorogood", "genre": "mystery", "series": "Marlow Murder Club, #1", "year": 2021, "rating": 4.5, "source": "goodreads"},
+  {"id": "b3", "title": "The Goblin Emperor", "author": "Katherine Addison", "genre": "fantasy", "series": "The Chronicles of Osreth, #1", "year": 2014, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b4", "title": "Getting Past Your Past", "author": "Francine Shapiro", "genre": "nonfiction", "subtitle": "Take Control of Your Life with Self-Help Techniques from EMDR Therapy", "year": 2012, "shelf": "currently-reading", "source": "goodreads"},
+  {"id": "b5", "title": "The Curse of the Pharaohs", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #2", "year": 1981, "source": "goodreads"},
+  {"id": "b6", "title": "Crocodile on the Sandbank", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #1", "year": 1975, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b7", "title": "Batcat", "author": "Meggie Ramm", "genre": "middlegrade", "subtitle": "The Ghostly Guest", "series": "Batcat, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b8", "title": "A Most Agreeable Murder", "author": "Julia Seales", "genre": "mystery", "series": "Beatrice Steele, #1", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b9", "title": "The Swifts", "author": "Beth Lincoln", "genre": "middlegrade", "subtitle": "A Dictionary of Scoundrels", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b10", "title": "Agnes Aubert's Mystical Cat Shelter", "author": "Heather Fawcett", "genre": "fantasy", "year": 2026, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b11", "title": "The Highland Falcon Thief", "author": "M.G. Leonard", "genre": "middlegrade", "series": "Adventures on Trains, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b12", "title": "The Personal Librarian", "author": "Marie Benedict", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b13", "title": "The Secret of Platform 13", "author": "Eva Ibbotson", "genre": "middlegrade", "year": 1994, "rating": 4.0, "source": "goodreads"},
+  {"id": "b14", "title": "A Prayer for the Crown-Shy", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b15", "title": "The Reading List", "author": "Sara Nisha Adams", "genre": "fiction", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b16", "title": "In This Mountain", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #7", "year": 2002, "rating": 4.0, "source": "goodreads"},
+  {"id": "b17", "title": "The Golden Spoon", "author": "Jessa Maxwell", "genre": "mystery", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b18", "title": "The Blue Castle", "author": "L.M. Montgomery", "genre": "classics", "year": 1926, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b19", "title": "The Wishing Game", "author": "Meg Shaffer", "genre": "fiction", "year": 2023, "rating": 2.0, "source": "goodreads"},
+  {"id": "b20", "title": "Broken Country", "author": "Clare Leslie Hall", "genre": "historical", "year": 2025, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b21", "title": "The Whisper Man", "author": "Alex North", "genre": "mystery", "year": 2019, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b22", "title": "A Common Life", "author": "Jan Karon", "genre": "inspirational", "subtitle": "The Wedding Story", "series": "Mitford Years, #6", "year": 2001, "rating": 3.0, "source": "goodreads"},
+  {"id": "b23", "title": "Project Hail Mary", "author": "Andy Weir", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b24", "title": "Everyone in This Bank Is a Thief", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #4", "year": 2026, "rating": 4.0, "source": "goodreads"},
+  {"id": "b25", "title": "A New Song", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #5", "year": 1999, "rating": 4.0, "source": "goodreads"},
+  {"id": "b26", "title": "Out to Canaan", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #4", "year": 1997, "rating": 4.0, "source": "goodreads"},
+  {"id": "b27", "title": "Yesteryear", "author": "Caro Claire Burke", "genre": "fiction", "year": 2026, "rating": 4.0, "source": "goodreads"},
+  {"id": "b28", "title": "These High, Green Hills", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #3", "year": 1996, "rating": 4.0, "source": "goodreads"},
+  {"id": "b29", "title": "Brigands & Breadknives", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #2", "year": 2025, "rating": 3.0, "source": "goodreads"},
+  {"id": "b30", "title": "Finlay Donovan Is Killing It", "author": "Elle Cosimano", "genre": "mystery", "series": "Finlay Donovan, #1", "year": 2021, "rating": 2.0, "source": "goodreads"},
+  {"id": "b31", "title": "Heir of Fire", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #3", "year": 2014, "rating": 4.0, "source": "goodreads"},
+  {"id": "b32", "title": "Happy Place", "author": "Emily Henry", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b33", "title": "Three Bags Full", "author": "Leonie Swann", "genre": "mystery", "series": "Sheep Detective Story #1", "year": 2005, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b34", "title": "Dry", "author": "Neal Shusterman", "genre": "ya", "year": 2018, "rating": 4.0, "source": "goodreads"},
+  {"id": "b35", "title": "At Home in Mitford", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #1", "year": 1994, "rating": 3.0, "source": "goodreads"},
+  {"id": "b36", "title": "Theo of Golden", "author": "Allen Levi", "genre": "inspirational", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b37", "title": "The PLAN", "author": "Kendra Adachi", "genre": "nonfiction", "subtitle": "Manage Your Time Like a Lazy Genius", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b38", "title": "The Assassin's Blade", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #0.1-0.5", "year": 2014, "rating": 3.0, "source": "goodreads"},
+  {"id": "b39", "title": "How to Raise an Adult", "author": "Julie Lythcott-Haims", "genre": "nonfiction", "subtitle": "Break Free of the Overparenting Trap and Prepare Your Kid for Success", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b40", "title": "The Music Shop", "author": "Rachel Joyce", "genre": "fiction", "year": 2017, "rating": 3.0, "source": "goodreads"},
+  {"id": "b41", "title": "Crown of Midnight", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #2", "year": 2013, "rating": 3.0, "source": "goodreads"},
+  {"id": "b42", "title": "Miss Benson's Beetle", "author": "Rachel Joyce", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b43", "title": "The Happiness Project", "author": "Gretchen Rubin", "genre": "nonfiction", "year": 2009, "rating": 4.0, "source": "goodreads"},
+  {"id": "b44", "title": "Throne of Glass", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #1", "year": 2012, "rating": 3.0, "source": "goodreads"},
+  {"id": "b45", "title": "The Tao of Pooh", "author": "Benjamin Hoff", "genre": "nonfiction", "year": 1982, "shelf": "did-not-finish", "source": "goodreads"},
+  {"id": "b46", "title": "The Secrets of Sir Richard Kenworthy", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #4", "year": 2015, "shelf": "did-not-finish", "source": "goodreads"},
+  {"id": "b47", "title": "The Wisteria Society of Lady Scoundrels", "author": "India Holton", "genre": "fantasy", "series": "Dangerous Damsels, #1", "year": 2021, "rating": 2.0, "shelf": "did-not-finish", "source": "goodreads"},
+  {"id": "b48", "title": "A Woman of No Importance", "author": "Sonia Purnell", "genre": "nonfiction", "subtitle": "The Untold Story of the American Spy Who Helped Win World War II", "year": 2019, "shelf": "did-not-finish", "source": "goodreads"},
+  {"id": "b49", "title": "Love Lettering", "author": "Kate Clayborn", "genre": "romance", "year": 2019, "shelf": "did-not-finish", "source": "goodreads"},
+  {"id": "b50", "title": "The Invisible Life of Addie LaRue", "author": "V.E. Schwab", "genre": "fantasy", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b51", "title": "A Christmas Guide to Family and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "A Countess of Harleigh Mystery, #9", "year": 2026, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b52", "title": "Reconnected", "author": "Carlos Whittaker", "genre": "nonfiction", "subtitle": "How 7 Screen-Free Weeks with Monks and Amish Farmers Helped Me Recover the Lost Art of Being Human", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b53", "title": "The Dark Mirror", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #5", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b54", "title": "The Mask Falling", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #4", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b55", "title": "Miss Pettigrew Lives for a Day", "author": "Winifred Watson", "genre": "classics", "year": 1938, "rating": 4.0, "source": "goodreads"},
+  {"id": "b56", "title": "The Song Rising", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #3", "year": 2017, "rating": 3.0, "source": "goodreads"},
+  {"id": "b57", "title": "From Bad to Cursed", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #2", "year": 2022, "rating": 3.0, "source": "goodreads"},
+  {"id": "b58", "title": "The Seven Principles for Making Marriage Work", "author": "John M. Gottman", "genre": "nonfiction", "subtitle": "A Practical Guide from the Country's Foremost Relationship Expert", "year": 1999, "rating": 4.0, "source": "goodreads"},
+  {"id": "b59", "title": "The One with the Kiss Cam", "author": "Cindy Steel", "genre": "romance", "year": 2023, "rating": 2.0, "source": "goodreads"},
+  {"id": "b60", "title": "The Enchanted April", "author": "Elizabeth von Arnim", "genre": "classics", "year": 1922, "source": "goodreads"},
+  {"id": "b61", "title": "How to Do Nothing", "author": "Jenny Odell", "genre": "nonfiction", "subtitle": "Resisting the Attention Economy", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b62", "title": "Cozy Minimalist Home", "author": "Myquillyn Smith", "genre": "nonfiction", "subtitle": "More Style, Less Stuff", "year": 2018, "rating": 3.0, "source": "goodreads"},
+  {"id": "b63", "title": "I Capture the Castle", "author": "Dodie Smith", "genre": "classics", "year": 1948, "rating": 3.0, "source": "goodreads"},
+  {"id": "b64", "title": "Loose Lips", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #2", "year": 2025, "rating": 3.0, "source": "goodreads"},
+  {"id": "b65", "title": "The Vanderbeekers of 141st Street", "author": "Karina Yan Glaser", "genre": "middlegrade", "series": "The Vanderbeekers, #1", "year": 2017, "rating": 3.0, "source": "goodreads"},
+  {"id": "b66", "title": "Inspired", "author": "Rachel Held Evans", "genre": "nonfiction", "subtitle": "Slaying Giants, Walking on Water, and Loving the Bible Again", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b67", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 8", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b68", "title": "Luv, Amelia Luv, Nadia", "author": "Marissa Moss", "genre": "middlegrade", "series": "Amelia's Notebooks, #6", "year": 1999, "rating": 4.0, "source": "goodreads"},
+  {"id": "b69", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 7", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b70", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 6", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b71", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 5", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b72", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 4", "series": "The Unselected Journals of Emma M. Lion, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b73", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 3", "series": "The Unselected Journals of Emma M. Lion, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b74", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 2", "series": "The Unselected Journals of Emma M. Lion, #2", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b75", "title": "The Unselected Journals of Emma M. Lion, Vol. 1", "author": "Beth Brower", "genre": "historical", "series": "The Unselected Journals of Emma M. Lion, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b76", "title": "The Wood at Midwinter", "author": "Susanna Clarke", "genre": "fantasy", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b77", "title": "The Austen Escape", "author": "Katherine Reay", "genre": "fiction", "year": 2017, "rating": 2.0, "source": "goodreads"},
+  {"id": "b78", "title": "Kiki Kallira Conquers a Curse", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b79", "title": "The Mime Order", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b80", "title": "The Bone Season", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #1", "year": 2013, "rating": 4.0, "source": "goodreads"},
+  {"id": "b81", "title": "Kiki Kallira Breaks a Kingdom", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #1", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b82", "title": "The Tobacco Wives", "author": "Adele Myers", "genre": "historical", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b83", "title": "Playing the Witch Card", "author": "K.J. Dell'Antonia", "genre": "fantasy", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b84", "title": "Vanya and the Silver Spindle", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Vanya Vallen Adventures #2", "year": 2027, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b85", "title": "Vanya and the Wild Hunt", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Vanya Vallen Adventures #1", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b86", "title": "Harry Potter and the Chamber of Secrets", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #2", "year": 1998, "rating": 4.0, "source": "goodreads"},
+  {"id": "b87", "title": "Tom Lake", "author": "Ann Patchett", "genre": "fiction", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b88", "title": "Sunrise on the Reaping", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games", "year": 2025, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b89", "title": "The Thursday Murder Club", "author": "Richard Osman", "genre": "mystery", "series": "Thursday Murder Club, #1", "year": 2020, "rating": 3.0, "source": "goodreads"},
+  {"id": "b90", "title": "You've Been Volunteered", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #2", "year": 2019, "rating": 3.0, "source": "goodreads"},
+  {"id": "b91", "title": "A Witch's Guide to Magical Innkeeping", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b92", "title": "Class Mom", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #1", "year": 2017, "rating": 4.0, "source": "goodreads"},
+  {"id": "b93", "title": "Payback's a Witch", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b94", "title": "The Ex Hex", "author": "Erin Sterling", "genre": "romance", "series": "The Ex Hex, #1", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b95", "title": "The Rainfall Market", "author": "You Yeong-Gwang", "genre": "fantasy", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b96", "title": "Matilda", "author": "Roald Dahl", "genre": "middlegrade", "year": 1988, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b97", "title": "Return to Sender", "author": "Vera Brosgol", "genre": "middlegrade", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b98", "title": "Miss Eliza's English Kitchen", "author": "Annabel Abbs", "genre": "historical", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b99", "title": "The Busy Body", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #1", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b100", "title": "A Psalm for the Wild-Built", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b101", "title": "A Daughter's Guide to Mothers and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "A Countess of Harleigh Mystery, #8", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b102", "title": "Vera Wong's Guide to Snooping [On a Dead Man]", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #2", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b103", "title": "The Hand on the Wall", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b104", "title": "The Vanishing Stair", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #2", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b105", "title": "The Baby Dragon Café", "author": "Aamna Qureshi", "genre": "fantasy", "series": "The Baby Dragon, #1", "year": 2025, "rating": 3.0, "source": "goodreads"},
+  {"id": "b106", "title": "Truly, Devious", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #1", "year": 2018, "rating": 3.0, "source": "goodreads"},
+  {"id": "b107", "title": "Shady Hollow", "author": "Juneau Black", "genre": "mystery", "series": "Shady Hollow, #1", "year": 2015, "rating": 3.0, "source": "goodreads"},
+  {"id": "b108", "title": "Rewitched", "author": "Lucy Jane Wood", "genre": "fantasy", "series": "Selcouth, #1", "year": 2024, "rating": 2.0, "source": "goodreads"},
+  {"id": "b109", "title": "George and Frances Roll the Dice", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery #7.5", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b110", "title": "Cotillion", "author": "Georgette Heyer", "genre": "romance", "year": 1953, "rating": 3.0, "source": "goodreads"},
+  {"id": "b111", "title": "The Rose Code", "author": "Kate Quinn", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b112", "title": "Silverborn", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Mystery of Morrigan Crow", "series": "Nevermoor, #4", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b113", "title": "Emily Wilde's Compendium of Lost Tales", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #3", "year": 2025, "rating": 4.0, "source": "goodreads"},
+  {"id": "b114", "title": "Anne of Green Gables", "author": "L.M. Montgomery", "genre": "classics", "series": "Anne of Green Gables, #1", "year": 1908, "rating": 4.0, "source": "goodreads"},
+  {"id": "b115", "title": "Wundersmith", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Calling of Morrigan Crow", "series": "Nevermoor, #2", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b116", "title": "The Bletchley Riddle", "author": "Ruta Sepetys", "genre": "middlegrade", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b117", "title": "The Wild Robot Protects", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #3", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b118", "title": "The Cosy Cottage in Ireland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #8", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b119", "title": "The Briar Club", "author": "Kate Quinn", "genre": "historical", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b120", "title": "Homecoming", "author": "Cynthia Voigt", "genre": "ya", "series": "Tillerman Cycle, #1", "year": 1981, "rating": 4.0, "source": "goodreads"},
+  {"id": "b121", "title": "The Wedding People", "author": "Alison Espach", "genre": "fiction", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b122", "title": "The Midnight Plan of the Repo Man", "author": "W. Bruce Cameron", "genre": "mystery", "series": "Ruddy McCann #1", "year": 2014, "rating": 4.0, "source": "goodreads"},
+  {"id": "b123", "title": "The Guernsey Literary and Potato Peel Pie Society", "author": "Mary Ann Shaffer", "genre": "historical", "year": 2008, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b124", "title": "The Bookish Life of Nina Hill", "author": "Abbi Waxman", "genre": "fiction", "year": 2019, "rating": 3.0, "source": "goodreads"},
+  {"id": "b125", "title": "The Time Traveller's Guide to Regency Britain", "author": "Ian Mortimer", "genre": "nonfiction", "subtitle": "The Immersive and Brilliant Historical Guide to Regency Britain", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b126", "title": "Is She Really Going Out with Him?", "author": "Sophie Cousens", "genre": "romance", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b127", "title": "The Pursuit of Love", "author": "Nancy Mitford", "genre": "classics", "series": "Radlett & Montdore, #1", "year": 1945, "rating": 4.0, "source": "goodreads"},
+  {"id": "b128", "title": "The Sicilian Inheritance", "author": "Jo Piazza", "genre": "mystery", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b129", "title": "How to Solve Your Own Murder", "author": "Kristen Perrin", "genre": "mystery", "series": "Castle Knoll Files, #1", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b130", "title": "Assassins Anonymous", "author": "Rob Hart", "genre": "mystery", "series": "Assassins Anonymous, #1", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b131", "title": "A Rather Lovely Inheritance", "author": "C.A. Belmond", "genre": "mystery", "series": "Penny Nichols, #1", "year": 2007, "rating": 3.0, "source": "goodreads"},
+  {"id": "b132", "title": "Pride and Prejudice", "author": "Jane Austen", "genre": "classics", "year": 1813, "rating": 4.0, "source": "goodreads"},
+  {"id": "b133", "title": "The City of Ember", "author": "Jeanne DuPrau", "genre": "middlegrade", "series": "Book of Ember, #1", "year": 2003, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b134", "title": "Time Travel for Love and Profit", "author": "Sarah Lariviere", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b135", "title": "The Lady's Companion", "author": "Carla Kelly", "genre": "romance", "year": 1996, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b136", "title": "Amari and the Despicable Wonders", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #3", "year": 2024, "rating": 2.0, "source": "goodreads"},
+  {"id": "b137", "title": "The Brothers Hawthorne", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #4", "year": 2023, "rating": 2.0, "source": "goodreads"},
+  {"id": "b138", "title": "The Bookshop on the Corner", "author": "Jenny Colgan", "genre": "romance", "series": "Kirrinfief, #1", "year": 2016, "rating": 3.0, "source": "goodreads"},
+  {"id": "b139", "title": "Amari and the Great Game", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b140", "title": "Amari and the Night Brothers", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #1", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b141", "title": "The Wild Robot Escapes", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #2", "year": 2018, "rating": 4.0, "source": "goodreads"},
+  {"id": "b142", "title": "Chocolate Chip Cookie Murder", "author": "Joanne Fluke", "genre": "mystery", "series": "Hannah Swensen, #1", "year": 2000, "rating": 3.0, "source": "goodreads"},
+  {"id": "b143", "title": "The Lightning Thief", "author": "Rick Riordan", "genre": "middlegrade", "series": "Percy Jackson and the Olympians, #1", "year": 2005, "rating": 2.0, "source": "goodreads"},
+  {"id": "b144", "title": "The Wild Robot", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b145", "title": "Death Comes to Pemberley", "author": "P.D. James", "genre": "mystery", "year": 2011, "rating": 2.0, "source": "goodreads"},
+  {"id": "b146", "title": "Longbourn", "author": "Jo Baker", "genre": "historical", "year": 2013, "rating": 3.0, "source": "goodreads"},
+  {"id": "b147", "title": "Tuesdays at the Castle", "author": "Jessica Day George", "genre": "middlegrade", "series": "Castle Glower, #1", "year": 2011, "rating": 4.0, "source": "goodreads"},
+  {"id": "b148", "title": "The Happy Life of Isadora Bentley", "author": "Courtney Walsh", "genre": "inspirational", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b149", "title": "Miss Austen", "author": "Gill Hornby", "genre": "historical", "series": "Austen Family, #1", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b150", "title": "Alone", "author": "Megan E. Freeman", "genre": "middlegrade", "series": "Alone #1", "year": 2021, "rating": 2.0, "source": "goodreads"},
+  {"id": "b151", "title": "Legends & Lattes", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #1", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b152", "title": "Spindle's End", "author": "Robin McKinley", "genre": "fantasy", "year": 2000, "rating": 4.0, "source": "goodreads"},
+  {"id": "b153", "title": "The 7½ Deaths of Evelyn Hardcastle", "author": "Stuart Turton", "genre": "mystery", "year": 2018, "rating": 4.0, "source": "goodreads"},
+  {"id": "b154", "title": "The Little Teashop in Tokyo", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #6", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b155", "title": "The Summer of Yes", "author": "Courtney Walsh", "genre": "inspirational", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b156", "title": "An Art Lover's Guide to Paris and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #7", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b157", "title": "Everyone on This Train Is a Suspect", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #2", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b158", "title": "Everyone in My Family Has Killed Someone", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b159", "title": "A Good Girl's Guide to Murder", "author": "Holly Jackson", "genre": "ya", "series": "A Good Girl's Guide to Murder, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b160", "title": "The Secret Cove in Croatia", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #5", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b161", "title": "The Northern Lights Lodge", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #4", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b162", "title": "The Hapless Milliner", "author": "Jessica Bull", "genre": "mystery", "series": "Miss Austen Investigates, #1", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b163", "title": "Loyally, Luke", "author": "Pepper Basham", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b164", "title": "A Lady's Guide to Marvels and Misadventure", "author": "Angela Bell", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads"},
+  {"id": "b165", "title": "The Kitchen Front", "author": "Jennifer Ryan", "genre": "historical", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b166", "title": "Emily Wilde’s Map of the Otherlands", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #2", "year": 2024, "rating": 3.0, "source": "goodreads"},
+  {"id": "b167", "title": "Bookshops & Bonedust", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #0", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b168", "title": "Positively, Penelope", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #2", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b169", "title": "Remarkably Bright Creatures", "author": "Shelby Van Pelt", "genre": "fiction", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b170", "title": "The Last Bookwanderer", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #6", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b171", "title": "Earl Grafton and the Traitor", "author": "Angela E. Johnson", "genre": "romance", "series": "Fernley Family #1", "year": 2022, "rating": 3.0, "source": "goodreads"},
+  {"id": "b172", "title": "Authentically, Izzy", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #1", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b173", "title": "Vera Wong's Unsolicited Advice for Murderers", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b174", "title": "Winterhouse", "author": "Ben Guterson", "genre": "middlegrade", "series": "Winterhouse, #1", "year": 2018, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b175", "title": "Assistant to the Villain", "author": "Hannah Nicole Maehrer", "genre": "fantasy", "series": "Assistant to the Villain, #1", "year": 2023, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b176", "title": "Howl's Moving Castle", "author": "Diana Wynne Jones", "genre": "middlegrade", "series": "Howl's Moving Castle, #1", "year": 1986, "rating": 3.0, "source": "goodreads"},
+  {"id": "b177", "title": "The Heir", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #4", "year": 2015, "rating": 2.0, "source": "goodreads"},
+  {"id": "b178", "title": "The Dressmaker", "author": "Kate Alcott", "genre": "historical", "year": 2012, "rating": 3.0, "source": "goodreads"},
+  {"id": "b179", "title": "The One", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #3", "year": 2014, "rating": 2.0, "source": "goodreads"},
+  {"id": "b180", "title": "The Elite", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #2", "year": 2013, "rating": 3.0, "source": "goodreads"},
+  {"id": "b181", "title": "The Selection", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #1", "year": 2012, "rating": 4.0, "source": "goodreads"},
+  {"id": "b182", "title": "The Housekeepers", "author": "Alex Hay", "genre": "historical", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b183", "title": "The Secret of White Stone Gate", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #2", "year": 2020, "rating": 2.0, "source": "goodreads"},
+  {"id": "b184", "title": "The Christmas Bookshop", "author": "Jenny Colgan", "genre": "romance", "series": "The Christmas Bookshop, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b185", "title": "Gilded Girl", "author": "Pamela M. Kelley", "genre": "historical", "year": 2020, "rating": 3.0, "source": "goodreads"},
+  {"id": "b186", "title": "In the Company of Witches", "author": "Auralee Wallace", "genre": "mystery", "series": "Evenfall Witches B&B, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b187", "title": "The Christmas Castle in Scotland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #9", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b188", "title": "The School for Good and Evil", "author": "Soman Chainani", "genre": "middlegrade", "series": "The School for Good and Evil, #1", "year": 2013, "rating": 2.0, "source": "goodreads"},
+  {"id": "b189", "title": "The Mystery of Black Hollow Lane", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b190", "title": "Praying Like Monks, Living Like Fools", "author": "Tyler Staton", "genre": "nonfiction", "subtitle": "An Invitation to the Wonder and Mystery of Prayer", "year": 2022, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b191", "title": "The Roommate Pact", "author": "Allison Ashley", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads"},
+  {"id": "b192", "title": "The Treehouse Library", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co.,#5", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b193", "title": "The Little Paris Patisserie", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #3", "year": 2018, "rating": 2.0, "source": "goodreads"},
+  {"id": "b194", "title": "The Little Brooklyn Bakery", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #2", "year": 2018, "rating": 3.0, "source": "goodreads"},
+  {"id": "b195", "title": "The Little Café in Copenhagen", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #1", "year": 2018, "rating": 3.0, "source": "goodreads"},
+  {"id": "b196", "title": "Emily Wilde's Encyclopaedia of Faeries", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #1", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b197", "title": "A Lady's Guide to Etiquette and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #1", "year": 2018, "rating": 4.0, "source": "goodreads"},
+  {"id": "b198", "title": "The Very Secret Society of Irregular Witches", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b199", "title": "A Newlywed’s Guide to Fortune and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #6", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b200", "title": "Flowers for Algernon", "author": "Daniel Keyes", "genre": "classics", "year": 1966, "source": "goodreads"},
+  {"id": "b201", "title": "Ten Thousand Stitches", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b202", "title": "Half a Soul", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b203", "title": "The Hawthorne Legacy", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #2", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b204", "title": "The Final Gambit", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #3", "year": 2022, "rating": 4.0, "source": "goodreads"},
+  {"id": "b205", "title": "Witchlings", "author": "Claribel A. Ortega", "genre": "middlegrade", "series": "Witchlings, #1", "year": 2022, "rating": 3.0, "source": "goodreads"},
+  {"id": "b206", "title": "Bringing Down the Duke", "author": "Evie Dunmore", "genre": "romance", "series": "A League of Extraordinary Women, #1", "year": 2019, "rating": 2.0, "source": "goodreads"},
+  {"id": "b207", "title": "The Troubled Girls of Dragomir Academy", "author": "Anne Ursu", "genre": "middlegrade", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b208", "title": "A Bride’s Guide to Marriage and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #5", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b209", "title": "The Inheritance Games", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #1", "year": 2020, "rating": 3.0, "source": "goodreads"},
+  {"id": "b210", "title": "All My Knotted-Up Life", "author": "Beth Moore", "genre": "nonfiction", "subtitle": "A Memoir", "year": 2023, "rating": 4.0, "source": "goodreads"},
+  {"id": "b211", "title": "The Mysterious Benedict Society", "author": "Trenton Lee Stewart", "genre": "middlegrade", "subtitle": "Mr. Benedict's Book of Perplexing Puzzles, Elusive Enigmas, and Curious Conundrums", "year": 2011, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b212", "title": "The Mysterious Benedict Society and the Riddle of Ages", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #4", "year": 2019, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b213", "title": "The Extraordinary Education of Nicholas Benedict", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #0", "year": 2012, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b214", "title": "The Mysterious Benedict Society and the Prisoner's Dilemma", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #3", "year": 2009, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b215", "title": "The Mysterious Benedict Society", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #1", "year": 2007, "rating": 3.0, "source": "goodreads"},
+  {"id": "b216", "title": "The Book Smugglers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #4", "year": 2021, "rating": 3.0, "source": "goodreads"},
+  {"id": "b217", "title": "Don't Ask Me Where I'm From", "author": "Jennifer De Leon", "genre": "ya", "year": 2020, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b218", "title": "A Pinch of Magic", "author": "Michelle Harrison", "genre": "middlegrade", "series": "A Pinch of Magic, #1", "year": 2019, "rating": 3.0, "source": "goodreads"},
+  {"id": "b219", "title": "The Sum of All Kisses", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #3", "year": 2013, "rating": 3.0, "source": "goodreads"},
+  {"id": "b220", "title": "A Night Like This", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #2", "year": 2012, "rating": 1.0, "source": "goodreads"},
+  {"id": "b221", "title": "Just Like Heaven", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #1", "year": 2011, "rating": 3.0, "source": "goodreads"},
+  {"id": "b222", "title": "Hollowpox", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Hunt for Morrigan Crow", "series": "Nevermoor, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b223", "title": "Nevermoor", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Trials of Morrigan Crow", "series": "Nevermoor, #1", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b224", "title": "Majesty", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #2", "year": 2020, "rating": 2.0, "source": "goodreads"},
+  {"id": "b225", "title": "Austenland", "author": "Shannon Hale", "genre": "romance", "series": "Austenland, #1", "year": 2007, "rating": 2.0, "source": "goodreads"},
+  {"id": "b226", "title": "American Royals", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #1", "year": 2019, "rating": 3.0, "source": "goodreads"},
+  {"id": "b227", "title": "A Single Thread of Moonlight", "author": "Laura Wood", "genre": "ya", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b228", "title": "The Trial", "author": "Laura Bates", "genre": "ya", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b229", "title": "The Christmas Carrolls", "author": "Mel Taylor-Bessent", "genre": "middlegrade", "series": "The Christmas Carrolls, #1", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b230", "title": "Ghostcloud", "author": "Michael Mann", "genre": "middlegrade", "series": "Ghostcloud #1", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b231", "title": "The Year of Living Danishly", "author": "Helen Russell", "genre": "nonfiction", "subtitle": "Uncovering the Secrets of the World's Happiest Country", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b232", "title": "After Evangelicalism", "author": "David P. Gushee", "genre": "nonfiction", "subtitle": "The Path to a New Christianity", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b233", "title": "Tilly and the Map of Stories", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b234", "title": "Tilly and the Lost Fairytales", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #2", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b235", "title": "Tilly and the Bookwanderers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #1", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b236", "title": "The Little Bookshop on the Seine", "author": "Rebecca Raisin", "genre": "romance", "series": "The Little Paris Collection, #1; The Bookshop, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b237", "title": "The Gentleman and the Thief", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b238", "title": "The Merchant and the Rogue", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #3", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b239", "title": "The Lady and the Highwayman", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b240", "title": "A Fiancée's Guide to First Wives and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b241", "title": "A Lady's Guide to Mischief and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b242", "title": "Jesus and John Wayne", "author": "Kristin Kobes Du Mez", "genre": "nonfiction", "subtitle": "How White Evangelicals Corrupted a Faith and Fractured a Nation", "year": 2020, "rating": 3.0, "source": "goodreads"},
+  {"id": "b243", "title": "A Lady's Guide to Gossip and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #2", "year": 2019, "rating": 3.0, "source": "goodreads"},
+  {"id": "b244", "title": "First Comes Scandal", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #4", "year": 2020, "rating": 2.0, "source": "goodreads"},
+  {"id": "b245", "title": "The Other Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #3", "year": 2018, "rating": 3.0, "source": "goodreads"},
+  {"id": "b246", "title": "Twilight", "author": "Stephenie Meyer", "genre": "ya", "series": "The Twilight Saga, #1", "year": 2005, "source": "goodreads"},
+  {"id": "b247", "title": "When Zachary Beaver Came to Town", "author": "Kimberly Willis Holt", "genre": "middlegrade", "year": 1999, "source": "goodreads"},
+  {"id": "b248", "title": "The Girl with the Make-Believe Husband", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #2", "year": 2017, "rating": 3.0, "source": "goodreads"},
+  {"id": "b249", "title": "Because of Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b250", "title": "Flip's Fantastic Journal", "author": "Angelo DeCesare", "genre": "middlegrade", "year": 1999, "source": "goodreads"},
+  {"id": "b251", "title": "All New Square Foot Gardening", "author": "Mel Bartholomew", "genre": "nonfiction", "year": 1981, "rating": 4.0, "source": "goodreads"},
+  {"id": "b252", "title": "The Black Reckoning", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #3", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b253", "title": "The House in the Cerulean Sea", "author": "T.J. Klune", "genre": "fantasy", "series": "Cerulean Chronicles, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b254", "title": "Angels & Demons", "author": "Dan Brown", "genre": "mystery", "series": "Robert Langdon, #1", "year": 2000, "source": "goodreads"},
+  {"id": "b255", "title": "Harry Potter and the Cursed Child", "author": "John Tiffany", "genre": "middlegrade", "series": "Harry Potter, #8", "year": 2016, "rating": 3.0, "source": "goodreads"},
+  {"id": "b256", "title": "The Other Bennet Sister", "author": "Janice Hadlow", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b257", "title": "The Westing Game", "author": "Ellen Raskin", "genre": "middlegrade", "year": 1978, "source": "goodreads"},
+  {"id": "b258", "title": "The Fire Chronicle", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #2", "year": 2012, "rating": 4.0, "source": "goodreads"},
+  {"id": "b259", "title": "The Emerald Atlas", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #1", "year": 2011, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b260", "title": "The Jane Austen Project", "author": "Kathleen A. Flynn", "genre": "fantasy", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b261", "title": "The Jane Austen Society", "author": "Natalie Jenner", "genre": "historical", "series": "Jane Austen Society, #1", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b262", "title": "Mind the Gap, Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b263", "title": "Uncomfortable Conversations With a Black Man", "author": "Emmanuel Acho", "genre": "nonfiction", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b264", "title": "The Twelve Days of Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #2", "year": 2016, "rating": 3.0, "source": "goodreads"},
+  {"id": "b265", "title": "On the Way to the Wedding", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #8", "year": 2006, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b266", "title": "Your Next Big Idea", "author": "Samuel Sanders", "genre": "nonfiction", "subtitle": "Improve Your Creativity and Problem-Solving", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b267", "title": "Stamped", "author": "Jason Reynolds", "genre": "nonfiction", "subtitle": "Racism, Antiracism, and You", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b268", "title": "Think Again", "author": "Adam Grant", "genre": "nonfiction", "subtitle": "The Power of Knowing What You Don't Know", "year": 2021, "rating": 4.0, "source": "goodreads"},
+  {"id": "b269", "title": "When He Was Wicked", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #6", "year": 2004, "rating": 4.0, "source": "goodreads"},
+  {"id": "b270", "title": "It's in His Kiss", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #7", "year": 2005, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b271", "title": "Rich People Problems", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #3", "year": 2017, "rating": 4.0, "source": "goodreads"},
+  {"id": "b272", "title": "China Rich Girlfriend", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b273", "title": "Crazy Rich Asians", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #1", "year": 2013, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b274", "title": "The Ravenmaster", "author": "Christopher Skaife", "genre": "nonfiction", "subtitle": "My Life with the Ravens at the Tower of London", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b275", "title": "Becoming", "author": "Michelle Obama", "genre": "nonfiction", "year": 2018, "rating": 4.0, "source": "goodreads"},
+  {"id": "b276", "title": "My Beloved World", "author": "Sonia Sotomayor", "genre": "nonfiction", "year": 2013, "rating": 4.0, "source": "goodreads"},
+  {"id": "b277", "title": "To Sir Phillip, With Love", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #5", "year": 2003, "rating": 3.0, "source": "goodreads"},
+  {"id": "b278", "title": "Romancing Mister Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #4", "year": 2002, "rating": 4.0, "source": "goodreads"},
+  {"id": "b279", "title": "An Offer From a Gentleman", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #3", "year": 2001, "rating": 4.0, "source": "goodreads"},
+  {"id": "b280", "title": "The Viscount Who Loved Me", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #2", "year": 2000, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b281", "title": "The Duke and I", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #1", "year": 2000, "rating": 4.0, "source": "goodreads"},
+  {"id": "b282", "title": "The Ballad of Songbirds and Snakes", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games, #0", "year": 2020, "rating": 4.0, "source": "goodreads"},
+  {"id": "b283", "title": "Kisses and Croissants", "author": "Anne-Sophie Jouhanneau", "genre": "ya", "year": 2021, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b284", "title": "P.S. I Still Love You", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
+  {"id": "b285", "title": "To All the Boys I've Loved Before", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #1", "year": 2014, "rating": 3.0, "source": "goodreads"},
+  {"id": "b286", "title": "Is Everyone Hanging Out Without Me?", "author": "Mindy Kaling", "genre": "nonfiction", "series": "And Other Concerns", "year": 2011, "rating": 3.0, "source": "goodreads"},
+  {"id": "b287", "title": "Born a Crime", "author": "Trevor Noah", "genre": "nonfiction", "subtitle": "Stories from a South African Childhood", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b288", "title": "A Castaway in Cornwall", "author": "Julie Klassen", "genre": "inspirational", "year": 2020, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b289", "title": "St. Francis Society for Wayward Pets", "author": "Annie England Noblin", "genre": "fiction", "year": 2020, "rating": 3.0, "source": "goodreads"},
+  {"id": "b290", "title": "Talking to Strangers", "author": "Malcolm Gladwell", "genre": "nonfiction", "subtitle": "What We Should Know About the People We Don't Know", "year": 2019, "rating": 4.0, "source": "goodreads"},
+  {"id": "b291", "title": "The Princess", "author": "Lori Wick", "genre": "inspirational", "year": 1999, "source": "goodreads"},
+  {"id": "b292", "title": "Eleanor Oliphant Is Completely Fine", "author": "Gail Honeyman", "genre": "fiction", "year": 2017, "rating": 4.0, "source": "goodreads"},
+  {"id": "b293", "title": "Belgravia", "author": "Julian Fellowes", "genre": "historical", "year": 2016, "rating": 4.0, "source": "goodreads"},
+  {"id": "b294", "title": "Summerset Abbey", "author": "T.J. Brown", "genre": "historical", "series": "Summerset Abbey, #1", "year": 2013, "shelf": "to-read", "source": "goodreads"},
+  {"id": "b295", "title": "The Chemist", "author": "Stephenie Meyer", "genre": "mystery", "year": 2016, "rating": 4.0, "source": "goodreads"},
+  {"id": "b296", "title": "The Kindled Flame", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #2", "year": 1994, "rating": 3.0, "source": "goodreads"},
+  {"id": "b297", "title": "The Tempering Blaze", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #3", "year": 1995, "rating": 3.0, "source": "goodreads"},
+  {"id": "b298", "title": "The Gathering Dawn", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #1", "year": 1994, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b299", "title": "The Potluck Club", "author": "Linda Evans Shepherd", "genre": "inspirational", "series": "The Potluck Club #1", "year": 2005, "source": "goodreads"},
+  {"id": "b300", "title": "The Lion, the Witch and the Wardrobe", "author": "C.S. Lewis", "genre": "middlegrade", "series": "Chronicles of Narnia, #1", "year": 1950, "rating": 2.0, "source": "goodreads"},
+  {"id": "b301", "title": "Divergent", "author": "Veronica Roth", "genre": "ya", "series": "Divergent, #1", "year": 2011, "rating": 3.0, "source": "goodreads"},
+  {"id": "b302", "title": "The Giver", "author": "Lois Lowry", "genre": "middlegrade", "series": "Giver, #1", "year": 1993, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b303", "title": "Harry Potter and the Deathly Hallows", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #7", "year": 2007, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b304", "title": "Lord of the Flies", "author": "William Golding", "genre": "classics", "year": 1954, "rating": 3.0, "source": "goodreads"},
+  {"id": "b305", "title": "Harry Potter and the Sorcerer's Stone", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #1", "year": 1997, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+];
+
+const BOOKS_BY_ID = Object.fromEntries(BOOKS.map(b => [b.id, b]));
+function booksInGenre(genre) { return BOOKS.filter(b => b.genre === genre); }
+
+// ============================================================
+// 9. INTERACTIONS
+// What happens when the player looks at / uses something.
+// Default shows the catalog blurb. Override per type here as
+// features arrive (e.g. shelf -> open stocking view).
+// ============================================================
+const INTERACTIONS = {
+  default(item, scene) { return FURNITURE[item.type].blurb; },
+  // shelf(item, scene) { scene.scene.launch('ShelfScene', { itemId: item.id }); return null; },
+  // register(item, scene) { scene.scene.start('RegisterScene'); return null; },
+};
+
+const DOOR_MESSAGE = 'The fair is open! Customers will come through here in a later phase.';
+
+// ============================================================
+// 10. DOM UI
+// Buttons and panels live in HTML over the canvas: easier to
+// tap on phones and to style. They call into the Room scene.
+// ============================================================
+const UI = {
+  scene: null,
+  _toastTimer: null,
+  $(id) { return document.getElementById(id); },
+
+  init(scene) {
+    this.scene = scene;
+    this.$('loading').hidden = true;
+    this.buildPalette();
+    this.$('btnEdit').onclick = () => scene.toggleEdit();
+    this.$('btnMenu').onclick = () => this.openMenu();
+    this.$('btnClose').onclick = () => this.closeMenu();
+    this.$('menu').onclick = (e) => { if (e.target.id === 'menu') this.closeMenu(); };
+    this.$('btnAct').onclick = () => scene.tryInteract();
+    this.$('btnRotate').onclick = () => scene.rotateEdit();
+    this.$('btnDelete').onclick = () => scene.deleteSelected();
+    this.$('btnExport').onclick = () => exportLayout(scene.layout);
+    this.$('btnImport').onclick = () => this.$('fileImport').click();
+    this.$('fileImport').onchange = (e) => this.importFile(e.target.files[0]);
+    this.$('btnReset').onclick = () => {
+      if (confirm('Reset the room to the starting layout?')) { scene.applyLayout(cloneLayout(DEFAULT_LAYOUT)); this.closeMenu(); this.toast('Room reset.'); }
+    };
+  },
+
+  importFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let layout = null;
+      try { layout = validateLayout(migrateLayout(JSON.parse(reader.result))); } catch (e) { layout = null; }
+      if (layout) { this.scene.applyLayout(layout); this.closeMenu(); this.toast('Room imported.'); }
+      else this.toast("That file doesn't look like a room layout.");
+      this.$('fileImport').value = '';
+    };
+    reader.readAsText(file);
+  },
+
+  buildPalette() {
+    const pal = this.$('palette');
+    pal.innerHTML = '';
+    for (const [type, def] of Object.entries(FURNITURE)) {
+      const b = document.createElement('button');
+      b.dataset.type = type;
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = svgDataUrl(ART[paletteArtKey(type)](), 2);
+      b.append(img, document.createTextNode(def.label));
+      b.onclick = () => this.scene.setPlaceType(type);
+      pal.appendChild(b);
+    }
+  },
+
+  toast(msg) {
+    if (!msg) return;
+    const t = this.$('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  },
+
+  setMode(mode) {
+    const editing = mode === 'edit';
+    this.$('editBar').hidden = !editing;
+    this.$('btnEdit').textContent = editing ? 'Done' : 'Arrange';
+    this.$('btnEdit').classList.toggle('primary', editing);
+    if (editing) this.setAction(null);
+    this.refreshEdit();
+  },
+
+  setAction(item) {
+    const b = this.$('btnAct');
+    if (!item) { b.hidden = true; return; }
+    b.hidden = false;
+    b.textContent = 'Look · ' + FURNITURE[item.type].label;
+  },
+
+  refreshEdit() {
+    const s = this.scene;
+    if (!s) return;
+    for (const b of this.$('palette').children) b.classList.toggle('on', b.dataset.type === s.edit.placeType);
+    const sel = s.getItem(s.edit.selectedId);
+    this.$('btnRotate').disabled = !sel && !s.edit.placeType;
+    this.$('btnDelete').disabled = !sel;
+    this.$('editHint').textContent =
+      s.edit.placeType ? 'Tap the floor to place a ' + FURNITURE[s.edit.placeType].label + '.'
+      : sel ? 'Tap the floor to move it, or rotate / remove.'
+      : 'Pick an item, or tap furniture to move it.';
+  },
+
+  openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
+  closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
+  menuOpen() { return !this.$('menu').hidden; },
+};
+
+// ============================================================
+// 11. BOOT SCENE
+// Turns every ART drawing into a texture, then starts the room.
+// ============================================================
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  create() {
+    const layout = loadLayout();
+    const jobs = Object.entries(ART).map(([key, fn]) => makeTexture(this, key, fn()));
+    jobs.push(makeTexture(this, 'room-bg', roomArt(layout)));
+    Promise.all(jobs).then(() => this.scene.start('Room', { layout }));
+  }
+}
+
+// ============================================================
+// 12. ROOM SCENE
+// ============================================================
+class RoomScene extends Phaser.Scene {
+  constructor() { super('Room'); }
+
+  create(data) {
+    this.layout = (data && data.layout) || loadLayout();
+    this.roomSig = roomSignature(this.layout);
+    this.mode = 'play';                                // 'play' | 'edit'
+    this.edit = { placeType: null, placeRot: 0, selectedId: null };
+    this.player = { x: 0, y: 0, facing: { x: 0, y: 1 }, moving: false, path: [], arrive: null };
+    this.lastActionId = undefined;
+    this.itemSprites = new Map();                      // item id -> image
+    this.bgVersion = 0;
+
+    this.bg = this.add.image(0, -CONFIG.WALL_UP, 'room-bg').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES).setDepth(-10);
+    this.selectGfx = this.add.graphics().setDepth(100000);
+    this.ghostGfx = this.add.graphics().setDepth(100001);
+    this.ghostImg = this.add.image(0, 0, 'plant').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES)
+      .setAlpha(0.6).setDepth(100002).setVisible(false);
+
+    this.makePlayer();
+    this.rebuild();
+    this.placePlayerAt(nearestWalkable(this.grid, this.layout.spawn.x, this.layout.spawn.y));
+
+    this.setupInput();
+    UI.init(this);
+    UI.setMode('play');
+
+    this.scale.on('resize', this.fitCamera, this);
+    this.fitCamera();
+    this.cameras.main.startFollow(this.playerObj, true, 0.15, 0.15);
+
+    this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! Tap anywhere to walk around.'));
+  }
+
+  // ---------- Layout ----------
+  getItem(id) { return id ? this.layout.items.find(it => it.id === id) || null : null; }
+
+  rebuild() {
+    this.grid = buildGrid(this.layout);
+    this.drawItems();
+    this.drawSelection();
+  }
+
+  commit() {          // call after any layout change
+    saveLayout(this.layout);
+    this.rebuild();
+    UI.refreshEdit();
+  }
+
+  // Redraws the floor and walls only when the room's shape or decor changed.
+  refreshBackground() {
+    const sig = roomSignature(this.layout);
+    if (sig === this.roomSig) return;
+    this.roomSig = sig;
+    const key = 'room-bg-' + (++this.bgVersion);
+    const old = this.bg.texture.key;
+    makeTexture(this, key, roomArt(this.layout)).then(() => {
+      this.bg.setTexture(key);
+      if (old !== 'room-bg' && this.textures.exists(old)) this.textures.remove(old);
+    });
+  }
+
+  applyLayout(layout) {
+    this.layout = layout;
+    this.edit.selectedId = null;
+    this.edit.placeType = null;
+    this.player.path = [];
+    this.player.arrive = null;
+    this.commit();
+    this.refreshBackground();
+    this.placePlayerAt(nearestWalkable(this.grid, this.layout.spawn.x, this.layout.spawn.y));
+    this.fitCamera();
+  }
+
+  // ---------- Drawing ----------
+  // Depth = the bottom edge of the footprint, so things lower on
+  // screen draw in front (that's what makes the 3/4 view work).
+  spriteFor(item, img) {
+    const T = CONFIG.TILE, { key, flip } = artFor(item);
+    const art = ART[key]();
+    const [bx, by, bw] = art.box;
+    const { w, h } = itemDims(item);
+    const footW = w * T;
+    const x = item.x * T + (flip ? footW - (bx + bw) : bx);
+    const y = item.y * T + by;
+    img = img || this.add.image(0, 0, key);
+    img.setTexture(key).setOrigin(0, 0).setScale(1 / CONFIG.ART_RES).setFlipX(flip).setPosition(x, y);
+    const def = FURNITURE[item.type];
+    img.setDepth(def.layer === 'floor' ? -5 : (item.y + h) * T);
+    return img;
+  }
+
+  drawItems() {
+    const live = new Set();
+    for (const it of this.layout.items) {
+      live.add(it.id);
+      this.itemSprites.set(it.id, this.spriteFor(it, this.itemSprites.get(it.id)));
+    }
+    for (const [id, img] of this.itemSprites) {
+      if (!live.has(id)) { img.destroy(); this.itemSprites.delete(id); }
+    }
+  }
+
+  // Furniture whose drawing is under a point (top-most first). Lets you tap the
+  // tall part of a shelf, not just its footprint.
+  itemAtPoint(wx, wy, layer = 'solid') {
+    let best = null, bestDepth = -Infinity;
+    for (const it of this.layout.items) {
+      if (FURNITURE[it.type].layer !== layer) continue;
+      const img = this.itemSprites.get(it.id);
+      if (!img || !img.getBounds().contains(wx, wy)) continue;
+      // ignore transparent corners: require the point to be over the footprint or above it
+      const { w } = itemDims(it), T = CONFIG.TILE;
+      if (wx < it.x * T - 2 || wx > (it.x + w) * T + 2) continue;
+      if (img.depth > bestDepth) { best = it; bestDepth = img.depth; }
+    }
+    return best;
+  }
+
+  drawSelection() {
+    const g = this.selectGfx, T = CONFIG.TILE;
+    g.clear();
+    const sel = this.mode === 'edit' && this.getItem(this.edit.selectedId);
+    if (!sel) return;
+    const { w, h } = itemDims(sel);
+    g.fillStyle(COLORS.select, 0.25).fillRoundedRect(sel.x * T, sel.y * T, w * T, h * T, 6);
+    g.lineStyle(3, COLORS.select, 1).strokeRoundedRect(sel.x * T, sel.y * T, w * T, h * T, 6);
+  }
+
+  drawGhost(tx, ty) {
+    const g = this.ghostGfx, T = CONFIG.TILE;
+    g.clear();
+    this.ghostImg.setVisible(false);
+    if (this.mode !== 'edit' || tx == null) return;
+    let cand = null, ignore = null;
+    if (this.edit.placeType) cand = { type: this.edit.placeType, x: tx, y: ty, rot: this.edit.placeRot };
+    else {
+      const sel = this.getItem(this.edit.selectedId);
+      if (sel) { cand = { ...sel, x: tx, y: ty }; ignore = sel.id; }
+    }
+    if (!cand) return;
+    const ok = canPlace(this.layout, cand, ignore, this.player);
+    const { w, h } = itemDims(cand);
+    g.fillStyle(ok ? COLORS.ghostOk : COLORS.ghostBad, 0.4).fillRoundedRect(tx * T + 2, ty * T + 2, w * T - 4, h * T - 4, 6);
+    this.spriteFor(cand, this.ghostImg).setDepth(100002).setVisible(true);
+    if (ok) this.ghostImg.clearTint(); else this.ghostImg.setTint(0xff9a9a);
+  }
+
+  // ---------- Player ----------
+  makePlayer() {
+    const T = CONFIG.TILE;
+    this.playerImg = this.add.image(-T / 2, -T / 2 - 14, 'player-front').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES);
+    this.playerObj = this.add.container(0, 0, [this.playerImg]);
+  }
+
+  placePlayerAt(t) {
+    this.player.x = t.x; this.player.y = t.y;
+    const c = tileCenter(t.x, t.y);
+    this.playerObj.setPosition(c.x, c.y);
+  }
+
+  setFacing(dx, dy) {
+    this.player.facing = { x: dx, y: dy };
+    if (dy > 0) this.playerImg.setTexture('player-front').setFlipX(false);
+    else if (dy < 0) this.playerImg.setTexture('player-back').setFlipX(false);
+    else this.playerImg.setTexture('player-side').setFlipX(dx < 0);
+  }
+
+  stepTo(nx, ny) {
+    const p = this.player;
+    this.setFacing(Math.sign(nx - p.x), Math.sign(ny - p.y));
+    if (!this.grid.walkable(nx, ny)) return false;
+    p.moving = true;
+    p.x = nx; p.y = ny;
+    const c = tileCenter(nx, ny);
+    this.tweens.add({
+      targets: this.playerObj, x: c.x, y: c.y, duration: CONFIG.STEP_MS,
+      onComplete: () => { p.moving = false; },
+    });
+    // a little hop for each step
+    const baseY = -CONFIG.TILE / 2 - 14;
+    this.tweens.add({ targets: this.playerImg, y: baseY - 2.5, duration: CONFIG.STEP_MS / 2, yoyo: true,
+      onComplete: () => this.playerImg.setY(baseY) });
+    return true;
+  }
+
+  facedItem() {
+    const p = this.player;
+    return this.getItem(this.grid.solidAt(p.x + p.facing.x, p.y + p.facing.y));
+  }
+
+  faceItem(item) {
+    for (const [dx, dy] of DIRS) {
+      if (this.grid.solidAt(this.player.x + dx, this.player.y + dy) === item.id) { this.setFacing(dx, dy); return; }
+    }
+  }
+
+  tryInteract() {
+    if (this.mode !== 'play') return;
+    const item = this.facedItem();
+    if (item) this.interact(item);
+  }
+
+  interact(item) {
+    const fn = INTERACTIONS[item.type] || INTERACTIONS.default;
+    UI.toast(fn(item, this));
+  }
+
+  walkTo(goalTest, onArrive) {
+    const path = findPath(this.grid, this.player, goalTest);
+    if (path === null) { UI.toast("Can't get there right now. Try moving some furniture!"); return false; }
+    this.player.path = path;
+    this.player.arrive = onArrive || null;
+    return true;
+  }
+
+  // ---------- Input ----------
+  setupInput() {
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE,R,DELETE,BACKSPACE,ESC');
+    const kb = this.input.keyboard;
+    kb.on('keydown-E', () => this.tryInteract());
+    kb.on('keydown-SPACE', () => this.tryInteract());
+    kb.on('keydown-R', () => { if (this.mode === 'edit') this.rotateEdit(); });
+    kb.on('keydown-DELETE', () => { if (this.mode === 'edit') this.deleteSelected(); });
+    kb.on('keydown-BACKSPACE', () => { if (this.mode === 'edit') this.deleteSelected(); });
+    kb.on('keydown-ESC', () => {
+      if (this.mode !== 'edit') return;
+      if (this.edit.placeType || this.edit.selectedId) this.clearEditTool();
+      else this.toggleEdit();
+    });
+
+    this.input.on('pointerup', this.onTap, this);
+    this.input.on('pointermove', (pointer) => {
+      if (this.mode !== 'edit' || pointer.wasTouch) return;
+      this.lastHover = this.pointerTile(pointer);
+      const t = this.lastHover;
+      this.drawGhost(t ? t.x : null, t ? t.y : null);
+    });
+  }
+
+  pointerTile(pointer) {
+    const tx = Math.floor(pointer.worldX / CONFIG.TILE), ty = Math.floor(pointer.worldY / CONFIG.TILE);
+    return this.grid.inBounds(tx, ty) ? { x: tx, y: ty } : null;
+  }
+
+  onTap(pointer) {
+    if (UI.menuOpen()) return;
+    if (pointer.downElement && pointer.downElement !== this.game.canvas) return;
+    if (Phaser.Math.Distance.Between(pointer.downX, pointer.downY, pointer.upX, pointer.upY) > 14) return;
+    const t = this.pointerTile(pointer);
+    const hit = this.itemAtPoint(pointer.worldX, pointer.worldY);
+    if (this.mode === 'play') this.handlePlayTap(t, hit);
+    else if (t) this.handleEditTap(t.x, t.y, hit);
+  }
+
+  handlePlayTap(t, hit) {
+    if (t && isDoor(this.layout, t.x, t.y)) { UI.toast(DOOR_MESSAGE); return; }
+    const item = hit || (t && this.getItem(this.grid.solidAt(t.x, t.y)));
+    if (item) {
+      const goals = approachTiles(this.grid, item);
+      this.walkTo((x, y) => goals.has(x + ',' + y), () => { this.faceItem(item); this.interact(item); });
+      return;
+    }
+    if (t && this.grid.walkable(t.x, t.y)) {
+      if (this.walkTo((x, y) => x === t.x && y === t.y)) this.tapMarker(t.x, t.y);
+    }
+  }
+
+  tapMarker(tx, ty) {
+    const c = tileCenter(tx, ty);
+    const m = this.add.circle(c.x, c.y, 7, 0xffffff, 0.85).setDepth(ty * CONFIG.TILE);
+    this.tweens.add({ targets: m, scale: 1.8, alpha: 0, duration: 450, onComplete: () => m.destroy() });
+  }
+
+  // ---------- Arrange (edit) mode ----------
+  toggleEdit() {
+    this.mode = this.mode === 'edit' ? 'play' : 'edit';
+    this.player.path = [];
+    this.player.arrive = null;
+    this.edit.placeType = null;
+    this.edit.selectedId = null;
+    this.drawGhost(null);
+    if (this.mode === 'play') saveLayout(this.layout);
+    this.lastActionId = undefined;
+    UI.setMode(this.mode);
+    this.drawSelection();
+  }
+
+  clearEditTool() {
+    this.edit.placeType = null;
+    this.edit.selectedId = null;
+    this.drawGhost(null);
+    this.drawSelection();
+    UI.refreshEdit();
+  }
+
+  setPlaceType(type) {
+    this.edit.placeType = this.edit.placeType === type ? null : type;
+    this.edit.placeRot = 0;
+    this.edit.selectedId = null;
+    this.drawSelection();
+    this.redrawGhostAtHover();
+    UI.refreshEdit();
+  }
+
+  redrawGhostAtHover() {
+    const t = this.lastHover;
+    this.drawGhost(t ? t.x : null, t ? t.y : null);
+  }
+
+  topItemAt(tx, ty) {
+    return this.getItem(this.grid.solidAt(tx, ty)) || this.getItem(this.grid.floorAt(tx, ty));
+  }
+
+  handleEditTap(tx, ty, hitArt) {
+    const hit = hitArt || this.topItemAt(tx, ty);
+
+    if (this.edit.placeType) {
+      const cand = { id: newId(), type: this.edit.placeType, x: tx, y: ty, rot: this.edit.placeRot };
+      if (canPlace(this.layout, cand, null, this.player)) {
+        this.layout.items.push(cand);
+        this.commit();
+        this.drawGhost(tx, ty);
+      } else if (hit) {
+        this.edit.placeType = null;
+        this.edit.selectedId = hit.id;
+        this.drawGhost(null);
+        this.drawSelection();
+        UI.refreshEdit();
+      } else {
+        UI.toast("That doesn't fit there.");
+      }
+      return;
+    }
+
+    if (hit && hit.id !== this.edit.selectedId) {
+      this.edit.selectedId = hit.id;
+      this.drawSelection();
+      UI.refreshEdit();
+      return;
+    }
+
+    const sel = this.getItem(this.edit.selectedId);
+    if (sel) {
+      if (hit && hit.id === sel.id) return;
+      const moved = { ...sel, x: tx, y: ty };
+      if (canPlace(this.layout, moved, sel.id, this.player)) {
+        sel.x = tx; sel.y = ty;
+        this.commit();
+        this.drawGhost(null);
+      } else {
+        UI.toast("That doesn't fit there.");
+      }
+    }
+  }
+
+  rotateEdit() {
+    if (this.edit.placeType) {
+      this.edit.placeRot = (this.edit.placeRot + 1) % 4;
+      this.redrawGhostAtHover();
+      return;
+    }
+    const sel = this.getItem(this.edit.selectedId);
+    if (!sel) return;
+    const turned = { ...sel, rot: (sel.rot + 1) % 4 };
+    if (canPlace(this.layout, turned, sel.id, this.player)) { sel.rot = turned.rot; this.commit(); }
+    else UI.toast('Not enough room to rotate it here.');
+  }
+
+  deleteSelected() {
+    const id = this.edit.selectedId;
+    if (!id) return;
+    this.layout.items = this.layout.items.filter(it => it.id !== id);
+    this.edit.selectedId = null;
+    this.commit();
+  }
+
+  // ---------- Camera ----------
+  fitCamera() {
+    const cam = this.cameras.main, T = CONFIG.TILE;
+    const W = this.layout.cols * T;
+    const top = -CONFIG.WALL_UP, bottom = this.layout.rows * T + CONFIG.WALL_DOWN, H = bottom - top;
+    const vw = this.scale.width / DPR, vh = this.scale.height / DPR;   // screen size in CSS px
+    const fit = Math.min(vw / (W + 32), vh / (H + CONFIG.HUD_TOP + CONFIG.HUD_BOTTOM));
+    const zoom = Phaser.Math.Clamp(fit, CONFIG.ZOOM_MIN, CONFIG.ZOOM_MAX);
+    cam.setZoom(zoom * DPR);
+    // Bounds are at least as big as the view so small rooms stay centered,
+    // with padding so the top bar and bottom UI don't hide the walls.
+    const padTop = CONFIG.HUD_TOP / zoom, padBot = CONFIG.HUD_BOTTOM / zoom, padX = 16;
+    const bw = Math.max(W + padX * 2, vw / zoom);
+    const bh = Math.max(H + padTop + padBot, vh / zoom);
+    const cx = W / 2, cy = (top - padTop + bottom + padBot) / 2;
+    cam.setBounds(cx - bw / 2, cy - bh / 2, bw, bh);
+  }
+
+  // ---------- Loop ----------
+  update() {
+    const p = this.player, k = this.keys;
+    if (!p.moving && !UI.menuOpen()) {
+      let dx = 0, dy = 0;
+      if (k.LEFT.isDown || k.A.isDown) dx = -1;
+      else if (k.RIGHT.isDown || k.D.isDown) dx = 1;
+      else if (k.UP.isDown || k.W.isDown) dy = -1;
+      else if (k.DOWN.isDown || k.S.isDown) dy = 1;
+
+      if (dx || dy) {
+        p.path = []; p.arrive = null;
+        this.stepTo(p.x + dx, p.y + dy);
+      } else if (p.path.length) {
+        const next = p.path.shift();
+        if (!this.stepTo(next.x, next.y)) { p.path = []; p.arrive = null; }
+      } else if (p.arrive) {
+        const fn = p.arrive;
+        p.arrive = null;
+        fn();
+      }
+    }
+
+    // Player depth follows their feet so they walk in front of / behind furniture
+    this.playerObj.setDepth(this.playerObj.y + CONFIG.TILE / 2 + 0.5);
+
+    // Show the Look button when facing something (play mode only)
+    const faced = this.mode === 'play' && !p.moving ? this.facedItem() : null;
+    const id = faced ? faced.id : null;
+    if (id !== this.lastActionId) { this.lastActionId = id; UI.setAction(faced); }
+  }
+}
+
+// ============================================================
+// 13. FUTURE PHASES (stubs / notes)
+// Planned additions, each meant to slot in without rewrites:
+//  - STOCKING: close-up shelf view; boxes arrive near the door;
+//    tap a book, then a slot. Shelf contents saved on each item:
+//    item.slots = [bookId | null, ...]. Room shelves then draw
+//    their spines. Hook: INTERACTIONS.shelf.
+//  - MERCH / TRINKETS: animal erasers, topper pencils, highlighters,
+//    pom-pom pens, bookmarks, stickers, on merch / spinner / posters.
+//  - REGISTER: close-up checkout view. Hook: INTERACTIONS.register.
+//  - CUSTOMERS: CUSTOMER_LOOKS + personArt(); wander with findPath(),
+//    browse, queue at the register. No fail states.
+//  - EARNINGS + DECORATING: spend on new furniture and on
+//    layout.decor (floor: wood/checker/carpet, wall: sage/stripes/stars
+//    already drawn), plus seasonal decor sets.
+//  - BROWSE MODE: same room, you're a shopper instead of staff.
+// ============================================================
+
+// ============================================================
+// 14. START GAME
+// ============================================================
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  backgroundColor: '#2b2235',
+  scale: { mode: Phaser.Scale.NONE, width: innerWidth * DPR, height: innerHeight * DPR, zoom: 1 / DPR },
+  input: { activePointers: 2 },
+  render: { antialias: true, roundPixels: false },
+  scene: [BootScene, RoomScene],
+});
+window.addEventListener('resize', () => { if (game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
+window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS };
+</script>
+</body>
+</html>
