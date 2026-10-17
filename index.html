@@ -9,8 +9,9 @@
   ============================================================
   COZY BOOK FAIR — single-file Phaser game
   ------------------------------------------------------------
-  Phase 4 (this file): stocking every display (books, bookmarks,
-  posters, trinkets), low bookcases, running-low badges, plus
+  Phase 5 (this file): customers and fair days (rushes, wish lists,
+  checkout with making change, sales and discounts), on top of
+  stocking every display, low bookcases, running-low badges, and
   illustrated art (drawn in code as SVG,
   following the art style guide), depth-sorted top-down
   three-quarter room, walking (keyboard + tap/click),
@@ -28,11 +29,13 @@
     9. INTERACTIONS
    10. STOCKING & DELIVERIES (what each display holds, merch catalog,
        boxes, close-up views, book covers, stocked room art)
-   11. DOM UI
-   12. BOOT SCENE  (turns the art into textures)
-   13. ROOM SCENE
-   14. FUTURE PHASES (stubs / notes)
-   15. START GAME
+   11. CUSTOMERS & FAIR DAYS (prices, customer types, rushes, the fair manager)
+   12. CHECKOUT (close-up register: scan, take payment, make change)
+   13. DOM UI
+   14. BOOT SCENE  (turns the art into textures)
+   15. ROOM SCENE
+   16. FUTURE PHASES (stubs / notes)
+   17. START GAME
   ============================================================
 -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -164,6 +167,60 @@
   .tray-empty { margin: 6px 0; font-size: 14px; color: var(--ink); text-align: center; line-height: 1.4; }
   @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
 
+  /* money + fair button */
+  .title { display: flex; gap: 10px; align-items: center; }
+  .money { font-variant-numeric: tabular-nums; color: #2a7a5e; }
+  @media (max-width: 420px) { .brand { display: none; } }
+  .fair { position: fixed; left: 14px; bottom: calc(env(safe-area-inset-bottom) + 16px); padding: 12px 16px; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .fair.open { background: #2a7a5e; color: #fff; }
+  .daylen { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; font-weight: 700; }
+  .daylen select { font: inherit; font-weight: 600; padding: 8px; border-radius: 10px; border: 2px solid var(--panel-edge); background: #fff; color: var(--ink); }
+
+  /* sale switch in the stocking view */
+  .sale { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--panel); font-size: 13px; font-weight: 700; }
+  .sale button { box-shadow: none; padding: 5px 10px; font-size: 13px; border: 2px solid var(--ink); }
+  .sale button.on { background: #d64545; color: #fff; }
+  .stock[data-view] .sale { display: flex; }
+
+  /* checkout */
+  .co-card { gap: 12px; }
+  .co-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 210px); gap: 10px; }
+  .co-top > * { min-width: 0; }
+  @media (max-width: 480px) { .co-top { grid-template-columns: minmax(0, 1fr); } }
+  .co-cust { display: flex; gap: 10px; align-items: center; background: var(--panel); border-radius: 14px; padding: 8px 12px 8px 8px; min-width: 0; }
+  .co-face { width: 84px; height: 84px; border-radius: 50%; background: #f6ead3; border: 3px solid var(--ink); overflow: hidden; flex: none; }
+  .co-face svg { display: block; }
+  .co-name { font-weight: 800; font-size: 14px; }
+  .co-says { font-size: 14px; margin-top: 2px; }
+  .co-screen { background: #23463c; color: #b9f3d6; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 10px;
+    font: 600 13px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; display: flex; flex-direction: column; justify-content: flex-end; min-height: 74px; }
+  .co-screen .ln { display: flex; justify-content: space-between; gap: 8px; }
+  .co-screen .ln span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .co-screen .ln b { flex: none; }
+  .co-screen em { color: #ffd166; font-style: normal; }
+  .co-screen .tot { border-top: 1px dashed #6fbf9b; margin-top: 4px; padding-top: 4px; color: #fff; }
+  .co-screen .dim, .co-change .dim { opacity: .7; }
+  .co-items { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; background: #f3e3c8; border: 3px solid var(--ink); border-radius: 12px; padding: 12px 8px; }
+  .coitem { position: relative; padding: 0; background: none; box-shadow: none; line-height: 0; transition: transform .15s, opacity .15s; }
+  .coitem .tag { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); line-height: 1; font-size: 12px; font-weight: 800; background: var(--ink); color: #fff; border-radius: 999px; padding: 3px 7px; white-space: nowrap; }
+  .coitem.done { opacity: .45; transform: scale(.9); }
+  .coitem.done .tag { background: #2a7a5e; }
+  .co-pay { background: var(--panel); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+  .co-label { font-weight: 800; font-size: 13px; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+  .linkish { box-shadow: none; background: none; padding: 2px 4px; font-size: 12px; text-decoration: underline; color: var(--muted); }
+  .co-change, .co-drawer { display: flex; flex-wrap: wrap; gap: 6px; min-height: 40px; align-items: center; }
+  .co-change { background: #fff; border: 2px dashed var(--panel-edge); border-radius: 10px; padding: 6px; }
+  .co-given { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .co-msg { font-size: 13px; color: #b5452f; min-height: 1em; }
+  .co-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .cash { box-shadow: none; border: 2px solid var(--ink); font-weight: 800; font-size: 13px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .cash.bill { background: #a8d5a2; color: #1f4d2b; border-radius: 6px; padding: 7px 12px; }
+  .cash.coin { width: 42px; height: 42px; border-radius: 50%; background: #d9d9de; color: #3b3b46; font-size: 12px; }
+  .cash.coin.c1 { background: #d9955a; color: #4a2a12; width: 36px; height: 36px; }
+  .cash.coin.c5 { width: 40px; height: 40px; }
+  .cash.coin.c10 { width: 34px; height: 34px; }
+  span.cash { padding: 3px 8px; }
+
   .menu {
     position: fixed; inset: 0; background: rgba(20, 10, 30, .55);
     display: flex; align-items: center; justify-content: center; padding: 16px;
@@ -177,6 +234,10 @@
   .card .muted { color: var(--muted); font-size: 13px; }
   .card .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .card .row button { box-shadow: none; border: 2px solid var(--panel-edge); }
+  .sum-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .sum-grid div { background: #fff; border-radius: 12px; padding: 8px; text-align: center; font-size: 12px; color: var(--muted); }
+  .sum-grid b { display: block; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -184,7 +245,7 @@
   <div id="loading" class="loading">Setting up the fair…</div>
 
   <div class="topbar">
-    <div class="title">📚 Book Fair</div>
+    <div class="title"><span class="brand">📚 Book Fair</span><span id="money" class="money">$0.00</span></div>
     <div class="spacer"></div>
     <button id="btnEdit">Arrange</button>
     <button id="btnMenu" aria-label="Menu">☰</button>
@@ -193,6 +254,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <button id="btnAct" class="act primary" hidden>Look</button>
+  <button id="btnFair" class="fair">Open the fair</button>
 
   <div id="editBar" class="editbar" hidden>
     <div id="palette" class="palette"></div>
@@ -206,6 +268,9 @@
   <div id="stock" class="stock" hidden>
     <div class="stock-card" role="dialog" aria-label="Stock the bookshelf">
       <div class="stock-head"><b id="stockTitle">Bookshelf</b><span id="stockCount" class="count"></span><button id="btnStockDone" class="primary">Done</button></div>
+      <div class="sale" id="saleRow" role="group" aria-label="Sale for this display">
+        <span>Sale:</span><button data-sale="0">No sale</button><button data-sale="25">25% off</button><button data-sale="50">50% off</button>
+      </div>
       <div id="stockShelf" class="stock-shelf"></div>
       <div id="stockInfo" class="stock-info"></div>
       <div class="stock-tray">
@@ -220,6 +285,37 @@
     </div>
   </div>
 
+  <div id="checkout" class="stock" hidden>
+    <div class="stock-card co-card" role="dialog" aria-label="Checkout">
+      <div class="stock-head"><b>Checkout</b><span class="count"></span><button id="coClose">Not yet</button></div>
+      <div class="co-top">
+        <div class="co-cust"><div id="coFace" class="co-face"></div><div><div id="coName" class="co-name"></div><div id="coSays" class="co-says"></div></div></div>
+        <div id="coScreen" class="co-screen"></div>
+      </div>
+      <div id="coItems" class="co-items"></div>
+      <div id="coPay" class="co-pay" hidden>
+        <div id="coPaidMsg"></div>
+        <div id="coChangeWrap">
+          <div class="co-label">Change for the customer <button id="coHint" class="linkish">Show change due</button></div>
+          <div id="coChange" class="co-change"></div>
+          <div id="coGiven" class="co-given"></div>
+          <div class="co-label">Cash drawer</div>
+          <div id="coDrawer" class="co-drawer"></div>
+          <div id="coMsg" class="co-msg" role="status"></div>
+        </div>
+        <div class="co-actions"><button id="coGive" class="primary">Give change</button><button id="coNext" class="primary">Done</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="summary" class="menu" hidden>
+    <div class="card">
+      <h2 id="sumTitle">Day complete!</h2>
+      <div id="sumBody"></div>
+      <div class="row"><button id="sumClose" class="primary">Back to the fair</button></div>
+    </div>
+  </div>
+
   <div id="menu" class="menu" hidden>
     <div class="card">
       <h2>Book Fair</h2>
@@ -227,7 +323,11 @@
       <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
       <p><b>Stock displays:</b> tap any shelf, table, rack, bin or the checkout, then move items from the box onto it. A ! means it's running low. Tap the door for a new delivery.</p>
       <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
+      <p><b>Fair days:</b> tap Open the fair. Customers browse, then line up at the checkout. Tap the counter to ring them up and count out change. Tap a customer to see what they're looking for.</p>
       <p class="muted">Arrange shortcuts: R rotate, Delete remove, Esc deselect.</p>
+      <label class="daylen">Fair day length
+        <select id="dayLength"></select>
+      </label>
       <div class="row">
         <button id="btnExport">Export room</button>
         <button id="btnImport">Import room</button>
@@ -390,6 +490,7 @@ function validateLayout(raw) {
       while (sl.length < n) sl.push(null);
       const ok = STOCKABLE[it.type].accepts;
       it.slots = sl.map(id => id && ok.includes(kindOf(id)) && keepAny(id) ? id : null);
+      it.sale = [25, 50].includes(it.sale) ? it.sale : 0;
     } else if (it.type === 'box') {
       const src = Array.isArray(it.contents) ? it.contents : Array.isArray(it.books) ? it.books : [];
       it.kind = it.kind === 'merch' ? 'merch' : 'books';
@@ -807,6 +908,11 @@ ART['mbox-open'] = () => {
     R(3, 12, 26, 17, '#c48a52', 2) + RF(13, 12, 6, 7, '#f4a3c0') + star(10, 21, 4, '#ffd166');
   return { box: [-5, 0, 42, 34], body: b };
 };
+// Someone is waiting at the checkout
+ART['badge-pay'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#2a9d8f" ${ST}/>` + txt(7, 10.4, '$', 8.6, PAL.cream) });
+// Sale tags on displays
+ART['tag-25'] = () => ({ box: [-1, -1, 22, 13], body: `<path d="M1 1 H16 L20 5.5 L16 10 H1 Z" fill="#d64545" ${ST}/><circle cx="16" cy="5.5" r="1.2" fill="${PAL.cream}"/>` + txt(8, 8, '25%', 5.4, PAL.cream) });
+ART['tag-50'] = () => ({ box: [-1, -1, 22, 13], body: `<path d="M1 1 H16 L20 5.5 L16 10 H1 Z" fill="#d64545" ${ST}/><circle cx="16" cy="5.5" r="1.2" fill="${PAL.cream}"/>` + txt(8, 8, '50%', 5.4, PAL.cream) });
 // "Running low" badges shown above displays
 ART['badge-low'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#ffd166" ${ST}/>` + txt(7, 10.2, '!', 9, INK) });
 ART['badge-empty'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#e07a5f" ${ST}/>` + txt(7, 10.2, '!', 9, PAL.cream) });
@@ -1290,6 +1396,7 @@ function booksInGenre(genre) { return BOOKS.filter(b => b.genre === genre); }
 // ============================================================
 const INTERACTIONS = {
   default(item, scene) {
+    if (item.type === 'register' && scene.fair.waitingAtFront()) { Checkout.open(scene.fair); return null; }
     if (STOCKABLE[item.type]) { Stocking.open(scene, item); return null; }   // every display opens its close-up
     return FURNITURE[item.type].blurb;
   },
@@ -1300,7 +1407,10 @@ const INTERACTIONS = {
   },
   // register(item, scene) { scene.scene.start('RegisterScene'); return null; },
 };
-function actionVerb(type) { return STOCKABLE[type] ? 'Stock' : 'Look'; }   // label on the action button
+function actionVerb(type, scene) {   // label on the action button
+  if (type === 'register' && scene && scene.fair.waitingAtFront()) return 'Ring up';
+  return STOCKABLE[type] ? 'Stock' : 'Look';
+}
 
 
 // ============================================================
@@ -1777,6 +1887,13 @@ const Stocking = {
     this.$('boxPrev').onclick = step(-1);
     this.$('boxNext').onclick = step(1);
     this.$('btnReturn').onclick = () => this.returnToBox();
+    this.$('saleRow').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sale]');
+      if (!b) return;
+      this.item.sale = +b.dataset.sale;
+      this.save();
+      this.render();
+    });
     this.$('stockShelf').addEventListener('click', (e) => {
       const hit = e.target.closest('[data-slot]');
       if (hit) this.tapSlot(+hit.dataset.slot);
@@ -1888,16 +2005,17 @@ const Stocking = {
     if (b) {
       const g = GENRES[b.genre];
       return `<span class="gdot" style="background:${g.color}"></span><span><b>${xmlEsc(b.title)}</b> · ${xmlEsc(b.author)} · ${xmlEsc(g.label)}` +
-        `${b.series ? ' · ' + xmlEsc(b.series) : ''}${b.staffPick ? ' · <span class="pick">★ Staff pick</span>' : ''}</span>`;
+        `${b.series ? ' · ' + xmlEsc(b.series) : ''}${b.staffPick ? ' · <span class="pick">★ Staff pick</span>' : ''} · ${money(salePrice(id, this.item.sale))}</span>`;
     }
     const m = MERCH_BY_ID[id];
-    return `<span class="gdot" style="background:${m.color}"></span><span><b>${xmlEsc(m.name)}</b> · ${KIND_LABEL[m.kind]}</span>`;
+    return `<span class="gdot" style="background:${m.color}"></span><span><b>${xmlEsc(m.name)}</b> · ${KIND_LABEL[m.kind]} · ${money(salePrice(id, this.item.sale))}</span>`;
   },
 
   render() {
     const item = this.item, cfg = this.cfg, h = this.held, box = this.box(), boxes = this.boxes();
     const filled = filledCount(item), isBooks = cfg.accepts.includes('book');
     this.$('stockCount').textContent = `${filled} of ${slotCount(item.type)} spots filled`;
+    for (const b of this.$('saleRow').querySelectorAll('[data-sale]')) b.classList.toggle('on', +b.dataset.sale === (item.sale || 0));
     this.$('stockShelf').innerHTML = cfg.view === 'spines' ? closeSpinesSVG(item, h, cfg)
       : cfg.view === 'covers' ? closeTableSVG(item, h, cfg) : closeMerchSVG(item, h, cfg);
 
@@ -1944,7 +2062,635 @@ const Stocking = {
 };
 
 // ============================================================
-// 11. DOM UI
+// 11. CUSTOMERS & FAIR DAYS
+// Tap "Open the fair" to start a school day (8:00 to 3:00).
+// Customers trickle in, with random rushes (class visits, recess,
+// Grandparents' Day, the after-school rush). They browse displays,
+// take what they like, and line up at the register. Some come
+// looking for a specific book (a wish). The clock stops while a
+// close-up view or the menu is open. No fail states.
+// ============================================================
+const FAIR = {
+  DAY_LENGTHS: { short: { label: 'Short (about 6 min)', ms: 360000 },
+                 normal: { label: 'Normal (about 12 min)', ms: 720000 },
+                 long: { label: 'Long (about 20 min)', ms: 1200000 } },
+  OPEN_HOUR: 8, CLOSE_HOUR: 15,
+  MAX_IN_ROOM: 10,
+  STEP_MS: 260,                    // customers stroll a little slower than you
+  SPAWN_EVERY: [22000, 34000],     // a regular customer every 22-34 s of fair time
+};
+
+// ---- prices (in cents) ----
+const BOOK_PRICES = { middlegrade: 799, ya: 1099, classics: 699, nonfiction: 1499 };   // others: 1299
+const MERCH_PRICES = { bookmark: 99, poster: 499, 'tr-cat': 149, 'tr-frog': 149, 'tr-dino': 149, 'tr-bear': 199,
+  'tr-pompom': 299, 'tr-hilite': 399, 'tr-sticker': 199 };
+function basePrice(id) {
+  const b = BOOKS_BY_ID[id];
+  if (b) return BOOK_PRICES[b.genre] || 1299;
+  const m = MERCH_BY_ID[id];
+  return MERCH_PRICES[m.id] || MERCH_PRICES[m.kind] || 199;
+}
+function salePrice(id, sale) { return Math.round(basePrice(id) * (1 - (sale || 0) / 100)); }
+function money(c) { return '$' + (c / 100).toFixed(2); }
+function itemName(id) { const b = BOOKS_BY_ID[id]; return b ? b.title : MERCH_BY_ID[id].name; }
+
+// ---- saved game progress (separate from the room layout) ----
+const GAME_KEY = 'bookfair.game.v1';
+const Game = {
+  data: { money: 0, day: 1, dayLength: 'normal', lifetime: { customers: 0, sold: 0, earned: 0 } },
+  load() {
+    try { const d = JSON.parse(localStorage.getItem(GAME_KEY)); if (d && typeof d === 'object') this.data = { ...this.data, ...d }; } catch (e) {}
+    if (!FAIR.DAY_LENGTHS[this.data.dayLength]) this.data.dayLength = 'normal';
+  },
+  save() { try { localStorage.setItem(GAME_KEY, JSON.stringify(this.data)); } catch (e) {} },
+};
+
+// ---- who comes to the fair ----
+const ADULT_GENRES = ['mystery', 'fantasy', 'romance', 'historical', 'fiction', 'classics', 'inspirational', 'nonfiction'];
+const CUSTOMER_TYPES = {
+  kid:         { label: 'Kid',         scale: .8,  budget: [500, 1600],  items: [1, 3], merch: 1.0,
+                 genres: () => [pickRandom(['middlegrade', 'middlegrade', 'ya'])] },
+  parent:      { label: 'Parent',      scale: 1,   budget: [2000, 4500], items: [1, 4], merch: .35,
+                 genres: () => ['middlegrade', pickRandom(ADULT_GENRES), pickRandom(ADULT_GENRES)] },
+  teacher:     { label: 'Teacher',     scale: 1,   budget: [3000, 6000], items: [3, 5], merch: .3,
+                 genres: () => ['middlegrade', pickRandom(['ya', 'nonfiction', 'classics'])] },
+  grandparent: { label: 'Grandparent', scale: .96, budget: [2500, 5000], items: [2, 4], merch: .45,
+                 genres: () => ['middlegrade', pickRandom(['classics', 'inspirational', 'historical', 'mystery'])] },
+};
+const FIRST_NAMES = ['Maya', 'Leo', 'Ava', 'Sam', 'Nora', 'Eli', 'Zoe', 'Theo', 'Ruby', 'Jonah', 'Ivy', 'Miles', 'Rosa', 'Ezra',
+  'Luna', 'Owen', 'Hazel', 'Diego', 'June', 'Felix', 'Priya', 'Kai', 'Mae', 'Omar', 'Lila', 'Gus', 'Pia', 'Ben'];
+const TEACHER_NAMES = ['Ms. Rivera', 'Mr. Okafor', 'Mrs. Lee', 'Ms. Patel', 'Mr. Brooks', 'Mrs. Nguyen', 'Ms. Garcia', 'Mr. Hayes'];
+const GRAND_NAMES = ['Grandma Jo', 'Grandpa Al', 'Nana Bea', 'Pop Walt', 'Grandma Lupe', 'Grandpa Ray', 'Nana Ruth'];
+
+// Customer looks: one body, recolored (drawn at boot as textures cust-<n>-front/side/back)
+const SKINS = ['#f1c27d', '#ffe0bd', '#c68642', '#8d5524', '#e0ac69', '#a0522d', '#f5d0b0'];
+const HAIRS = ['#2b2b2b', '#5a3825', '#e0b04a', '#b56576', '#8d5524', '#d9a066', '#3b2f3f'];
+const GREYS = ['#d9d9d9', '#bdbdbd', '#efefef'];
+const SHIRTS = ['#81b29a', '#9c89b8', '#f2cc8f', '#3d5a80', '#e5989b', '#6a9fb5', '#f4a261', '#4c9a7a', '#d64545', '#8e6cc0'];
+const PANTS = ['#3d5a80', '#6d597a', '#2a9d8f', '#5c3a24', '#457b9d', '#3b2f3f'];
+const LOOKS = [];
+for (let i = 0; i < 20; i++) {
+  const grey = i >= 16;   // the last few are grandparent looks
+  LOOKS.push({ skin: SKINS[(i * 3) % SKINS.length], hair: grey ? GREYS[i % GREYS.length] : HAIRS[(i * 5 + 1) % HAIRS.length],
+               shirt: SHIRTS[(i * 7 + 2) % SHIRTS.length], pants: PANTS[(i * 2 + 1) % PANTS.length], grey });
+}
+function lookFor(type) {
+  const pool = LOOKS.map((l, i) => i).filter(i => (type === 'grandparent') === LOOKS[i].grey);
+  return pickRandom(pool);
+}
+
+// ---- rushes ----
+const FAIR_EVENTS = {
+  classVisit:  { make: () => { const t = pickRandom(TEACHER_NAMES); return { msg: `${t}'s class is visiting the book fair!`, group: [['teacher', t], 'kid', 'kid', 'kid', 'kid', 'kid'] }; } },
+  recess:      { make: () => ({ msg: 'Recess! A few kids ran over to browse.', group: ['kid', 'kid', 'kid', 'kid'] }) },
+  grandparents:{ make: () => ({ msg: "It's Grandparents' Day! Grandparents are stopping by.", group: ['grandparent', 'grandparent', 'grandparent', 'kid'] }) },
+  afterSchool: { make: () => ({ msg: "School's out! Families are coming in.", group: ['parent', 'kid', 'parent', 'kid', 'parent', 'kid'] }) },
+};
+
+const GREETINGS = {
+  kid: ['Hi! Just these, please!', 'I saved up my allowance!', 'Can I get these?'],
+  parent: ['Just these today, thanks.', 'These are for the kids. And one for me!', 'Hi there! Ready to check out.'],
+  teacher: ['These are for my classroom library!', 'My students are going to love these.', 'Ready when you are!'],
+  grandparent: ['These are for my grandkids.', 'What a lovely book fair!', 'Hello, dear. Just these, please.'],
+};
+
+function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function weightedPick(list, weightFn) {
+  const w = list.map(weightFn), total = w.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  let r = Math.random() * total;
+  for (let i = 0; i < list.length; i++) { r -= w[i]; if (r <= 0) return list[i]; }
+  return list[list.length - 1];
+}
+
+// Where a book is right now (for wish-list hints)
+function whereIsBook(layout, id) {
+  for (const it of layout.items) {
+    if (it.slots && it.slots.includes(id)) return { place: 'display', item: it };
+    if (it.type === 'box' && it.contents.includes(id)) return { place: 'box', item: it };
+  }
+  return { place: 'stockroom' };
+}
+
+// ---- the fair manager (one per room scene) ----
+class Fair {
+  constructor(scene) {
+    this.scene = scene;
+    this.open = false; this.closing = false;
+    this.customers = []; this.queue = []; this.spawnPlan = [];
+    this.elapsed = 0; this.nextId = 1;
+  }
+  get layout() { return this.scene.layout; }
+  get dayMs() { return FAIR.DAY_LENGTHS[Game.data.dayLength].ms; }
+
+  // ----- day flow -----
+  start() {
+    if (this.open) return;
+    const L = this.layout;
+    if (!L.doors.length) { UI.toast('The room needs a door before customers can come in.'); return; }
+    this.open = true; this.closing = false; this.elapsed = 0;
+    this.stats = { customers: 0, sold: 0, earned: 0, titles: {}, missed: new Set(), events: [] };
+    // regular customers, spread across the day
+    this.spawnPlan = [];
+    for (let t = randInt(...FAIR.SPAWN_EVERY) * .3; t < this.dayMs * .93; t += randInt(...FAIR.SPAWN_EVERY))
+      this.spawnPlan.push({ at: t, type: weightedPick(['kid', 'parent', 'teacher', 'grandparent'], k => ({ kid: 4, parent: 3.5, teacher: 1, grandparent: 1.5 })[k]) });
+    // 2-3 rushes at random times (after-school always lands late in the day)
+    const names = shuffle(['classVisit', 'recess', 'grandparents']).slice(0, randInt(1, 2));
+    if (Math.random() < .75) names.push('afterSchool'); else names.push(pickRandom(['classVisit', 'recess']));
+    names.forEach((n, i) => {
+      const at = n === 'afterSchool' ? this.dayMs * (.78 + Math.random() * .08) : this.dayMs * (.12 + Math.random() * .55);
+      this.spawnPlan.push({ at, event: n });
+    });
+    this.spawnPlan.sort((a, b) => a.at - b.at);
+    this.queueSpots = this.computeQueueSpots();
+    UI.setFair(this);
+    UI.toast(`The fair is open! Day ${Game.data.day} has begun.`);
+  }
+
+  closeNow() {
+    if (!this.open || this.closing) return;
+    this.elapsed = Math.max(this.elapsed, this.dayMs);
+    this.beginClosing();
+  }
+
+  beginClosing() {
+    this.closing = true;
+    this.spawnPlan = [];
+    UI.toast("It's 3:00. The fair is closing! Customers are finishing up.");
+    for (const c of this.customers) if (c.state === 'browse' || c.state === 'toDisplay') c.plan = [];
+    UI.setFair(this);
+  }
+
+  finishDay() {
+    this.open = false; this.closing = false;
+    const s = this.stats;
+    Game.data.lifetime.customers += s.customers; Game.data.lifetime.sold += s.sold; Game.data.lifetime.earned += s.earned;
+    const summary = { day: Game.data.day, ...s, missed: [...s.missed] };
+    Game.data.day++;
+    Game.save();
+    UI.setFair(this);
+    UI.showSummary(summary);
+  }
+
+  clockText() {
+    const frac = Math.min(1, this.elapsed / this.dayMs);
+    const mins = FAIR.OPEN_HOUR * 60 + frac * (FAIR.CLOSE_HOUR - FAIR.OPEN_HOUR) * 60;
+    let h = Math.floor(mins / 60), m = Math.floor(mins % 60 / 5) * 5;
+    const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    return `${h}:${String(m).padStart(2, '0')} ${ap}`;
+  }
+
+  // ----- the queue at the register -----
+  register() { return this.layout.items.find(it => it.type === 'register') || null; }
+  computeQueueSpots() {
+    const reg = this.register(), grid = this.scene.grid;
+    if (!reg) return [];
+    const goals = [...approachTiles(grid, reg)].map(k => k.split(',').map(Number));
+    if (!goals.length) return [];
+    const { w, h } = itemDims(reg), cx = reg.x + w / 2, cy = reg.y + h / 2;
+    // front of the counter first (the side its front faces)
+    const fx = [0, -1, 0, 1][reg.rot], fy = [1, 0, -1, 0][reg.rot];
+    goals.sort((a, b) => ((b[0] + .5 - cx) * fx + (b[1] + .5 - cy) * fy) - ((a[0] + .5 - cx) * fx + (a[1] + .5 - cy) * fy) ||
+                         Math.abs(a[0] + .5 - cx) + Math.abs(a[1] + .5 - cy) - Math.abs(b[0] + .5 - cx) - Math.abs(b[1] + .5 - cy));
+    const front = { x: goals[0][0], y: goals[0][1] };
+    // the line forms behind the front spot
+    const spots = [front], seen = new Set([front.x + ',' + front.y]);
+    for (let i = 0; i < spots.length && spots.length < 9; i++) {
+      const dirs = [[fx, fy], ...DIRS];
+      for (const [dx, dy] of dirs) {
+        const nx = spots[i].x + dx, ny = spots[i].y + dy, k = nx + ',' + ny;
+        if (!seen.has(k) && grid.walkable(nx, ny) && !this.layout.items.some(it => it.type === 'box' && it.x === nx && it.y === ny)) {
+          seen.add(k); spots.push({ x: nx, y: ny }); break;
+        }
+      }
+    }
+    return spots;
+  }
+  waitingAtFront() { const c = this.queue[0]; return c && c.state === 'waiting' && c.spot === 0 ? c : null; }
+
+  // ----- spawning -----
+  entry() {
+    const d = this.layout.doors[0], grid = this.scene.grid;
+    for (const [dx, dy] of DIRS) if (grid.walkable(d.x + dx, d.y + dy)) return { door: d, x: d.x + dx, y: d.y + dy };
+    const n = nearestWalkable(grid, d.x, d.y);
+    return { door: d, x: n.x, y: n.y };
+  }
+
+  spawn(type, name) {
+    if (this.customers.length >= FAIR.MAX_IN_ROOM) return false;
+    const T = CUSTOMER_TYPES[type], e = this.entry(), look = lookFor(type);
+    const c = {
+      id: this.nextId++, type, look, scale: T.scale,
+      name: name || (type === 'grandparent' ? pickRandom(GRAND_NAMES) : pickRandom(FIRST_NAMES)),
+      genres: T.genres(), budget: randInt(...T.budget), maxItems: randInt(...T.items),
+      cart: [], plan: [], visited: new Set(), state: 'enter', timer: 0, x: e.x, y: e.y, path: [], moving: false,
+    };
+    // about a third of customers come looking for one particular book
+    if (Math.random() < .33) {
+      const pool = BOOKS.filter(b => c.genres.includes(b.genre));
+      const wish = pickRandom(pool.length ? pool : BOOKS);
+      c.wish = wish.id;
+      c.budget = Math.max(c.budget, basePrice(wish.id) + 300);
+    }
+    this.makeSprite(c, e.door);
+    this.customers.push(c);
+    this.stats.customers++;
+    return true;
+  }
+
+  makeSprite(c, door) {
+    const s = this.scene, T = CONFIG.TILE, from = tileCenter(door.x, door.y), to = tileCenter(c.x, c.y);
+    c.img = s.add.image(0, 14, `cust-${c.look}-front`).setOrigin(.5, 44 / 48).setScale(c.scale / CONFIG.ART_RES);
+    c.bubble = s.add.container(0, 14 - 44 * c.scale - 8);
+    c.obj = s.add.container(from.x, from.y, [c.img, c.bubble]).setAlpha(0);
+    c.moving = true;
+    s.tweens.add({ targets: c.obj, x: to.x, y: to.y, alpha: 1, duration: FAIR.STEP_MS * 1.4, onComplete: () => { c.moving = false; } });
+    if (c.wish) this.say(c, 'wish');
+  }
+
+  // Little speech bubbles: wish (book + ?), browsing (…), happy (♥), pay ($)
+  say(c, kind) {
+    const s = this.scene;
+    c.bubble.removeAll(true);
+    c.bubbleKind = kind;
+    if (!kind) return;
+    const g = s.add.graphics();
+    g.fillStyle(0xffffff, 1).lineStyle(1.5, 0x3b2f3f, 1);
+    g.fillRoundedRect(-9, -14, 18, 13, 5).strokeRoundedRect(-9, -14, 18, 13, 5);
+    g.fillTriangle(-2, -1.5, 2, -1.5, 0, 2.5);
+    c.bubble.add(g);
+    const label = { wish: '?', browse: '…', happy: '♥', pay: '$', none: '…' }[kind];
+    const color = { wish: '#3b2f3f', browse: '#3b2f3f', happy: '#e07a5f', pay: '#2a9d8f', none: '#8a7f8f' }[kind];
+    if (kind === 'wish' && c.wish) {
+      const b = BOOKS_BY_ID[c.wish], col = parseInt(GENRES[b.genre].color.slice(1), 16);
+      const bk = s.add.graphics();
+      bk.fillStyle(col, 1).lineStyle(1, 0x3b2f3f, 1).fillRoundedRect(-6.5, -12, 6, 9, 1).strokeRoundedRect(-6.5, -12, 6, 9, 1);
+      c.bubble.add(bk);
+      c.bubble.add(s.add.text(3.5, -7.6, '?', { fontFamily: 'Arial Rounded MT Bold, Helvetica, Arial', fontSize: '10px', fontStyle: 'bold', color, resolution: 4 }).setOrigin(.5));
+    } else {
+      c.bubble.add(s.add.text(0, -7.8, label, { fontFamily: 'Arial Rounded MT Bold, Helvetica, Arial', fontSize: '10px', fontStyle: 'bold', color, resolution: 4 }).setOrigin(.5));
+    }
+  }
+
+  // ----- what customers like -----
+  interest(c, id, display) {
+    const k = kindOf(id);
+    let v;
+    if (k === 'book') {
+      const b = BOOKS_BY_ID[id];
+      v = c.genres.includes(b.genre) ? 1 : .2;
+      if (b.staffPick) v += .25;
+      if (c.wish === id) v += 20;
+    } else v = CUSTOMER_TYPES[c.type].merch * ({ trinket: 1, poster: .8, bookmark: .6 }[k] || .5);
+    return v * (1 + (display.sale || 0) / 50);   // 25% off = 1.5x as eye-catching, 50% off = 2x
+  }
+  displayScore(c, it) {
+    const scores = it.slots.filter(Boolean).map(id => this.interest(c, id, it)).sort((a, b) => b - a);
+    return scores.slice(0, 6).reduce((a, b) => a + b, 0);
+  }
+  makePlan(c) {
+    const grid = this.scene.grid;
+    const options = this.layout.items.filter(it => STOCKABLE[it.type] && it.type !== 'register' && filledCount(it) && approachTiles(grid, it).size && !c.visited.has(it.id));
+    const plan = [];
+    const wishAt = c.wish && options.find(it => it.slots.includes(c.wish));
+    if (wishAt) plan.push(wishAt.id);
+    const n = randInt(2, 4);
+    const pool = options.filter(it => it !== wishAt);
+    while (plan.length < n && pool.length) {
+      const pick = weightedPick(pool, it => this.displayScore(c, it) + .05);
+      if (!pick) break;
+      plan.push(pick.id); pool.splice(pool.indexOf(pick), 1);
+    }
+    c.plan = plan;
+  }
+
+  // ----- per-frame -----
+  tick(dt) {
+    if (!this.open) return;
+    this.elapsed += dt;
+    if (!this.closing && this.elapsed >= this.dayMs) this.beginClosing();
+    while (this.spawnPlan.length && this.spawnPlan[0].at <= this.elapsed) {
+      const p = this.spawnPlan.shift();
+      if (p.event) {
+        const ev = FAIR_EVENTS[p.event].make();
+        UI.toast(ev.msg);
+        this.stats.events.push(p.event);
+        ev.group.forEach((g, i) => this.spawnPlan.push({ at: this.elapsed + 900 * (i + 1), type: Array.isArray(g) ? g[0] : g, name: Array.isArray(g) ? g[1] : null }));
+        this.spawnPlan.sort((a, b) => a.at - b.at);
+      } else if (!this.spawn(p.type, p.name)) {
+        p.at = this.elapsed + 4000;           // room is full: try again shortly
+        this.spawnPlan.push(p); this.spawnPlan.sort((a, b) => a.at - b.at);
+        break;
+      }
+    }
+    for (const c of [...this.customers]) this.think(c, dt);
+    if (this.closing && !this.customers.length) this.finishDay();
+  }
+
+  think(c, dt) {
+    c.obj.setDepth(c.obj.y + 16);
+    if (c.moving) return;
+    if (c.path.length) { this.step(c, c.path.shift()); return; }
+    const s = this.scene, L = this.layout;
+    switch (c.state) {
+      case 'enter':
+        this.makePlan(c);
+        c.state = 'next';
+        break;
+      case 'next': {
+        const id = c.plan.shift(), it = id && s.getItem(id);
+        if (!it || !filledCount(it) || c.cart.length >= c.maxItems) {
+          if (c.plan.length && c.cart.length < c.maxItems) break;
+          this.decide(c);
+          break;
+        }
+        const goals = approachTiles(s.grid, it);
+        const path = findPath(s.grid, c, (x, y) => goals.has(x + ',' + y));
+        if (path === null) break;
+        c.path = path; c.target = it.id; c.state = 'browse'; c.timer = randInt(1600, 3200);
+        break;
+      }
+      case 'browse': {
+        if (c.bubbleKind !== 'browse' && c.bubbleKind !== 'wish') this.say(c, 'browse');
+        const it = s.getItem(c.target);
+        if (it) this.face(c, it);
+        c.timer -= dt;
+        if (c.timer > 0) break;
+        if (it) { c.visited.add(it.id); this.browse(c, it); }
+        c.state = 'next';
+        if (this.closing) c.plan = [];
+        break;
+      }
+      case 'toQueue':
+        c.state = 'waiting';
+        this.say(c, 'pay');
+        if (c.spot === 0) this.face(c, this.register());
+        s.drawBadges();
+        break;
+      case 'waiting':
+        break;
+      case 'leaving': {
+        const e = this.entry();
+        if (c.x !== e.x || c.y !== e.y) {
+          const path = findPath(s.grid, c, (x, y) => x === e.x && y === e.y);
+          if (path && path.length) { c.path = path; break; }
+        }
+        c.state = 'gone'; c.moving = true;
+        const d = tileCenter(e.door.x, e.door.y);
+        s.tweens.add({ targets: c.obj, x: d.x, y: d.y, alpha: 0, duration: FAIR.STEP_MS * 1.4, onComplete: () => this.remove(c) });
+        break;
+      }
+    }
+  }
+
+  step(c, t) {
+    const dx = Math.sign(t.x - c.x), dy = Math.sign(t.y - c.y);
+    this.setFacing(c, dx, dy);
+    if (!this.scene.grid.walkable(t.x, t.y)) { c.path = []; return; }   // something moved in the way: replan
+    c.moving = true; c.x = t.x; c.y = t.y;
+    const p = tileCenter(t.x, t.y);
+    this.scene.tweens.add({ targets: c.obj, x: p.x, y: p.y, duration: FAIR.STEP_MS, onComplete: () => { c.moving = false; } });
+    this.scene.tweens.add({ targets: c.img, y: 12, duration: FAIR.STEP_MS / 2, yoyo: true, onComplete: () => c.img.setY(14) });
+  }
+  setFacing(c, dx, dy) {
+    if (dy > 0) c.img.setTexture(`cust-${c.look}-front`).setFlipX(false);
+    else if (dy < 0) c.img.setTexture(`cust-${c.look}-back`).setFlipX(false);
+    else if (dx) c.img.setTexture(`cust-${c.look}-side`).setFlipX(dx < 0);
+  }
+  face(c, it) {
+    if (!it) return;
+    const { w, h } = itemDims(it);
+    const dx = c.x < it.x ? 1 : c.x >= it.x + w ? -1 : 0, dy = c.y < it.y ? 1 : c.y >= it.y + h ? -1 : 0;
+    this.setFacing(c, dy ? 0 : dx, dy);
+  }
+
+  // Looks over a display and maybe takes something (1-2 items).
+  browse(c, it) {
+    for (let tries = 0; tries < 2 && c.cart.length < c.maxItems; tries++) {
+      const left = c.budget - c.cart.reduce((a, x) => a + x.price, 0);
+      const affordable = it.slots.map((id, i) => ({ id, i })).filter(o => o.id && salePrice(o.id, it.sale) <= left);
+      if (!affordable.length) break;
+      const pick = weightedPick(affordable, o => this.interest(c, o.id, it));
+      const want = this.interest(c, pick.id, it);
+      const chance = pick.id === c.wish ? 1 : Math.min(.92, .28 + want * .42);
+      if (Math.random() > chance) break;
+      it.slots[pick.i] = null;
+      c.cart.push({ id: pick.id, price: salePrice(pick.id, it.sale), sale: it.sale || 0 });
+      this.say(c, 'happy');
+      if (pick.id === c.wish) { c.foundWish = true; UI.toast(`${c.name} found ${itemName(c.wish)}!`); }
+      if (Math.random() > .3) break;
+    }
+    saveLayout(this.layout);
+    this.scene.drawItems();
+  }
+
+  decide(c) {
+    if (c.wish && !c.foundWish) this.stats.missed.add(c.wish);
+    if (c.cart.length) {
+      if (!this.register()) { this.payAuto(c); return; }
+      this.queue.push(c);
+      this.placeInQueue(c, this.queue.length - 1);
+    } else {
+      this.say(c, 'none');
+      c.state = 'leaving';
+    }
+  }
+
+  placeInQueue(c, idx) {
+    const spots = this.queueSpots.length ? this.queueSpots : this.computeQueueSpots();
+    const spot = spots[Math.min(idx, spots.length - 1)];
+    c.spot = idx;
+    if (!spot) { this.payAuto(c); return; }
+    const path = findPath(this.scene.grid, c, (x, y) => x === spot.x && y === spot.y);
+    c.path = path || [];
+    c.state = 'toQueue';
+    this.say(c, 'pay');
+  }
+
+  // No register in the room: they leave the money in an honor jar.
+  payAuto(c) {
+    const total = c.cart.reduce((a, x) => a + x.price, 0);
+    this.recordSale(c, total);
+    UI.toast(`${c.name} left ${money(total)} in the honor jar. (Add a checkout counter to ring people up!)`);
+    c.state = 'leaving'; this.say(c, 'happy');
+  }
+
+  recordSale(c, total) {
+    Game.data.money += total;
+    this.stats.earned += total; this.stats.sold += c.cart.length;
+    for (const x of c.cart) this.stats.titles[x.id] = (this.stats.titles[x.id] || 0) + 1;
+    Game.save();
+    UI.setMoney();
+  }
+
+  // Called by the checkout once change is right.
+  checkedOut(c, total) {
+    this.recordSale(c, total);
+    this.queue = this.queue.filter(q => q !== c);
+    c.state = 'leaving'; this.say(c, 'happy');
+    this.queue.forEach((q, i) => this.placeInQueue(q, i));
+    this.scene.drawBadges();
+  }
+
+  remove(c) {
+    c.obj.destroy();
+    this.customers = this.customers.filter(x => x !== c);
+    this.queue = this.queue.filter(x => x !== c);
+  }
+
+  // Tap a customer to see what they like or what they're looking for
+  customerAt(wx, wy) {
+    let best = null, bd = 1e9;
+    for (const c of this.customers) {
+      const dx = Math.abs(wx - c.obj.x), top = c.obj.y + 14 - 46 * c.scale;
+      if (dx < 11 && wy > top && wy < c.obj.y + 16 && dx < bd) { best = c; bd = dx; }
+    }
+    return best;
+  }
+  describe(c) {
+    const T = CUSTOMER_TYPES[c.type];
+    const likes = [...new Set(c.genres)].map(g => GENRES[g].label).join(' and ');
+    let msg = `${c.name} (${T.label.toLowerCase()}) likes ${likes}${T.merch > .6 ? ', plus trinkets and posters' : ''}.`;
+    if (c.wish) {
+      const b = BOOKS_BY_ID[c.wish], where = whereIsBook(this.layout, c.wish);
+      msg += ` Looking for ${b.title}` + (c.foundWish ? ' (found it!)' :
+        where.place === 'display' ? ' (it\'s out on a display).' :
+        where.place === 'box' ? ' (it\'s in a box by the door!)' : ' (not here yet; it may come in a delivery).');
+    }
+    if (c.cart.length) msg += ` Carrying ${c.cart.length} item${c.cart.length === 1 ? '' : 's'}.`;
+    return msg;
+  }
+
+  // Leaving mid-day (page closed): nothing to clean up; displays are already saved.
+}
+
+// ============================================================
+// 12. CHECKOUT (close-up at the register)
+// Tap each item to scan it. The customer pays; you count out
+// their change from the cash drawer. Wrong change? Just try again.
+// ============================================================
+const CASH = [   // drawer, in cents
+  { v: 1000, label: '$10', bill: true }, { v: 500, label: '$5', bill: true }, { v: 100, label: '$1', bill: true },
+  { v: 25, label: '25¢' }, { v: 10, label: '10¢' }, { v: 5, label: '5¢' }, { v: 1, label: '1¢' },
+];
+const Checkout = {
+  fair: null, c: null, scanned: new Set(), change: [], paid: 0, phase: 'scan',
+  $(id) { return document.getElementById(id); },
+  isOpen() { return !this.$('checkout').hidden; },
+
+  init() {
+    this.$('coItems').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) this.scan(+b.dataset.i); });
+    this.$('coDrawer').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) this.add(+b.dataset.v); });
+    this.$('coChange').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { this.change.splice(+b.dataset.k, 1); this.render(); } });
+    this.$('coGive').onclick = () => this.give();
+    this.$('coHint').onclick = () => { this.hint = true; this.render(); };
+    this.$('coNext').onclick = () => this.next();
+    this.$('coClose').onclick = () => this.close();
+  },
+
+  open(fair) {
+    const c = fair.waitingAtFront();
+    if (!c) return;
+    this.fair = fair; this.c = c; this.scanned = new Set(); this.change = []; this.phase = 'scan'; this.hint = false; this.msg = '';
+    // sometimes they grab a little something from the counter, too
+    const reg = fair.register();
+    if (reg && Math.random() < .35) {
+      const i = reg.slots.findIndex(Boolean);
+      if (i >= 0) { c.cart.push({ id: reg.slots[i], price: salePrice(reg.slots[i], reg.sale), sale: reg.sale || 0, impulse: true }); reg.slots[i] = null; saveLayout(fair.layout); fair.scene.drawItems(); }
+    }
+    const lines = GREETINGS[c.type];
+    this.greeting = c.cart.some(x => x.impulse) ? 'Ooh, and this too, please!' : pickRandom(lines);
+    this.$('checkout').hidden = false;
+    fair.scene.setInputEnabled(false);
+    this.render();
+  },
+
+  close() {
+    this.$('checkout').hidden = true;
+    this.fair.scene.setInputEnabled(true);
+  },
+
+  total() { return this.c.cart.reduce((a, x) => a + x.price, 0); },
+  scan(i) {
+    if (this.phase !== 'scan' || this.scanned.has(i)) return;
+    this.scanned.add(i);
+    if (this.scanned.size === this.c.cart.length) this.pay();
+    this.render();
+  },
+  pay() {
+    const t = this.total();
+    // exact change sometimes; otherwise the smallest easy amount that covers it
+    const steps = [500, 1000, 2000, 4000, 5000, 6000, 8000, 10000];
+    this.paid = Math.random() < .2 ? t : (steps.find(v => v >= t) || Math.ceil(t / 2000) * 2000);
+    this.phase = this.paid === t ? 'exact' : 'change';
+  },
+  add(v) { if (this.phase === 'change') { this.change.push(v); this.change.sort((a, b) => b - a); this.msg = ''; this.render(); } },
+  give() {
+    const due = this.paid - this.total(), given = this.change.reduce((a, b) => a + b, 0);
+    if (given === due) this.finish();
+    else { this.msg = given > due ? `That's ${money(given - due)} too much. Take a little back?` : `That's ${money(due - given)} short. Add a little more?`; this.render(); }
+  },
+  finish() {
+    this.phase = 'done';
+    this.fair.checkedOut(this.c, this.total());
+    this.render();
+  },
+  next() {
+    if (this.phase === 'exact') { this.finish(); return; }   // exact payment: bag it up and finish
+    this.close();
+    if (this.fair.waitingAtFront()) this.open(this.fair);
+  },
+
+  render() {
+    const c = this.c, t = this.total(), look = LOOKS[c.look];
+    const face = personArt('front', look);
+    this.$('coFace').innerHTML = `<svg viewBox="1 -13 30 30" width="84" height="84">${face.body}</svg>`;
+    this.$('coName').textContent = `${c.name} · ${CUSTOMER_TYPES[c.type].label}`;
+    this.$('coSays').textContent = this.phase === 'done' ? 'Thank you so much! See you next time!' : this.greeting;
+
+    // the register screen
+    const lines = c.cart.map((x, i) => this.scanned.has(i)
+      ? `<div class="ln"><span>${xmlEsc(itemName(x.id))}${x.sale ? ` <em>${x.sale}% off</em>` : ''}</span><b>${money(x.price)}</b></div>` : '').join('');
+    this.$('coScreen').innerHTML = (lines || '<div class="ln dim">Tap each item to scan it</div>') +
+      `<div class="ln tot"><span>TOTAL</span><b>${money([...this.scanned].reduce((a, i) => a + c.cart[i].price, 0))}</b></div>` +
+      (this.phase !== 'scan' ? `<div class="ln"><span>PAID</span><b>${money(this.paid)}</b></div>` : '');
+
+    // the items on the counter
+    this.$('coItems').innerHTML = c.cart.map((x, i) => {
+      const b = BOOKS_BY_ID[x.id], m = MERCH_BY_ID[x.id], done = this.scanned.has(i);
+      const art = b ? coverSVG(b) : merchSVG(m, 52, m.kind === 'poster' ? 70 : 66);
+      return `<button class="coitem${done ? ' done' : ''}" data-i="${i}" aria-label="Scan ${xmlEsc(itemName(x.id))}">${art}<span class="tag">${done ? '✓' : money(x.price)}</span></button>`;
+    }).join('');
+
+    // paying
+    const payBox = this.$('coPay');
+    payBox.hidden = this.phase === 'scan';
+    const due = this.paid - t;
+    if (this.phase === 'exact') this.$('coPaidMsg').innerHTML = `${xmlEsc(c.name)} paid exactly <b>${money(t)}</b>. No change needed!`;
+    else if (this.phase === 'change' || this.phase === 'done') this.$('coPaidMsg').innerHTML = `${xmlEsc(c.name)} paid with <span class="cash bill">${money(this.paid)}</span> for a <b>${money(t)}</b> total.`;
+    const changeMode = this.phase === 'change';
+    this.$('coChangeWrap').hidden = !changeMode;
+    if (changeMode) {
+      this.$('coChange').innerHTML = this.change.length ? this.change.map((v, k) => {
+        const d = CASH.find(x => x.v === v);
+        return `<button class="cash${d.bill ? ' bill' : ' coin c' + v}" data-k="${k}" aria-label="Remove ${d.label}">${d.label}</button>`;
+      }).join('') : '<span class="dim">Tap money in the drawer to count out change.</span>';
+      this.$('coGiven').textContent = `Change counted: ${money(this.change.reduce((a, b) => a + b, 0))}` + (this.hint ? ` · Change due: ${money(due)}` : '');
+      this.$('coDrawer').innerHTML = CASH.map(d => `<button class="cash${d.bill ? ' bill' : ' coin c' + d.v}" data-v="${d.v}">${d.label}</button>`).join('');
+      this.$('coMsg').textContent = this.msg || '';
+      this.$('coHint').hidden = this.hint;
+    }
+    this.$('coGive').hidden = !changeMode;
+    const waiting = this.fair.queue.filter(q => q !== c && q.state !== 'leaving').length;
+    this.$('coNext').hidden = !(this.phase === 'done' || this.phase === 'exact');
+    if (this.phase === 'exact' && !this.$('coNext').hidden) this.$('coNext').textContent = 'Bag it up';
+    if (this.phase === 'done') this.$('coNext').textContent = waiting ? `Next customer (${waiting} waiting)` : 'Done';
+    this.$('coClose').hidden = this.phase === 'done';
+  },
+};
+
+// ============================================================
+// 13. DOM UI
 // Buttons and panels live in HTML over the canvas: easier to
 // tap on phones and to style. They call into the Room scene.
 // ============================================================
@@ -1958,6 +2704,15 @@ const UI = {
     this.$('loading').hidden = true;
     this.buildPalette();
     Stocking.init();
+    Checkout.init();
+    this.setMoney();
+    const sel = this.$('dayLength');
+    sel.innerHTML = Object.entries(FAIR.DAY_LENGTHS).map(([k, d]) => `<option value="${k}">${d.label}</option>`).join('');
+    sel.value = Game.data.dayLength;
+    sel.onchange = () => { Game.data.dayLength = sel.value; Game.save(); this.toast('New day length starts with the next fair day.'); };
+    this.$('btnFair').onclick = () => { const f = scene.fair; if (!f.open) f.start(); else if (!f.closing) f.closeNow(); };
+    this.$('sumClose').onclick = () => { this.$('summary').hidden = true; };
+    this.setFair(scene.fair);
     this.$('btnEdit').onclick = () => scene.toggleEdit();
     this.$('btnMenu').onclick = () => this.openMenu();
     this.$('btnClose').onclick = () => this.closeMenu();
@@ -2024,7 +2779,7 @@ const UI = {
     const b = this.$('btnAct');
     if (!item) { b.hidden = true; return; }
     b.hidden = false;
-    b.textContent = actionVerb(item.type) + ' · ' + FURNITURE[item.type].label;
+    b.textContent = actionVerb(item.type, this.scene) + ' · ' + FURNITURE[item.type].label;
   },
 
   refreshEdit() {
@@ -2040,13 +2795,32 @@ const UI = {
       : 'Pick an item, or tap furniture to move it.';
   },
 
+  setMoney() { this.$('money').textContent = money(Game.data.money); },
+
+  setFair(f) {
+    const b = this.$('btnFair');
+    b.classList.toggle('open', !!(f && f.open));
+    b.textContent = !f || !f.open ? `Open the fair · Day ${Game.data.day}` : f.closing ? 'Closing up…' : `${f.clockText()} · Close`;
+  },
+
+  showSummary(s) {
+    const best = Object.entries(s.titles).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    this.$('sumTitle').textContent = `Day ${s.day} complete!`;
+    this.$('sumBody').innerHTML =
+      `<div class="sum-grid"><div><b>${s.customers}</b>customers</div><div><b>${s.sold}</b>items sold</div><div><b>${money(s.earned)}</b>earned</div></div>` +
+      (best.length ? `<p><b>Best sellers:</b></p><ul>${best.map(([id, n]) => `<li>${xmlEsc(itemName(id))}${n > 1 ? ` ×${n}` : ''}</li>`).join('')}</ul>` : '<p>No sales today. Stock up and try again tomorrow!</p>') +
+      (s.missed.length ? `<p><b>Wishes you missed:</b></p><ul>${s.missed.slice(0, 6).map(id => `<li>${xmlEsc(itemName(id))}</li>`).join('')}</ul><p class="muted">Get these out on a display and wish-list customers will find them.</p>` : '') +
+      `<p class="muted">Total earnings: ${money(Game.data.money)}</p>`;
+    this.$('summary').hidden = false;
+  },
+
   openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
   closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
-  menuOpen() { return !this.$('menu').hidden; },
+  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden; },
 };
 
 // ============================================================
-// 12. BOOT SCENE
+// 14. BOOT SCENE
 // Turns every ART drawing into a texture, then starts the room.
 // ============================================================
 class BootScene extends Phaser.Scene {
@@ -2055,12 +2829,14 @@ class BootScene extends Phaser.Scene {
     const layout = loadLayout();
     const jobs = Object.entries(ART).map(([key, fn]) => makeTexture(this, key, fn()));
     jobs.push(makeTexture(this, 'room-bg', roomArt(layout)));
+    LOOKS.forEach((look, i) => { for (const v of ['front', 'side', 'back']) jobs.push(makeTexture(this, `cust-${i}-${v}`, personArt(v, look))); });
+    Game.load();
     Promise.all(jobs).then(() => this.scene.start('Room', { layout }));
   }
 }
 
 // ============================================================
-// 13. ROOM SCENE
+// 15. ROOM SCENE
 // ============================================================
 class RoomScene extends Phaser.Scene {
   constructor() { super('Room'); }
@@ -2081,6 +2857,7 @@ class RoomScene extends Phaser.Scene {
     this.ghostImg = this.add.image(0, 0, 'plant').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES)
       .setAlpha(0.6).setDepth(100002).setVisible(false);
 
+    this.fair = new Fair(this);
     this.makePlayer();
     this.rebuild();
     this.placePlayerAt(nearestWalkable(this.grid, this.layout.spawn.x, this.layout.spawn.y));
@@ -2217,6 +2994,7 @@ class RoomScene extends Phaser.Scene {
     for (const [id, img] of this.itemSprites) {
       if (!live.has(id)) { img.destroy(); this.itemSprites.delete(id); }
     }
+    if (this.saleTags) for (const [id, t] of this.saleTags) if (!live.has(id)) { t.destroy(); this.saleTags.delete(id); }
     this.drawBadges();
   }
 
@@ -2224,19 +3002,34 @@ class RoomScene extends Phaser.Scene {
   drawBadges() {
     this.badges = this.badges || new Map();
     const seen = new Set();
+    const waiting = this.fair && this.fair.waitingAtFront();
     for (const it of this.layout.items) {
+      this.drawSaleTag(it);
+      if (it.type === 'register' && waiting) { this.badge(it, 'badge-pay', seen); continue; }
       const r = fillRatio(it);
       if (r === null || r >= STOCK.LOW) continue;
-      seen.add(it.id);
-      const img = this.itemSprites.get(it.id);
-      let b = this.badges.get(it.id);
-      if (!b) { b = this.add.image(0, 0, 'badge-empty').setOrigin(0.5, 1).setScale(1 / CONFIG.ART_RES); this.badges.set(it.id, b); }
-      const { w } = itemDims(it), T = CONFIG.TILE;
-      b.setTexture(r === 0 ? 'badge-empty' : 'badge-low')
-        .setPosition(it.x * T + w * T / 2, img.y + 6)
-        .setDepth(90000 + it.y).setVisible(this.mode === 'play');
+      this.badge(it, r === 0 ? 'badge-empty' : 'badge-low', seen);
     }
     for (const [id, b] of this.badges) if (!seen.has(id)) { b.destroy(); this.badges.delete(id); }
+  }
+
+  badge(it, key, seen) {
+    seen.add(it.id);
+    const img = this.itemSprites.get(it.id);
+    let b = this.badges.get(it.id);
+    if (!b) { b = this.add.image(0, 0, key).setOrigin(0.5, 1).setScale(1 / CONFIG.ART_RES); this.badges.set(it.id, b); }
+    const { w } = itemDims(it), T = CONFIG.TILE;
+    b.setTexture(key).setPosition(it.x * T + w * T / 2, img.y + 6).setDepth(90000 + it.y).setVisible(this.mode === 'play');
+  }
+
+  // Red "25%" / "50%" tag on displays that are on sale
+  drawSaleTag(it) {
+    this.saleTags = this.saleTags || new Map();
+    let tag = this.saleTags.get(it.id);
+    if (!it.sale || !this.itemSprites.get(it.id)) { if (tag) { tag.destroy(); this.saleTags.delete(it.id); } return; }
+    const img = this.itemSprites.get(it.id), T = CONFIG.TILE;
+    if (!tag) { tag = this.add.image(0, 0, 'tag-' + it.sale).setOrigin(0, 0).setScale(1 / CONFIG.ART_RES); this.saleTags.set(it.id, tag); }
+    tag.setTexture('tag-' + it.sale).setPosition(it.x * T - 2, img.y + 10).setDepth(89999 + it.y);
   }
 
   // Furniture whose drawing is under a point (top-most first). Lets you tap the
@@ -2334,7 +3127,7 @@ class RoomScene extends Phaser.Scene {
   }
 
   tryInteract() {
-    if (this.mode !== 'play' || Stocking.isOpen()) return;
+    if (this.mode !== 'play' || Stocking.isOpen() || Checkout.isOpen()) return;
     const item = this.facedItem();
     if (item) this.interact(item);
   }
@@ -2382,16 +3175,19 @@ class RoomScene extends Phaser.Scene {
   }
 
   onTap(pointer) {
-    if (UI.menuOpen() || Stocking.isOpen()) return;
+    if (UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen()) return;
     if (pointer.downElement && pointer.downElement !== this.game.canvas) return;
     if (Phaser.Math.Distance.Between(pointer.downX, pointer.downY, pointer.upX, pointer.upY) > 14) return;
     const t = this.pointerTile(pointer);
+    this.lastPointer = { x: pointer.worldX, y: pointer.worldY };
     const hit = this.itemAtPoint(pointer.worldX, pointer.worldY);
     if (this.mode === 'play') this.handlePlayTap(t, hit);
     else if (t) this.handleEditTap(t.x, t.y, hit);
   }
 
   handlePlayTap(t, hit) {
+    const who = this.fair.open && this.lastPointer && this.fair.customerAt(this.lastPointer.x, this.lastPointer.y);
+    if (who) { UI.toast(this.fair.describe(who)); return; }
     if (t && isDoor(this.layout, t.x, t.y)) { this.requestDelivery(); return; }
     const item = hit || (t && this.getItem(this.grid.solidAt(t.x, t.y)));
     if (item) {
@@ -2412,6 +3208,7 @@ class RoomScene extends Phaser.Scene {
 
   // ---------- Arrange (edit) mode ----------
   toggleEdit() {
+    if (this.mode !== 'edit' && this.fair.open) { UI.toast('Close the fair before rearranging the room.'); return; }
     this.mode = this.mode === 'edit' ? 'play' : 'edit';
     this.player.path = [];
     this.player.arrive = null;
@@ -2536,9 +3333,16 @@ class RoomScene extends Phaser.Scene {
   }
 
   // ---------- Loop ----------
-  update() {
+  update(time, delta) {
     const p = this.player, k = this.keys;
-    if (!p.moving && !UI.menuOpen() && !Stocking.isOpen()) {
+    const paused = UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen();
+    if (!paused && this.fair.open) {
+      const wasWaiting = !!this.fair.waitingAtFront();
+      this.fair.tick(Math.min(delta, 100));
+      if (!!this.fair.waitingAtFront() !== wasWaiting) { this.drawBadges(); this.lastActionId = undefined; }
+      if ((this._clockT = (this._clockT || 0) + delta) > 500) { this._clockT = 0; UI.setFair(this.fair); }
+    }
+    if (!p.moving && !paused) {
       let dx = 0, dy = 0;
       if (k.LEFT.isDown || k.A.isDown) dx = -1;
       else if (k.RIGHT.isDown || k.D.isDown) dx = 1;
@@ -2569,12 +3373,9 @@ class RoomScene extends Phaser.Scene {
 }
 
 // ============================================================
-// 14. FUTURE PHASES (stubs / notes)
+// 16. FUTURE PHASES (stubs / notes)
 // Planned additions, each meant to slot in without rewrites:
 //  - STOCKING extras: drag-and-drop, ordering deliveries with earnings.
-//  - REGISTER: close-up checkout view. Hook: INTERACTIONS.register.
-//  - CUSTOMERS: CUSTOMER_LOOKS + personArt(); wander with findPath(),
-//    browse, queue at the register. No fail states.
 //  - EARNINGS + DECORATING: spend on new furniture and on
 //    layout.decor (floor: wood/checker/carpet, wall: sage/stripes/stars
 //    already drawn), plus seasonal decor sets.
@@ -2582,7 +3383,7 @@ class RoomScene extends Phaser.Scene {
 // ============================================================
 
 // ============================================================
-// 15. START GAME
+// 17. START GAME
 // ============================================================
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -2594,7 +3395,7 @@ const game = new Phaser.Game({
   scene: [BootScene, RoomScene],
 });
 window.addEventListener('resize', () => { if (game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
-window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking };
+window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR };
 </script>
 </body>
 </html>
