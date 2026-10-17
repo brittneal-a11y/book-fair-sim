@@ -9,7 +9,8 @@
   ============================================================
   COZY BOOK FAIR — single-file Phaser game
   ------------------------------------------------------------
-  Phase 3 (this file): stocking shelves with real books, plus
+  Phase 4 (this file): stocking every display (books, bookmarks,
+  posters, trinkets), low bookcases, running-low badges, plus
   illustrated art (drawn in code as SVG,
   following the art style guide), depth-sorted top-down
   three-quarter room, walking (keyboard + tap/click),
@@ -25,7 +26,8 @@
     7. ART  (palette, drawing helpers, every piece, room background)
     8. BOOK CATALOG (genres + every book)
     9. INTERACTIONS
-   10. STOCKING & DELIVERIES (boxes, close-up shelf view, book covers)
+   10. STOCKING & DELIVERIES (what each display holds, merch catalog,
+       boxes, close-up views, book covers, stocked room art)
    11. DOM UI
    12. BOOT SCENE  (turns the art into textures)
    13. ROOM SCENE
@@ -137,7 +139,8 @@
   .stock-head b { font-size: 17px; }
   .stock-head .count { flex: 1; font-size: 13px; opacity: .85; font-variant-numeric: tabular-nums; }
   .stock-shelf { border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; background: #5c3a24; }
-  .stock-shelf svg { display: block; width: 100%; height: auto; max-height: 52vh; margin: 0 auto; }
+  .stock-shelf svg { display: block; width: 100%; height: auto; max-height: 56vh; margin: 0 auto; }
+  .stock[data-view="merch"] .stock-shelf svg, .stock[data-view="covers"] .stock-shelf svg { max-height: 46vh; }
   .stock-shelf [data-slot] { cursor: pointer; }
   .stock-shelf .lifted rect:first-child { filter: drop-shadow(0 4px 0 rgba(0,0,0,.35)); }
   .stock-info {
@@ -153,7 +156,10 @@
   .tray-books { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .cover { padding: 0; background: none; box-shadow: none; border-radius: 6px; line-height: 0; transition: transform .12s; }
   .cover svg { display: block; }
-  .cover.held { transform: translateY(-6px); outline: 3px solid #ffd166; outline-offset: 2px; }
+  .cover.held, .merchbtn.held { transform: translateY(-6px); outline: 3px solid #ffd166; outline-offset: 2px; }
+  .merchbtn { position: relative; padding: 4px; background: var(--panel); box-shadow: none; border: 2px solid var(--ink); border-radius: 10px; line-height: 0; transition: transform .12s; }
+  .merchbtn svg { display: block; }
+  .merchbtn .qty { position: absolute; right: -6px; bottom: -6px; line-height: 1; font-size: 12px; font-weight: 800; background: var(--ink); color: var(--panel); border-radius: 999px; padding: 3px 6px; }
   .cover:focus-visible, .stock button:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
   .tray-empty { margin: 6px 0; font-size: 14px; color: var(--ink); text-align: center; line-height: 1.4; }
   @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
@@ -199,7 +205,7 @@
 
   <div id="stock" class="stock" hidden>
     <div class="stock-card" role="dialog" aria-label="Stock the bookshelf">
-      <div class="stock-head"><b>Bookshelf</b><span id="stockCount" class="count"></span><button id="btnStockDone" class="primary">Done</button></div>
+      <div class="stock-head"><b id="stockTitle">Bookshelf</b><span id="stockCount" class="count"></span><button id="btnStockDone" class="primary">Done</button></div>
       <div id="stockShelf" class="stock-shelf"></div>
       <div id="stockInfo" class="stock-info"></div>
       <div class="stock-tray">
@@ -219,7 +225,7 @@
       <h2>Book Fair</h2>
       <p><b>Walk:</b> tap or click a spot. Keyboard: WASD or arrow keys.</p>
       <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
-      <p><b>Stock shelves:</b> tap a bookshelf, then move books from the box onto it. Tap the door for a new delivery.</p>
+      <p><b>Stock displays:</b> tap any shelf, table, rack, bin or the checkout, then move items from the box onto it. A ! means it's running low. Tap the door for a new delivery.</p>
       <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
       <p class="muted">Arrange shortcuts: R rotate, Delete remove, Esc deselect.</p>
       <div class="row">
@@ -274,14 +280,16 @@ const COLORS = {
 const FURNITURE = {
   shelf:    { label: 'Bookshelf',     w: 3, h: 1, layer: 'solid', dir: true,
               blurb: 'An empty bookshelf. Boxes of books will arrive soon.' },
+  lowshelf: { label: 'Low Bookcase',  w: 2, h: 1, layer: 'solid', dir: true,
+              blurb: 'A low bookcase. Great along the side walls.' },
   table:    { label: 'Display Table', w: 2, h: 2, layer: 'solid',
-              blurb: 'A display table with neat stacks of featured books.' },
+              blurb: 'A display table for featured books.' },
   register: { label: 'Checkout',      w: 2, h: 1, layer: 'solid', dir: true,
               blurb: 'The checkout counter. Ringing up customers comes in a later phase.' },
   posters:  { label: 'Poster Rack',   w: 2, h: 1, layer: 'solid', dir: true,
               blurb: 'Posters of kittens, rainbows and outer space.' },
   spinner:  { label: 'Spinner Rack',  w: 1, h: 1, layer: 'solid',
-              blurb: 'A spinner rack full of bookmarks.' },
+              blurb: 'A spinner rack for bookmarks.' },
   merch:    { label: 'Merch Bin',     w: 1, h: 1, layer: 'solid',
               blurb: 'Pencils, erasers, and tiny tchotchkes.' },
   beanbag:  { label: 'Beanbag',       w: 1, h: 1, layer: 'solid',
@@ -293,7 +301,7 @@ const FURNITURE = {
   rug:      { label: 'Reading Rug',   w: 3, h: 2, layer: 'floor',
               blurb: 'A soft rug. Perfect for story time.' },
   box:      { label: 'Box of books',  w: 1, h: 1, layer: 'solid', hidden: true,
-              blurb: 'A box of books.' },   // arrives with deliveries; not in the Arrange palette
+              blurb: 'A box of stock.' },   // arrives with deliveries; not in the Arrange palette
 };
 
 // ============================================================
@@ -316,14 +324,16 @@ const DEFAULT_LAYOUT = {
   items: [
     { id: 'd1',  type: 'plant',    x: 1,  y: 1,  rot: 0 },
     { id: 'd2',  type: 'shelf',    x: 2,  y: 1,  rot: 0 },
-    { id: 'd3',  type: 'shelf',    x: 6,  y: 1,  rot: 0 },
-    { id: 'd4',  type: 'shelf',    x: 13, y: 1,  rot: 0 },
-    { id: 'd5',  type: 'shelf',    x: 17, y: 1,  rot: 0 },
-    { id: 'd6',  type: 'plant',    x: 20, y: 1,  rot: 0 },
-    { id: 'd7',  type: 'shelf',    x: 1,  y: 4,  rot: 3 },
-    { id: 'd8',  type: 'shelf',    x: 1,  y: 8,  rot: 3 },
-    { id: 'd9',  type: 'shelf',    x: 20, y: 4,  rot: 1 },
-    { id: 'd10', type: 'shelf',    x: 20, y: 8,  rot: 1 },
+    { id: 'd3',  type: 'shelf',    x: 5,  y: 1,  rot: 0 },
+    { id: 'd4',  type: 'shelf',    x: 8,  y: 1,  rot: 0 },
+    { id: 'd5',  type: 'shelf',    x: 11, y: 1,  rot: 0 },
+    { id: 'd6',  type: 'shelf',    x: 14, y: 1,  rot: 0 },
+    { id: 'd22', type: 'shelf',    x: 17, y: 1,  rot: 0 },
+    { id: 'd23', type: 'plant',    x: 20, y: 1,  rot: 0 },
+    { id: 'd7',  type: 'lowshelf', x: 1,  y: 4,  rot: 0 },
+    { id: 'd8',  type: 'lowshelf', x: 1,  y: 7,  rot: 0 },
+    { id: 'd9',  type: 'lowshelf', x: 19, y: 4,  rot: 0 },
+    { id: 'd10', type: 'lowshelf', x: 19, y: 7,  rot: 0 },
     { id: 'd11', type: 'table',    x: 6,  y: 6,  rot: 0 },
     { id: 'd12', type: 'rug',      x: 10, y: 6,  rot: 0 },
     { id: 'd13', type: 'table',    x: 14, y: 6,  rot: 0 },
@@ -368,20 +378,27 @@ function validateLayout(raw) {
     ? raw.doors.filter(d => d && Number.isInteger(d.x) && Number.isInteger(d.y)) : [];
   const spawn = raw.spawn && Number.isInteger(raw.spawn.x) && Number.isInteger(raw.spawn.y)
     ? { x: raw.spawn.x, y: raw.spawn.y } : { x: 1, y: 1 };
-  // Each book can be in only one place: a shelf slot or a box.
+  // Every display gets the right number of slots. Each book can be in
+  // only one place; merch can repeat. Older saves' box.books -> contents.
   const placed = new Set();
-  const keep = id => typeof id === 'string' && BOOKS_BY_ID[id] && !placed.has(id) && (placed.add(id), true);
+  const keepBook = id => typeof id === 'string' && BOOKS_BY_ID[id] && !placed.has(id) && (placed.add(id), true);
+  const keepAny = id => typeof id === 'string' && (MERCH_BY_ID[id] ? true : keepBook(id));
   for (const it of items) {
-    if (it.type === 'shelf') {
-      const s = Array.isArray(it.slots) ? it.slots.slice(0, STOCK.SLOTS) : [];
-      while (s.length < STOCK.SLOTS) s.push(null);
-      it.slots = s.map(id => keep(id) ? id : null);
+    if (STOCKABLE[it.type]) {
+      const n = slotCount(it.type);
+      const sl = Array.isArray(it.slots) ? it.slots.slice(0, n) : [];
+      while (sl.length < n) sl.push(null);
+      const ok = STOCKABLE[it.type].accepts;
+      it.slots = sl.map(id => id && ok.includes(kindOf(id)) && keepAny(id) ? id : null);
     } else if (it.type === 'box') {
-      it.books = (Array.isArray(it.books) ? it.books : []).filter(keep);
+      const src = Array.isArray(it.contents) ? it.contents : Array.isArray(it.books) ? it.books : [];
+      it.kind = it.kind === 'merch' ? 'merch' : 'books';
+      it.contents = src.filter(id => it.kind === 'merch' ? !!MERCH_BY_ID[id] : keepBook(id));
+      delete it.books;
       it.opened = !!it.opened;
     }
   }
-  const liveItems = items.filter(it => it.type !== 'box' || it.books.length);
+  const liveItems = items.filter(it => it.type !== 'box' || it.contents.length);
   const d = raw.decor || {};
   const decor = {
     floor: DECOR_OPTIONS.floor.includes(d.floor) ? d.floor : 'wood',
@@ -644,26 +661,30 @@ const ART = {
     `<line x1="21" y1="49" x2="29" y2="49" stroke="${PAL.woodLight}" stroke-width="2"/><line x1="21" y1="68" x2="29" y2="68" stroke="${PAL.woodLight}" stroke-width="2"/>` +
     R(0, 88, 32, 8, PAL.woodDark, 1.5) }),
 
-  // Display table, 2x2, blue tablecloth, books in neat stacks
+  // Low bookcase, 2 wide x 1 deep, rises 16px. Good along side walls.
+  'lowshelf-front': () => ({ box: [-4, -18, 72, 54], body:
+    shadow(32, 31, 34, 4) +
+    R(0, -16, 64, 48, PAL.wood, 3) + R(0, -16, 64, 7, PAL.woodLight, 3) +
+    R(5, -7, 54, 33, PAL.woodInner, 1.5) + R(5, 8, 54, 3, PAL.woodLight, .5) +
+    R(0, 26, 64, 6, PAL.woodDark, 1.5) +
+    `<line x1="3" y1="-12.5" x2="61" y2="-12.5" stroke="#eab88a" stroke-width="1.2"/>` }),
+  'lowshelf-back': () => ({ box: [-4, -18, 72, 54], body:
+    shadow(32, 31, 34, 4) + R(0, -16, 64, 48, PAL.wood, 3) + R(0, -16, 64, 7, PAL.woodLight, 3) +
+    `<line x1="21" y1="-8" x2="21" y2="24" stroke="#94592f" stroke-width="1.2"/><line x1="43" y1="-8" x2="43" y2="24" stroke="#94592f" stroke-width="1.2"/>` +
+    R(0, 26, 64, 6, PAL.woodDark, 1.5) }),
+  'lowshelf-side': () => ({ box: [-4, -18, 40, 86], body:   // 1 wide x 2 deep, open side faces right
+    shadow(16, 63, 18, 4) + R(0, -16, 32, 48, PAL.woodLight, 3) +
+    `<line x1="28" y1="-12" x2="28" y2="28" stroke="#eab88a" stroke-width="1.2"/>` +
+    R(0, 30, 32, 34, PAL.wood, 3) + R(21, 34, 8, 25, PAL.woodInner, 1) +
+    `<line x1="21" y1="47.5" x2="29" y2="47.5" stroke="${PAL.woodLight}" stroke-width="2"/>` +
+    R(0, 58, 32, 6, PAL.woodDark, 1.5) }),
+
+  // Display table, 2x2, blue tablecloth (books are drawn on top when stocked)
   'table': () => {
     let b = shadow(32, 63, 33, 4) + R(0, 46, 64, 17, '#3f6596', 2);
     for (const x of [16, 32, 48]) b += `<line x1="${x}" y1="48" x2="${x}" y2="62" stroke="#34557f" stroke-width="1.2"/>`;
-    b += R(0, 2, 64, 46, '#5b82b8', 3);
-    const stacks = [[5, 9, ['#8e6cc0', '#a98ad4', '#8e6cc0']], [24, 9, ['#e07a5f', '#ec9479']],
-                    [43, 9, ['#4c9a7a', '#62b08f', '#4c9a7a', '#62b08f']],
-                    [5, 29, ['#f2b84b', '#f2b84b']], [24, 29, ['#34507a', '#4a6896', '#34507a']]];
-    for (const [x, y, cols] of stacks) {
-      const n = cols.length, top = y + 4 - (n - 1) * 2.6;
-      cols.forEach((c, i) => {
-        const yy = y + 4 - i * 2.6;
-        b += R(x, yy + 12, 16, 3, PAL.cream, .6, 'stroke-width=".9"') + RF(x, yy + 12, 2, 3, c);
-      });
-      const c = cols[n - 1];
-      b += R(x, top - 1, 16, 14, c, 1.5) + RF(x + 3, top + 2, 10, 2, '#fff', 1, 'opacity=".75"') +
-           `<circle cx="${x + 8}" cy="${top + 8}" r="2.6" fill="${shade(c, .72)}"/>`;
-    }
-    b += `<path d="M46 44 L50 30 M58 44 L54 30" ${ST} fill="none"/>` + R(44.5, 26, 15, 15, '#f08fb3', 1.5) +
-         RF(47.5, 29, 9, 2, '#fff', 1, 'opacity=".8"') + star(52, 35.5, 3.6, PAL.cream, false);
+    b += R(0, 2, 64, 46, '#5b82b8', 3) +
+      `<rect x="3" y="5" width="58" height="40" rx="2" fill="none" stroke="#7da0cf" stroke-width="1" stroke-dasharray="2 2"/>`;
     return { box: [-2, 0, 68, 68], body: b };
   },
 
@@ -673,9 +694,6 @@ const ART = {
       txt(32, 17.6, 'BOOK FAIR', 5, INK) + R(0, -12, 64, 15, '#f3e3c8', 3) +
       R(6, -24, 24, 16, '#d9d4cc', 2) + R(9, -21, 18, 6, '#6aa5c9', 1);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) b += RF(10 + i * 6, -13 + j * 2.5, 4, 1.6, '#8a8494', .6);
-    b += R(40, -20, 10, 12, '#e5989b', 1.5);
-    ['#f2cc8f', '#81b29a', '#9c89b8'].forEach((c, i) => { b += R(41.5 + i * 3, -27, 2.4, 9, c, .8, 'stroke-width=".8"'); });
-    b += R(54, -16, 7, 8, PAL.cream, 1);
     return { box: [-4, -30, 72, 66], body: b };
   },
   'register-back': () => {
@@ -700,7 +718,7 @@ const ART = {
       `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` +
       `<path d="M6 30 L6 -30 M58 30 L58 -30" stroke="#8a7f8f" stroke-width="2" stroke-linecap="round"/>` +
       R(3, -33, 58, 6, PAL.coral, 2) + txt(32, -28.6, 'POSTERS', 4.2, PAL.cream) +
-      posterFace(9, -22, 15, 22, 'cat') + posterFace(24.5, -20, 15, 22, 'rainbow') + posterFace(40, -22, 15, 22, 'space') +
+      [0, 1, 2].map(i => `<rect x="${9 + i * 15.5}" y="${-22 + (i % 2) * 2}" width="15" height="22" rx="1" fill="none" stroke="#c9bfd0" stroke-width="1" stroke-dasharray="2 1.5"/>`).join('') +
       R(8, 6, 48, 18, '#6d597a', 2);
     ['#f2cc8f', '#81b29a', '#f08fb3', '#5b82b8', '#f4a261', '#9c89b8'].forEach((c, i) => {
       b += `<circle cx="${13 + i * 7.5}" cy="7" r="3" fill="${c}" stroke="${INK}" stroke-width="1"/><circle cx="${13 + i * 7.5}" cy="7" r="1" fill="${shade(c, .7)}"/>`;
@@ -722,31 +740,18 @@ const ART = {
     return { box: [-2, -44, 36, 112], body: b };
   },
 
-  // Spinner rack, 1x1
+  // Spinner rack, 1x1 (bookmarks are drawn on when stocked)
   'spinner': () => {
-    const cols = ['#f08fb3', '#81b29a', '#f2b84b', '#8e6cc0', '#5b82b8', '#e07a5f'];
     let b = shadow(16, 30.5, 12, 3) + `<ellipse cx="16" cy="29" rx="10" ry="3" fill="#8a7f8f" ${ST}/>` +
       `<path d="M16 28 L16 -44" stroke="${INK}" stroke-width="3.5"/><path d="M16 28 L16 -44" stroke="#c9c2cf" stroke-width="1.6"/>`;
-    [-34, -16, 2].forEach((y, t) => {
-      b += `<path d="M3 ${y + 15} L29 ${y + 15}" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
-      for (let i = 0; i < 4; i++) {
-        const x = 4.5 + i * 6;
-        b += R(x, y, 5, 14, cols[(i + t * 2) % cols.length], 1, 'stroke-width=".9"') + `<circle cx="${x + 2.5}" cy="${y + 3}" r="1.2" fill="${PAL.cream}"/>`;
-      }
-    });
+    [-34, -16, 2].forEach(y => { b += `<path d="M3 ${y + 15} L29 ${y + 15}" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`; });
     b += `<circle cx="16" cy="-46" r="6" fill="#f2b84b" ${ST}/>` + star(16, -46, 3.4, PAL.cream, false);
     return { box: [0, -54, 32, 88], body: b };
   },
 
-  // Merch bin, 1x1: a crate of pencils and animal erasers
+  // Merch bin, 1x1: a crate (trinkets are drawn inside when stocked)
   'merch': () => ({ box: [0, -6, 32, 40], body:
-    shadow(16, 30.5, 14, 3) +
-    RF(5, 8, 22, 8, '#6e4a2c', 1) +
-    R(7, -2, 3, 14, '#f2b84b', .8, 'stroke-width=".9"') + R(11, 0, 3, 12, '#5b82b8', .8, 'stroke-width=".9"') +
-    `<path d="M8.5 -2 L8.5 -4.5" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>` +
-    `<path d="M17 6 L18 2 L21 5 L23 5 L26 2 L27 6 Z" fill="#f4a3c0" stroke="${INK}" stroke-width=".9" stroke-linejoin="round"/>` +
-    `<circle cx="22" cy="8" r="5" fill="#f4a3c0" stroke="${INK}" stroke-width=".9"/>` +
-    `<circle cx="20.3" cy="7.6" r=".8" fill="${INK}"/><circle cx="23.7" cy="7.6" r=".8" fill="${INK}"/>` +
+    shadow(16, 30.5, 14, 3) + RF(5, 8, 22, 8, '#6e4a2c', 1) + '<!--front-->' +
     R(4, 11, 24, 4, '#e0ad74', 1.5) + R(4, 14, 24, 16, '#c48a52', 2) +
     `<line x1="5" y1="20" x2="27" y2="20" stroke="#a87443" stroke-width="1"/><line x1="5" y1="25" x2="27" y2="25" stroke="#a87443" stroke-width="1"/>` +
     R(10, 17, 12, 7, PAL.cream, 1, 'stroke-width=".9"') + txt(16, 22.4, '50¢', 4.4, PAL.coral) }),
@@ -791,6 +796,20 @@ ART['box'] = () => ({ box: [-2, 0, 36, 34], body:
   `<line x1="3.5" y1="7.5" x2="28.5" y2="7.5" stroke="#b97f45" stroke-width="1"/>` +
   RF(13, 2, 6, 11, '#f2dfb0', 0, 'opacity=".9"') + RF(13, 12, 6, 7, '#f2dfb0', 0, 'opacity=".9"') +
   R(7, 20, 10, 5, PAL.cream, 1, 'stroke-width=".8"') });
+ART['mbox'] = () => ({ box: [-2, 0, 36, 34], body:   // merch box: pink tape, star sticker
+  shadow(16, 30.5, 15, 3) + R(3, 12, 26, 17, '#c48a52', 2) + R(3, 2, 26, 11, '#e0ad74', 2) +
+  `<line x1="3.5" y1="7.5" x2="28.5" y2="7.5" stroke="#b97f45" stroke-width="1"/>` +
+  RF(13, 2, 6, 11, '#f4a3c0') + RF(13, 12, 6, 7, '#f4a3c0') + star(10, 21, 4, '#ffd166') });
+ART['mbox-open'] = () => {
+  let b = shadow(16, 30.5, 15, 3) + RF(4, 8, 24, 6, '#6e4a2c', 1);
+  ['#f4a3c0', '#81c784', '#f2b84b', '#80cbc4', '#9c89b8'].forEach((c, i) => { b += `<circle cx="${7.5 + i * 4.3}" cy="${8 - (i % 2) * 2}" r="2.8" fill="${c}" stroke="${INK}" stroke-width=".8"/>`; });
+  b += `<path d="M3 12 L-3 5 L4 4 L8 12 Z" fill="#e0ad74" ${ST}/><path d="M29 12 L35 5 L28 4 L24 12 Z" fill="#e0ad74" ${ST}/>` +
+    R(3, 12, 26, 17, '#c48a52', 2) + RF(13, 12, 6, 7, '#f4a3c0') + star(10, 21, 4, '#ffd166');
+  return { box: [-5, 0, 42, 34], body: b };
+};
+// "Running low" badges shown above displays
+ART['badge-low'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#ffd166" ${ST}/>` + txt(7, 10.2, '!', 9, INK) });
+ART['badge-empty'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#e07a5f" ${ST}/>` + txt(7, 10.2, '!', 9, PAL.cream) });
 ART['box-open'] = () => {
   let b = shadow(16, 30.5, 15, 3) + RF(4, 8, 24, 6, '#6e4a2c', 1);
   ['#e07a5f', '#34507a', '#f2b84b', '#4c9a7a', '#8e6cc0'].forEach((c, i) => { b += R(6 + i * 4.3, 2 + (i % 2) * 2, 3.8, 12, c, .8, 'stroke-width=".9"'); });
@@ -798,25 +817,6 @@ ART['box-open'] = () => {
     R(3, 12, 26, 17, '#c48a52', 2) + RF(13, 12, 6, 7, '#f2dfb0', 0, 'opacity=".9"');
   return { box: [-5, 0, 42, 34], body: b };
 };
-
-function posterFace(x, y, w, h, kind) {
-  let g = R(x, y, w, h, { cat: '#cfe3f2', rainbow: '#fff1cf', space: '#2d3a6b' }[kind], 1);
-  if (kind === 'cat') {
-    g += `<path d="M${x + w * .28} ${y + h * .46} l2 -4 2 3 M${x + w * .72} ${y + h * .46} l-2 -4 -2 3" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${x + w / 2}" cy="${y + h * .58}" r="${w * .26}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${x + w * .42}" cy="${y + h * .56}" r=".8" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .56}" r=".8" fill="${INK}"/>`;
-  } else if (kind === 'rainbow') {
-    ['#e76f51', '#f4a261', '#e9c46a', '#81b29a', '#5b82b8'].forEach((c, i) => {
-      const rr = w * .38 - i * 1.6;
-      g += `<path d="M${x + w / 2 - rr} ${y + h * .7} A${rr} ${rr} 0 0 1 ${x + w / 2 + rr} ${y + h * .7}" fill="none" stroke="${c}" stroke-width="1.6"/>`;
-    });
-  } else {
-    g += `<circle cx="${x + w * .45}" cy="${y + h * .55}" r="${w * .2}" fill="#f2b84b" stroke="${INK}" stroke-width=".8"/>` +
-      `<ellipse cx="${x + w * .45}" cy="${y + h * .55}" rx="${w * .33}" ry="${w * .08}" fill="none" stroke="#f08fb3" stroke-width="1"/>`;
-    for (const [sx, sy] of [[.2, .2], [.8, .3], [.75, .8]]) g += `<circle cx="${x + w * sx}" cy="${y + h * sy}" r=".7" fill="#fff"/>`;
-  }
-  return g;
-}
 
 // ---- people ----
 // One body, recolored for every character. Feet sit at the bottom of the tile.
@@ -1289,31 +1289,74 @@ function booksInGenre(genre) { return BOOKS.filter(b => b.genre === genre); }
 // features arrive (e.g. shelf -> open stocking view).
 // ============================================================
 const INTERACTIONS = {
-  default(item, scene) { return FURNITURE[item.type].blurb; },
-  shelf(item, scene) { Stocking.open(scene, item); return null; },
+  default(item, scene) {
+    if (STOCKABLE[item.type]) { Stocking.open(scene, item); return null; }   // every display opens its close-up
+    return FURNITURE[item.type].blurb;
+  },
   box(item, scene) {
-    const n = item.books.length;
-    return `A box of ${n} book${n === 1 ? '' : 's'}. Tap any bookshelf to unpack it.`;
+    const n = item.contents.length, books = item.kind === 'books';
+    return books ? `A box of ${n} book${n === 1 ? '' : 's'}. Tap a bookshelf or display table to unpack it.`
+                 : `A box of ${n} merch item${n === 1 ? '' : 's'}: bookmarks, posters and trinkets. Tap the spinner, poster rack, merch bin or checkout to unpack it.`;
   },
   // register(item, scene) { scene.scene.start('RegisterScene'); return null; },
 };
-const ACTION_VERBS = { shelf: 'Stock' };   // label on the action button; default is "Look"
+function actionVerb(type) { return STOCKABLE[type] ? 'Stock' : 'Look'; }   // label on the action button
 
 
 // ============================================================
 // 10. STOCKING & DELIVERIES
-// Boxes of books arrive by the door. Tap a bookshelf to open the
-// close-up view: the shelf on top, the open box below. Tap a book
-// in the box, then a spot on the shelf. Tap a shelved book to move
-// it, swap it with another, or put it back in the box.
-//   shelf item: item.slots = [bookId | null] x 36 (3 rows of 12)
-//   box item:   item.books = [bookId, ...], item.opened
-// Books not on a shelf or in a box are "in the stockroom" and can
-// arrive in the next delivery.
+// Boxes arrive by the door: book boxes and merch boxes. Tap any
+// display to open its close-up view: the display on top, the open
+// box below. Tap an item in the box, then a spot. Tap a placed item
+// to move it, swap it, or put it back in the box.
+//   stockable item: item.slots = [id | null] (count set in STOCKABLE)
+//   box item:       item.kind = 'books' | 'merch', item.contents = [id, ...]
+// Each book exists once. Merch (bookmarks, posters, trinkets) comes
+// in as many copies as you like.
 // ============================================================
-const STOCK = { ROWS: 3, COLS: 12, BOX_SIZE: 10, DELIVERY: 3 };
-STOCK.SLOTS = STOCK.ROWS * STOCK.COLS;
 
+// What each display holds and how its close-up looks.
+const STOCKABLE = {
+  shelf:    { title: 'Bookshelf',        accepts: ['book'],              rows: 3, cols: 12, view: 'spines' },
+  lowshelf: { title: 'Low Bookcase',     accepts: ['book'],              rows: 2, cols: 8,  view: 'spines' },
+  table:    { title: 'Display Table',    accepts: ['book'],              rows: 2, cols: 3,  view: 'covers' },
+  spinner:  { title: 'Spinner Rack',     accepts: ['bookmark'],          rows: 3, cols: 4,  view: 'merch', slotW: 78, slotH: 104, bg: '#d9d4cc' },
+  posters:  { title: 'Poster Rack',      accepts: ['poster'],            rows: 1, cols: 3,  view: 'merch', slotW: 118, slotH: 168, bg: '#6d597a' },
+  merch:    { title: 'Merch Bin',        accepts: ['trinket'],           rows: 3, cols: 3,  view: 'merch', slotW: 96, slotH: 84, bg: '#6e4a2c' },
+  register: { title: 'Checkout Counter', accepts: ['trinket', 'bookmark'], rows: 1, cols: 4, view: 'merch', slotW: 88, slotH: 96, bg: '#f3e3c8' },
+};
+const STOCK = { BOX_SIZE: 10, BOOK_BOXES: 3, MERCH_BOXES: 1, LOW: 0.34 };
+function slotCount(type) { const c = STOCKABLE[type]; return c ? c.rows * c.cols : 0; }
+function boxKindFor(type) { return STOCKABLE[type].accepts.includes('book') ? 'books' : 'merch'; }
+
+// ---- merch catalog ----
+// kind: bookmark | poster | trinket. color = how it reads at room size.
+const MERCH = [
+  { id: 'bm-star',    kind: 'bookmark', name: 'Star bookmark',     color: '#5b82b8', motif: 'star' },
+  { id: 'bm-heart',   kind: 'bookmark', name: 'Heart bookmark',    color: '#f08fb3', motif: 'heart' },
+  { id: 'bm-cat',     kind: 'bookmark', name: 'Cat bookmark',      color: '#9c89b8', motif: 'cat' },
+  { id: 'bm-sun',     kind: 'bookmark', name: 'Sunshine bookmark', color: '#f2b84b', motif: 'sun' },
+  { id: 'bm-leaf',    kind: 'bookmark', name: 'Leaf bookmark',     color: '#6a994e', motif: 'leaf' },
+  { id: 'bm-moon',    kind: 'bookmark', name: 'Moon bookmark',     color: '#34507a', motif: 'moon' },
+  { id: 'po-kitten',  kind: 'poster',   name: 'Kitten poster',     color: '#cfe3f2', face: 'cat' },
+  { id: 'po-rainbow', kind: 'poster',   name: 'Rainbow poster',    color: '#fff1cf', face: 'rainbow' },
+  { id: 'po-space',   kind: 'poster',   name: 'Outer space poster', color: '#2d3a6b', face: 'space' },
+  { id: 'po-puppy',   kind: 'poster',   name: 'Puppy poster',      color: '#f6dba6', face: 'puppy' },
+  { id: 'po-read',    kind: 'poster',   name: '"Read!" poster',    color: '#f08fb3', face: 'read' },
+  { id: 'po-ocean',   kind: 'poster',   name: 'Whale poster',      color: '#9fd3e0', face: 'whale' },
+  { id: 'tr-cat',     kind: 'trinket',  name: 'Cat eraser',        color: '#f4a3c0', art: 'catEraser' },
+  { id: 'tr-frog',    kind: 'trinket',  name: 'Frog eraser',       color: '#81c784', art: 'frogEraser' },
+  { id: 'tr-dino',    kind: 'trinket',  name: 'Dino eraser',       color: '#80cbc4', art: 'dinoEraser' },
+  { id: 'tr-bear',    kind: 'trinket',  name: 'Bear pencil',       color: '#f2b84b', art: 'bearPencil' },
+  { id: 'tr-pompom',  kind: 'trinket',  name: 'Pom-pom pen',       color: '#9c89b8', art: 'pomPen' },
+  { id: 'tr-hilite',  kind: 'trinket',  name: 'Highlighter set',   color: '#fff176', art: 'highlighters' },
+  { id: 'tr-sticker', kind: 'trinket',  name: 'Sticker sheet',     color: '#fff8ec', art: 'stickers' },
+];
+const MERCH_BY_ID = Object.fromEntries(MERCH.map(m => [m.id, m]));
+const KIND_LABEL = { bookmark: 'Bookmark', poster: 'Poster', trinket: 'Trinket' };
+function kindOf(id) { return BOOKS_BY_ID[id] ? 'book' : MERCH_BY_ID[id] ? MERCH_BY_ID[id].kind : null; }
+
+// ---- helpers ----
 function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h >>> 0; }
 function isLightColor(hex) {
   const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
@@ -1321,20 +1364,24 @@ function isLightColor(hex) {
 }
 function xmlEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function spineColor(book) { return shade(GENRES[book.genre].color, [0.86, 0.93, 1, 1.07, 1.13][hashStr(book.id) % 5]); }
+function seriesNo(book) { const m = (book.series || '').match(/#\s*([\d.]+)/); return m ? m[1] : null; }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function pickRandom(list) { return list[Math.floor(Math.random() * list.length)]; }
 
-function emptySlots() { return new Array(STOCK.SLOTS).fill(null); }
-function shelfBooks(item) { return (item.slots || []).filter(Boolean); }
-function boxesIn(layout) { return layout.items.filter(it => it.type === 'box'); }
+function emptySlots(type) { return new Array(slotCount(type)).fill(null); }
+function filledCount(item) { return (item.slots || []).filter(Boolean).length; }
+function boxesIn(layout, kind) { return layout.items.filter(it => it.type === 'box' && (!kind || it.kind === kind)); }
 function usedBookIds(layout) {
   const used = new Set();
   for (const it of layout.items) {
-    if (it.type === 'shelf') for (const id of it.slots || []) if (id) used.add(id);
-    if (it.type === 'box') for (const id of it.books || []) used.add(id);
+    if (it.slots) for (const id of it.slots) if (id && BOOKS_BY_ID[id]) used.add(id);
+    if (it.type === 'box' && it.kind === 'books') for (const id of it.contents) used.add(id);
   }
   return used;
 }
 function stockroomBooks(layout) { const used = usedBookIds(layout); return BOOKS.filter(b => !used.has(b.id)); }
-function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// How full a display is, 0..1 (null for things that don't hold stock)
+function fillRatio(item) { return STOCKABLE[item.type] ? filledCount(item) / slotCount(item.type) : null; }
 
 // Free floor spots near the door for boxes. Never blocks a path:
 // each spot is only used if every other floor tile stays reachable.
@@ -1342,7 +1389,7 @@ function findBoxSpots(layout, grid, n, player) {
   const entries = [];
   for (const d of layout.doors) for (const [dx, dy] of DIRS) if (grid.walkable(d.x + dx, d.y + dy)) entries.push({ x: d.x + dx, y: d.y + dy });
   if (!entries.length) entries.push(nearestWalkable(grid, layout.spawn.x, layout.spawn.y));
-  const blocked = new Set();
+  const blocked = new Set(layout.items.filter(it => it.type === 'box').map(b => b.x + ',' + b.y));
   const open = (x, y) => grid.walkable(x, y) && !blocked.has(x + ',' + y);
   const flood = () => {
     const start = entries[0], seen = new Set([start.x + ',' + start.y]), order = [start];
@@ -1366,18 +1413,32 @@ function findBoxSpots(layout, grid, n, player) {
   return spots;
 }
 
-// Adds up to nBoxes boxes of books by the door. Returns how many arrived.
-function deliverBoxes(layout, grid, player, nBoxes) {
-  const picks = shuffle(stockroomBooks(layout).map(b => b.id));
-  const want = Math.min(nBoxes, Math.ceil(picks.length / STOCK.BOX_SIZE));
-  const spots = findBoxSpots(layout, grid, want, player);
-  for (const s of spots) {
-    layout.items.push({ id: newId(), type: 'box', x: s.x, y: s.y, rot: 0, books: picks.splice(0, STOCK.BOX_SIZE), opened: false });
-  }
-  return spots.length;
+function merchBoxContents() {
+  const of = kind => MERCH.filter(m => m.kind === kind).map(m => m.id);
+  const out = [];
+  for (let i = 0; i < 6; i++) out.push(pickRandom(of('bookmark')));
+  for (let i = 0; i < 3; i++) out.push(pickRandom(of('poster')));
+  for (let i = 0; i < 9; i++) out.push(pickRandom(of('trinket')));
+  return out;
 }
 
-// ---- book art: covers and spines ----
+// Tops up the boxes by the door. Returns { books, merch } boxes added.
+function deliverBoxes(layout, grid, player) {
+  const picks = shuffle(stockroomBooks(layout).map(b => b.id));
+  const wantBooks = Math.max(0, Math.min(STOCK.BOOK_BOXES - boxesIn(layout, 'books').length, Math.ceil(picks.length / STOCK.BOX_SIZE)));
+  const wantMerch = Math.max(0, STOCK.MERCH_BOXES - boxesIn(layout, 'merch').length);
+  const spots = findBoxSpots(layout, grid, wantBooks + wantMerch, player);
+  const got = { books: 0, merch: 0 };
+  for (const s of spots) {
+    const books = got.books < wantBooks;
+    layout.items.push({ id: newId(), type: 'box', x: s.x, y: s.y, rot: 0, opened: false,
+      kind: books ? 'books' : 'merch', contents: books ? picks.splice(0, STOCK.BOX_SIZE) : merchBoxContents() });
+    got[books ? 'books' : 'merch']++;
+  }
+  return got;
+}
+
+// ---- book covers (close-up) ----
 const MOTIF_RULES = [
   [/robot/, 'robot'], [/\bcats?\b|kitten/, 'cat'], [/witch|hex|curse|magic|spell|faer|goblin|wunder|nevermoor/, 'moon'],
   [/christmas|winter|midwinter|snow|twelve days/, 'tree'],
@@ -1405,7 +1466,7 @@ const MOTIFS = {   // drawn around (32, 27) inside a 46 x 40 panel
     `<path d="M31 27 H44 M40 27 V32 M36 27 V31" stroke="${INK}" stroke-width="4.6" stroke-linecap="round"/><path d="M31 27 H44 M40 27 V32 M36 27 V31" stroke="${GOLD}" stroke-width="2.4" stroke-linecap="round"/>`,
   magnifier: () => `<path d="M37 32 L44 39" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M37 32 L44 39" stroke="#8d5a3b" stroke-width="2.6" stroke-linecap="round"/>` +
     `<circle cx="30" cy="25" r="9" fill="#cfe3f2" ${ST}/><path d="M25 22 Q27 19 30 19" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`,
-  cup: () => `<path d="M24 37 C34 37 36 37 38 37" stroke="${INK}" stroke-width="1.2"/><path d="M22 22 H40 V31 A7 7 0 0 1 33 38 H29 A7 7 0 0 1 22 31Z" fill="${CREAM}" ${ST}/>` +
+  cup: () => `<path d="M22 22 H40 V31 A7 7 0 0 1 33 38 H29 A7 7 0 0 1 22 31Z" fill="${CREAM}" ${ST}/>` +
     `<path d="M40 25 A4 4 0 0 1 40 33" fill="none" stroke="${INK}" stroke-width="1.6"/><path d="M28 18 Q26 15 28 12 M34 18 Q32 15 34 12" fill="none" stroke="${CREAM}" stroke-width="1.4" stroke-linecap="round"/>`,
   book: () => `<path d="M32 21 C27 17 21 17 17 18 V36 C21 35 27 35 32 38 C37 35 43 35 47 36 V18 C43 17 37 17 32 21Z" fill="${CREAM}" ${ST}/><path d="M32 21 V38" stroke="${INK}" stroke-width="1.2"/>` +
     `<path d="M20 23 H28 M20 27 H28 M36 23 H44 M36 27 H44" stroke="#c9bfae" stroke-width="1.2"/>`,
@@ -1445,8 +1506,8 @@ function wrapTitle(title, max = 12, lines = 3) {
   return out.map(ln => ln.length > max + 2 ? ln.slice(0, max).trimEnd() + '…' : ln);
 }
 
-// A book's front cover, 64 x 90, in the game style (our own motif, not the real cover).
-function coverSVG(book) {
+// A book's front cover in the game style (our own motif, not the real cover). viewBox -2 -2 68 94.
+function coverInner(book) {
   const c = GENRES[book.genre].color, tc = isLightColor(c) ? INK : CREAM;
   const lines = wrapTitle(book.title);
   let t = '';
@@ -1455,81 +1516,249 @@ function coverSVG(book) {
     t += `<text x="32" y="${57 + i * 8.4}" font-size="7.4" font-weight="bold" text-anchor="middle" fill="${tc}"${fit}>${xmlEsc(ln)}</text>`;
   });
   const author = book.author.length > 22 ? book.author.slice(0, 21) + '…' : book.author;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 68 94" width="64" height="88" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif">` +
-    `<rect x="3" y="3" width="60" height="86" rx="3" fill="${shade(c, .62)}" ${ST}/><rect x="0" y="0" width="62" height="86" rx="3" fill="${c}" ${ST}/>` +
+  const no = seriesNo(book);
+  return `<rect x="3" y="3" width="60" height="86" rx="3" fill="${shade(c, .62)}" ${ST}/><rect x="0" y="0" width="62" height="86" rx="3" fill="${c}" ${ST}/>` +
     `<rect x="0.6" y="0.6" width="5" height="84.8" rx="2" fill="${shade(c, .82)}"/>` +
     `<rect x="9" y="7" width="46" height="40" rx="3" fill="${shade(c, 1.22)}"/>` + MOTIFS[motifFor(book)]() + t +
     `<text x="32" y="${Math.min(57 + lines.length * 8.4 + 3, 82)}" font-size="5" text-anchor="middle" fill="${tc}" opacity=".85">${xmlEsc(author)}</text>` +
-    (book.staffPick ? star(55, 6, 5.5, '#ffd166') : '') + `</svg>`;
+    (no ? `<rect x="7" y="2" width="${8 + no.length * 4.2}" height="9" rx="4.5" fill="${CREAM}" stroke="${INK}" stroke-width=".9"/><text x="${11 + no.length * 2.1}" y="8.7" font-size="6.4" font-weight="bold" text-anchor="middle" fill="${INK}">#${xmlEsc(no)}</text>` : '') +
+    (book.staffPick ? star(55, 6, 5.5, '#ffd166') : '');
+}
+function coverSVG(book) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 68 94" width="64" height="88" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif">${coverInner(book)}</svg>`;
 }
 
-// One spine in the close-up shelf view.
+// ---- merch art (close-up, drawn in a 40 x 52 box) ----
+const TRINKET_ART = {
+  catEraser: () => `<path d="M8 22 L10 12 L16 18 L24 18 L30 12 L32 22 Z" fill="#f4a3c0" ${ST}/><rect x="6" y="18" width="28" height="22" rx="10" fill="#f4a3c0" ${ST}/>` +
+    `<circle cx="15" cy="27" r="1.6" fill="${INK}"/><circle cx="25" cy="27" r="1.6" fill="${INK}"/><path d="M18 31 q2 2 4 0" fill="none" stroke="${INK}" stroke-width="1" stroke-linecap="round"/>` +
+    `<ellipse cx="12" cy="31" rx="2.4" ry="1.4" fill="#e5728f" opacity=".7"/><ellipse cx="28" cy="31" rx="2.4" ry="1.4" fill="#e5728f" opacity=".7"/>`,
+  frogEraser: () => `<path d="M4 40 Q4 22 20 22 Q36 22 36 40 Z" fill="#81c784" ${ST}/>` +
+    [11, 29].map(x => `<circle cx="${x}" cy="22" r="5" fill="#81c784" ${ST}/><circle cx="${x}" cy="22" r="2.2" fill="${INK}"/><circle cx="${x + .8}" cy="21" r=".8" fill="#fff"/>`).join('') +
+    `<path d="M14 32 q6 4 12 0" fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"/>`,
+  dinoEraser: () => `<path d="M5 40 Q5 26 15 25 L19 18 Q23 12 30 15 Q35 18 32 23 Q29 25 26 24 L25 40 Z" fill="#80cbc4" ${ST}/>` +
+    [10, 14, 18].map((x, i) => `<path d="M${x - 2} ${26 - i * 1.5} l2 -4 2 4" fill="#f2b84b" stroke="${INK}" stroke-width=".9" stroke-linejoin="round"/>`).join('') +
+    `<circle cx="29" cy="18.5" r="1.3" fill="${INK}"/><ellipse cx="27" cy="22" rx="1.6" ry="1" fill="#e5728f" opacity=".7"/>`,
+  bearPencil: () => `<g transform="rotate(-25 20 26)"><rect x="15" y="12" width="10" height="34" fill="#f2b84b" ${ST}/>` +
+    `<line x1="18.3" y1="13" x2="18.3" y2="45" stroke="#e09f2e" stroke-width="1"/><line x1="21.7" y1="13" x2="21.7" y2="45" stroke="#e09f2e" stroke-width="1"/>` +
+    `<path d="M15 46 L20 54 L25 46 Z" fill="#f6d9a8" ${ST}/><path d="M18.6 51.8 L20 54 L21.4 51.8 Z" fill="${INK}"/>` +
+    `<circle cx="13.5" cy="5" r="3" fill="#b07a4f" ${ST}/><circle cx="26.5" cy="5" r="3" fill="#b07a4f" ${ST}/><circle cx="20" cy="9" r="7" fill="#c68b5c" ${ST}/>` +
+    `<ellipse cx="20" cy="11" rx="3" ry="2.2" fill="#f1d3b3"/><circle cx="17.3" cy="8" r="1" fill="${INK}"/><circle cx="22.7" cy="8" r="1" fill="${INK}"/><circle cx="20" cy="10.6" r=".9" fill="${INK}"/></g>`,
+  pomPen: () => `<g transform="rotate(18 20 26)"><rect x="17" y="16" width="6" height="32" rx="2.5" fill="#9c89b8" ${ST}/><path d="M17 48 L20 54 L23 48 Z" fill="#d8d2df" ${ST}/>` +
+    [0, 1, 2, 3, 4, 5, 6].map(i => { const a = i * 2 * Math.PI / 7; return `<circle cx="${(20 + 6 * Math.cos(a)).toFixed(1)}" cy="${(10 + 6 * Math.sin(a)).toFixed(1)}" r="4.2" fill="${['#f08fb3', '#f2b84b', '#81b29a'][i % 3]}" stroke="${INK}" stroke-width="1"/>`; }).join('') +
+    `<circle cx="20" cy="10" r="4.5" fill="${CREAM}" stroke="${INK}" stroke-width="1"/></g>`,
+  highlighters: () => [['#fff176', '#f2d22e'], ['#f48fb1', '#e5628f'], ['#80deea', '#3fb9c9'], ['#c5e1a5', '#8cc66a']].map(([c, cap], i) => {
+    const x = 3 + i * 8.6;
+    return `<rect x="${x}" y="18" width="7.5" height="26" rx="2.5" fill="${CREAM}" ${ST}/><rect x="${x}" y="10" width="7.5" height="11" rx="2.5" fill="${cap}" ${ST}/><rect x="${x + 1.6}" y="25" width="4.3" height="14" rx="1.5" fill="${c}"/>`;
+  }).join(''),
+  stickers: () => `<g transform="rotate(-6 20 28)"><rect x="5" y="8" width="30" height="38" rx="3" fill="${CREAM}" ${ST}/>` +
+    `<circle cx="13" cy="17" r="4.5" fill="#f2b84b" stroke="${INK}" stroke-width=".9"/>` +
+    `<path d="M27 12.5 c3-3 7 1 0 6 c-7-5-3-9 0-6z" fill="#f08fb3" stroke="${INK}" stroke-width=".9"/>` + star(13, 30, 4.6, '#81b29a') +
+    `<circle cx="27" cy="30" r="4.5" fill="#9c89b8" stroke="${INK}" stroke-width=".9"/><path d="M24 39 h8" stroke="#5b82b8" stroke-width="3" stroke-linecap="round"/></g>`,
+};
+function bookmarkArt(m) {
+  const motif = { star: star(20, 25, 5.5, '#ffd166'), heart: `<path d="M20 30 C13 25 14 19 17.5 19 C19 19 19.8 20 20 21 C20.2 20 21 19 22.5 19 C26 19 27 25 20 30Z" fill="${CREAM}" stroke="${INK}" stroke-width=".9"/>`,
+    cat: `<path d="M15 23 L15.5 17 L18.5 20 H21.5 L24.5 17 L25 23Z" fill="${CREAM}" stroke="${INK}" stroke-width=".9"/><circle cx="20" cy="25" r="5" fill="${CREAM}" stroke="${INK}" stroke-width=".9"/><circle cx="18.3" cy="24.5" r=".8" fill="${INK}"/><circle cx="21.7" cy="24.5" r=".8" fill="${INK}"/>`,
+    sun: `<circle cx="20" cy="25" r="5" fill="#fff1cf" stroke="${INK}" stroke-width=".9"/>` + [0, 60, 120, 180, 240, 300].map(a => `<path d="M20 25 L20 17" transform="rotate(${a} 20 25)" stroke="#fff1cf" stroke-width="1.6" stroke-linecap="round"/>`).join(''),
+    leaf: `<path d="M14 31 C14 22 20 18 27 18 C27 26 22 31 14 31Z" fill="${CREAM}" stroke="${INK}" stroke-width=".9"/>`,
+    moon: `<path d="M22 18 A7 7 0 1 0 25 30 A5.5 5.5 0 1 1 22 18Z" fill="#ffd166" stroke="${INK}" stroke-width=".9"/>` }[m.motif];
+  return `<path d="M20 6 Q25 1 28 8" fill="none" stroke="#e07a5f" stroke-width="1.4"/><path d="M28 8 l-2 8 m2 -8 l2 8 m-2 -8 v9" stroke="#e07a5f" stroke-width="1.2" fill="none"/>` +
+    `<rect x="11" y="6" width="18" height="42" rx="3" fill="${m.color}" ${ST}/><circle cx="20" cy="10.5" r="1.8" fill="${CREAM}" stroke="${INK}" stroke-width=".8"/>` + motif +
+    txt(20, 43, 'READ!', 4.6, isLightColor(m.color) ? INK : CREAM);
+}
+// Poster faces: kitten, rainbow, space, puppy, "Read!", whale
+function posterFace(x, y, w, h, kind) {
+  const bg = { cat: '#cfe3f2', rainbow: '#fff1cf', space: '#2d3a6b', puppy: '#f6dba6', read: '#f08fb3', whale: '#9fd3e0' }[kind] || '#e9dcc4';
+  let g = R(x, y, w, h, bg, 1);
+  const cx = x + w / 2;
+  if (kind === 'cat') {
+    g += `<path d="M${x + w * .28} ${y + h * .46} l${w * .13} ${-h * .18} ${w * .13} ${h * .14} M${x + w * .72} ${y + h * .46} l${-w * .13} ${-h * .18} ${-w * .13} ${h * .14}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${cx}" cy="${y + h * .58}" r="${w * .26}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${x + w * .42}" cy="${y + h * .56}" r="${w * .05}" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .56}" r="${w * .05}" fill="${INK}"/>`;
+  } else if (kind === 'rainbow') {
+    ['#e76f51', '#f4a261', '#e9c46a', '#81b29a', '#5b82b8'].forEach((c, i) => {
+      const rr = w * .38 - i * w * .1;
+      g += `<path d="M${cx - rr} ${y + h * .7} A${rr} ${rr} 0 0 1 ${cx + rr} ${y + h * .7}" fill="none" stroke="${c}" stroke-width="${w * .1}"/>`;
+    });
+  } else if (kind === 'space') {
+    g += `<circle cx="${x + w * .45}" cy="${y + h * .55}" r="${w * .2}" fill="#f2b84b" stroke="${INK}" stroke-width=".8"/>` +
+      `<ellipse cx="${x + w * .45}" cy="${y + h * .55}" rx="${w * .33}" ry="${w * .08}" fill="none" stroke="#f08fb3" stroke-width="${w * .06}"/>`;
+    for (const [sx, sy] of [[.2, .2], [.8, .3], [.75, .8], [.25, .85]]) g += `<circle cx="${x + w * sx}" cy="${y + h * sy}" r="${w * .04}" fill="#fff"/>`;
+  } else if (kind === 'puppy') {
+    g += `<ellipse cx="${x + w * .28}" cy="${y + h * .5}" rx="${w * .1}" ry="${w * .2}" fill="#8d5a3b" stroke="${INK}" stroke-width=".8"/><ellipse cx="${x + w * .72}" cy="${y + h * .5}" rx="${w * .1}" ry="${w * .2}" fill="#8d5a3b" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${cx}" cy="${y + h * .55}" r="${w * .24}" fill="#e8c38f" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${x + w * .42}" cy="${y + h * .52}" r="${w * .045}" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .52}" r="${w * .045}" fill="${INK}"/><ellipse cx="${cx}" cy="${y + h * .62}" rx="${w * .07}" ry="${w * .05}" fill="${INK}"/>`;
+  } else if (kind === 'read') {
+    g += star(x + w * .25, y + h * .25, w * .1, '#ffd166') + star(x + w * .76, y + h * .78, w * .08, '#ffd166') +
+      `<text x="${cx}" y="${y + h * .58}" font-size="${w * .3}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="${CREAM}" stroke="${INK}" stroke-width="${w * .02}">READ!</text>`;
+  } else if (kind === 'whale') {
+    g += `<path d="M${x + w * .18} ${y + h * .62} Q${x + w * .2} ${y + h * .4} ${x + w * .5} ${y + h * .42} Q${x + w * .78} ${y + h * .44} ${x + w * .8} ${y + h * .6} L${x + w * .9} ${y + h * .52} L${x + w * .88} ${y + h * .7} Q${x + w * .5} ${y + h * .78} ${x + w * .18} ${y + h * .62}Z" fill="#5b82b8" stroke="${INK}" stroke-width=".8"/>` +
+      `<circle cx="${x + w * .32}" cy="${y + h * .52}" r="${w * .04}" fill="${INK}"/><path d="M${x + w * .4} ${y + h * .38} q0 -${h * .08} ${w * .06} -${h * .1}" fill="none" stroke="#fff" stroke-width="${w * .03}"/>`;
+  }
+  return g;
+}
+// Close-up merch art: returns svg content and its viewBox
+function merchArt(m) {
+  if (m.kind === 'poster') return { vb: '-2 -2 64 88', body: posterFace(0, 0, 60, 84, m.face) };
+  if (m.kind === 'bookmark') return { vb: '0 0 40 54', body: bookmarkArt(m) };
+  return { vb: '0 0 40 56', body: TRINKET_ART[m.art]() };
+}
+function merchSVG(m, w, h) {
+  const a = merchArt(m);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${a.vb}" width="${w}" height="${h}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif">${a.body}</svg>`;
+}
+
+// ---- close-up views ----
+// Bookshelves: titled spines, a series number tag, and a genre sticker.
 function closeSpine(book, x, base, w, lifted) {
   const c = spineColor(book), tc = isLightColor(c) ? INK : CREAM;
-  const h = 72 + hashStr(book.id) % 22, top = base - h - lifted;
-  const cx = x + w / 2, textTop = top + (book.staffPick ? 19 : 9), textBottom = base - lifted - 19;
-  const cy = (textTop + textBottom) / 2, room = Math.max(4, Math.floor((textBottom - textTop) / 4.7));
-  // short titles: one line; long titles wrap onto two lines running up the spine
-  const lines = book.title.length <= room ? [book.title] : wrapTitle(book.title, room, 2);
+  const h = 116 + hashStr(book.id) % 26, top = base - h - lifted, bot = base - lifted;
+  const cx = x + w / 2, no = seriesNo(book);
+  const textTop = top + (no ? 25 : 10), textBottom = bot - (book.staffPick ? 34 : 21);
+  const cy = (textTop + textBottom) / 2, span = textBottom - textTop;
+  let lines = [book.title], size = 11.5;
+  if (book.title.length * 6.2 > span) { size = 10.4; lines = wrapTitle(book.title, Math.max(4, Math.floor(span / 5.7)), 2); }
   const text = lines.map((ln, k) => {
-    const lx = cx + (lines.length === 2 ? (k ? 4.6 : -4.6) : 0);
-    return `<text x="${lx}" y="${cy}" transform="rotate(-90 ${lx} ${cy})" font-size="${lines.length === 2 ? 7.6 : 8.6}" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="${tc}">${xmlEsc(ln)}</text>`;
+    const lx = cx + (lines.length === 2 ? (k ? 5.7 : -5.7) : 0);
+    return `<text x="${lx}" y="${cy}" transform="rotate(-90 ${lx} ${cy})" font-size="${size}" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="${tc}">${xmlEsc(ln)}</text>`;
   }).join('');
   return `<g${lifted ? ' class="lifted"' : ''}>` +
     `<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="3" fill="${c}" ${ST}/>` +
-    `<rect x="${x + 1.5}" y="${top + 4}" width="${w - 3}" height="2.2" fill="${shade(c, 1.25)}"/>` +
-    `<rect x="${x + 1.5}" y="${base - lifted - 9 - 5.5}" width="${w - 3}" height="1.6" fill="${shade(c, .78)}"/>` +
-    (book.staffPick ? star(cx, top + 12, 4.2, '#ffd166') : '') +
+    (no ? `<rect x="${x + 3}" y="${top + 5}" width="${w - 6}" height="15" rx="4" fill="${CREAM}" stroke="${INK}" stroke-width="1"/>` +
+          `<text x="${cx}" y="${top + 13}" font-size="${no.length > 2 ? 8.5 : 10.5}" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="${INK}">#${xmlEsc(no)}</text>`
+        : `<rect x="${x + 1.5}" y="${top + 4}" width="${w - 3}" height="2.4" fill="${shade(c, 1.25)}"/>`) +
     text +
-    `<circle cx="${cx}" cy="${base - lifted - 8}" r="4.6" fill="${CREAM}" stroke="${INK}" stroke-width="1"/><circle cx="${cx}" cy="${base - lifted - 8}" r="2.8" fill="${GENRES[book.genre].color}"/>` +
+    (book.staffPick ? star(cx, bot - 25, 5, '#ffd166') : '') +
+    `<circle cx="${cx}" cy="${bot - 10}" r="5.4" fill="${CREAM}" stroke="${INK}" stroke-width="1"/><circle cx="${cx}" cy="${bot - 10}" r="3.3" fill="${GENRES[book.genre].color}"/>` +
     `</g>`;
 }
-
-// The whole shelf, close up. Every slot has a tap target (data-slot).
-function closeShelfSVG(item, held) {
-  const W = 400, P = 14, RH = 110, TOP = 8, H = TOP + RH * STOCK.ROWS + 4;
-  const sw = (W - 2 * P) / STOCK.COLS;
+function closeSpinesSVG(item, held, cfg) {
+  const P = 14, SW = 31, RH = 158, TOP = 8, ROWH = 146;
+  const W = 2 * P + cfg.cols * SW, H = TOP + RH * cfg.rows + 4;
   let g = `<rect width="${W}" height="${H}" fill="${PAL.woodInner}"/>`;
   for (let y = 6; y < H; y += 11) g += `<line x1="0" y1="${y}" x2="${W}" y2="${y + 2}" stroke="#53331f" stroke-width="1"/>`;
   let hits = '';
-  for (let r = 0; r < STOCK.ROWS; r++) {
-    const base = TOP + r * RH + 98;
+  for (let r = 0; r < cfg.rows; r++) {
+    const base = TOP + r * RH + ROWH;
     g += `<rect x="0" y="${base}" width="${W}" height="8" fill="${PAL.woodLight}"/><rect x="0" y="${base + 8}" width="${W}" height="4" fill="${PAL.wood}"/>`;
-    for (let c = 0; c < STOCK.COLS; c++) {
-      const i = r * STOCK.COLS + c, x = P + c * sw, id = item.slots[i];
+    for (let c = 0; c < cfg.cols; c++) {
+      const i = r * cfg.cols + c, x = P + c * SW, id = item.slots[i];
       const isHeld = held && held.from === 'slot' && held.slot === i;
-      if (id && BOOKS_BY_ID[id]) g += closeSpine(BOOKS_BY_ID[id], x + 1.5, base, sw - 3, isHeld ? 9 : 0);
-      else if (held) g += `<rect x="${x + 2.5}" y="${base - 90}" width="${sw - 5}" height="88" rx="4" fill="#ffffff" fill-opacity=".1" stroke="#ffd166" stroke-width="1.6" stroke-dasharray="4 3"/>`;
-      hits += `<rect data-slot="${i}" x="${x}" y="${base - 98}" width="${sw}" height="106" fill="transparent"/>`;
+      if (id && BOOKS_BY_ID[id]) g += closeSpine(BOOKS_BY_ID[id], x + 1.5, base, SW - 3, isHeld ? 10 : 0);
+      else if (held) g += `<rect x="${x + 2.5}" y="${base - 138}" width="${SW - 5}" height="136" rx="4" fill="#ffffff" fill-opacity=".1" stroke="#ffd166" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+      hits += `<rect data-slot="${i}" x="${x}" y="${base - ROWH}" width="${SW}" height="${ROWH + 8}" fill="transparent"/>`;
     }
   }
   g += `<rect x="0" y="0" width="${P}" height="${H}" fill="${PAL.wood}" stroke="${INK}" stroke-width="2"/><rect x="${W - P}" y="0" width="${P}" height="${H}" fill="${PAL.wood}" stroke="${INK}" stroke-width="2"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" role="img" aria-label="Bookshelf">${g}${hits}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" role="img" aria-label="${xmlEsc(cfg.title)}">${g}${hits}</svg>`;
+}
+// Display tables: books face-up on the tablecloth, covers showing.
+function closeTableSVG(item, held, cfg) {
+  const SW = 112, SH = 150, P = 18, W = 2 * P + cfg.cols * SW, H = 2 * P + cfg.rows * SH;
+  let g = `<rect width="${W}" height="${H}" fill="#5b82b8"/><rect x="8" y="8" width="${W - 16}" height="${H - 16}" rx="10" fill="none" stroke="#7da0cf" stroke-width="2" stroke-dasharray="6 5"/>`;
+  let hits = '';
+  for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+    const i = r * cfg.cols + c, x = P + c * SW, y = P + r * SH, id = item.slots[i];
+    const isHeld = held && held.from === 'slot' && held.slot === i, lift = isHeld ? -8 : 0;
+    if (id && BOOKS_BY_ID[id]) g += `<svg x="${x + 6}" y="${y + 4 + lift}" width="${SW - 12}" height="${SH - 8}" viewBox="-2 -2 68 94"${isHeld ? ' class="lifted"' : ''}>${coverInner(BOOKS_BY_ID[id])}</svg>`;
+    else g += `<rect x="${x + 10}" y="${y + 8}" width="${SW - 20}" height="${SH - 16}" rx="6" fill="#ffffff" fill-opacity="${held ? .14 : .06}" stroke="${held ? '#ffd166' : '#7da0cf'}" stroke-width="2" stroke-dasharray="6 4"/>`;
+    hits += `<rect data-slot="${i}" x="${x}" y="${y}" width="${SW}" height="${SH}" fill="transparent"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" role="img" aria-label="${xmlEsc(cfg.title)}">${g}${hits}</svg>`;
+}
+// Merch displays: a grid of hooks / pockets / spots.
+function closeMerchSVG(item, held, cfg) {
+  const P = 16, SW = cfg.slotW, SH = cfg.slotH, W = 2 * P + cfg.cols * SW, H = 2 * P + cfg.rows * SH;
+  const dark = !isLightColor(cfg.bg);
+  let g = `<rect width="${W}" height="${H}" fill="${cfg.bg}"/>`;
+  if (item.type === 'spinner') for (let r = 0; r < cfg.rows; r++) g += `<rect x="${P - 6}" y="${P + r * SH + SH - 10}" width="${W - 2 * P + 12}" height="5" rx="2.5" fill="#8a8494" stroke="${INK}" stroke-width="1"/>`;
+  if (item.type === 'merch') for (let x = 0; x < W; x += 22) g += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#5c3d24" stroke-width="2"/>`;
+  let hits = '';
+  for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+    const i = r * cfg.cols + c, x = P + c * SW, y = P + r * SH, id = item.slots[i], m = id && MERCH_BY_ID[id];
+    const isHeld = held && held.from === 'slot' && held.slot === i, lift = isHeld ? -8 : 0;
+    if (item.type === 'spinner') g += `<circle cx="${x + SW / 2}" cy="${y + 4}" r="3" fill="#8a8494" stroke="${INK}" stroke-width="1"/>`;
+    if (item.type === 'merch') g += `<rect x="${x + 5}" y="${y + 5}" width="${SW - 10}" height="${SH - 10}" rx="6" fill="#5c3d24" stroke="${INK}" stroke-width="1.5"/>`;
+    if (m) { const a = merchArt(m); g += `<svg x="${x + 6}" y="${y + 6 + lift}" width="${SW - 12}" height="${SH - 12}" viewBox="${a.vb}"${isHeld ? ' class="lifted"' : ''}>${a.body}</svg>`; }
+    else g += `<rect x="${x + 10}" y="${y + 10}" width="${SW - 20}" height="${SH - 20}" rx="6" fill="${dark ? '#ffffff' : '#000000'}" fill-opacity="${held ? .12 : .05}" stroke="${held ? '#ffd166' : (dark ? '#ffffff55' : '#00000033')}" stroke-width="2" stroke-dasharray="6 4"/>`;
+    hits += `<rect data-slot="${i}" x="${x}" y="${y}" width="${SW}" height="${SH}" fill="transparent"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" role="img" aria-label="${xmlEsc(cfg.title)}">${g}${hits}</svg>`;
 }
 
-// ---- room-scale shelf art with books ----
-function shelfFrontArt(slots) {
-  const base = ART['shelf-front']();
-  const sw = 86 / STOCK.COLS, rows = [[-18, 17], [3, 16], [26, 18]];
+// ---- room-scale art for stocked displays ----
+// Each returns an ART-style drawing; the base drawing's frame is reused.
+const STOCK_ART = {
+  'shelf-front': slots => booksOnShelf(ART['shelf-front'](), slots, 12, 5, 86, [[-18, 17], [3, 16], [26, 18]], R(5, -18, 86, 3, PAL.woodLight, .5)),
+  'lowshelf-front': slots => booksOnShelf(ART['lowshelf-front'](), slots, 8, 5, 54, [[8, 13], [26, 13]], R(5, 8, 54, 3, PAL.woodLight, .5)),
+  'shelf-side': slots => booksSideways(ART['shelf-side'](), slots, 12, [[31, 48], [50, 67], [69, 87]]),
+  'lowshelf-side': slots => booksSideways(ART['lowshelf-side'](), slots, 8, [[35, 46], [49, 58]]),
+  'table': slots => {
+    const base = ART['table']();
+    let b = '';
+    slots.forEach((id, i) => {
+      const book = id && BOOKS_BY_ID[id]; if (!book) return;
+      const x = 5 + (i % 3) * 19.5, y = 6 + Math.floor(i / 3) * 20, c = GENRES[book.genre].color;
+      b += R(x, y + 1.5, 15, 17, shade(c, .65), 1.5) + R(x, y, 15, 17, c, 1.5) + RF(x + 3, y + 3, 9, 7, shade(c, 1.25), 1) +
+        `<rect x="${x + 3}" y="${y + 12}" width="9" height="1.6" rx=".8" fill="#fff" opacity=".75"/>`;
+    });
+    return { box: base.box, body: base.body + b };
+  },
+  'spinner': slots => {
+    const base = ART['spinner']();
+    let b = '';
+    slots.forEach((id, i) => {
+      const m = id && MERCH_BY_ID[id]; if (!m) return;
+      const y = [-34, -16, 2][Math.floor(i / 4)], x = 4.5 + (i % 4) * 6;
+      b += R(x, y, 5, 14, m.color, 1, 'stroke-width=".9"') + `<circle cx="${x + 2.5}" cy="${y + 3}" r="1.2" fill="${CREAM}"/>`;
+    });
+    return { box: base.box, body: base.body + b };
+  },
+  'posters-front': slots => {
+    const base = ART['posters-front']();
+    let b = '';
+    slots.forEach((id, i) => { const m = id && MERCH_BY_ID[id]; if (m) b += posterFace(9 + i * 15.5, -22 + (i % 2) * 2, 15, 22, m.face); });
+    return { box: base.box, body: base.body + b };
+  },
+  'merch': slots => {
+    const base = ART['merch']();
+    let b = '';
+    slots.forEach((id, i) => {
+      const m = id && MERCH_BY_ID[id]; if (!m) return;
+      const x = 7.5 + (i % 3) * 7, y = 5 + Math.floor(i / 3) * 2.2 - (i % 2) * 1.5;
+      b += `<circle cx="${x + 2}" cy="${y + 4}" r="3.2" fill="${m.color}" stroke="${INK}" stroke-width=".8"/>`;
+    });
+    return { box: base.box, body: base.body.replace('<!--front-->', b + '<!--front-->') };
+  },
+  'register-front': slots => {
+    const base = ART['register-front']();
+    let b = '';
+    slots.forEach((id, i) => {
+      const m = id && MERCH_BY_ID[id]; if (!m) return;
+      b += m.kind === 'bookmark' ? R(36 + i * 6.5, -14, 4.5, 11, m.color, .8, 'stroke-width=".8"')
+                                  : `<circle cx="${38.5 + i * 6.5}" cy="-7" r="3" fill="${m.color}" stroke="${INK}" stroke-width=".8"/>`;
+    });
+    return { box: base.box, body: base.body + b };
+  },
+};
+function booksOnShelf(base, slots, cols, x0, width, rows, boardMarkup) {
+  const sw = width / cols;
   let books = '';
   rows.forEach(([b, maxH], r) => {
-    for (let c = 0; c < STOCK.COLS; c++) {
-      const id = slots[r * STOCK.COLS + c], book = id && BOOKS_BY_ID[id];
+    for (let c = 0; c < cols; c++) {
+      const id = slots[r * cols + c], book = id && BOOKS_BY_ID[id];
       if (!book) continue;
       const h = maxH - (hashStr(id) % 5);
-      books += `<rect x="${(5 + c * sw + .6).toFixed(2)}" y="${b - h}" width="${(sw - 1.2).toFixed(2)}" height="${h}" rx=".8" fill="${spineColor(book)}" stroke="${INK}" stroke-width=".7"/>`;
+      books += `<rect x="${(x0 + c * sw + .6).toFixed(2)}" y="${b - h}" width="${(sw - 1.2).toFixed(2)}" height="${h}" rx=".8" fill="${spineColor(book)}" stroke="${INK}" stroke-width=".7"/>`;
     }
   });
-  // books sit inside the shelf: insert them after the dark inner back, before the boards
-  const body = base.body.replace(R(5, -18, 86, 3, PAL.woodLight, .5), books + R(5, -18, 86, 3, PAL.woodLight, .5));
-  return { box: base.box, body };
+  // books sit inside the shelf: insert them before the first shelf board
+  return { box: base.box, body: base.body.replace(boardMarkup, books + boardMarkup) };
 }
-function shelfSideArt(slots) {
-  const base = ART['shelf-side']();
-  const segs = [[31, 48], [50, 67], [69, 87]];
+function booksSideways(base, slots, cols, segs) {
   let books = '';
   segs.forEach(([y0, y1], r) => {
-    const ids = slots.slice(r * STOCK.COLS, (r + 1) * STOCK.COLS).filter(id => id && BOOKS_BY_ID[id]);
+    const ids = slots.slice(r * cols, (r + 1) * cols).filter(id => id && BOOKS_BY_ID[id]);
     const n = Math.min(ids.length, Math.floor((y1 - y0) / 2.6));
     for (let i = 0; i < n; i++) books += `<rect x="22" y="${(y1 - 2.4 - i * 2.6).toFixed(1)}" width="6" height="2.2" fill="${spineColor(BOOKS_BY_ID[ids[i]])}"/>`;
   });
@@ -1538,31 +1767,34 @@ function shelfSideArt(slots) {
 
 // ---- the close-up stocking view (HTML over the game) ----
 const Stocking = {
-  scene: null, item: null, held: null, boxIdx: 0,
+  scene: null, item: null, cfg: null, held: null, boxIdx: 0,
   $(id) { return document.getElementById(id); },
   isOpen() { return !this.$('stock').hidden; },
 
   init() {
     this.$('btnStockDone').onclick = () => this.close();
-    this.$('boxPrev').onclick = () => { this.boxIdx--; this.held = this.held && this.held.from === 'slot' ? this.held : null; this.render(); };
-    this.$('boxNext').onclick = () => { this.boxIdx++; this.held = this.held && this.held.from === 'slot' ? this.held : null; this.render(); };
+    const step = d => () => { this.boxIdx += d; if (this.held && this.held.from === 'box') this.held = null; this.render(); };
+    this.$('boxPrev').onclick = step(-1);
+    this.$('boxNext').onclick = step(1);
     this.$('btnReturn').onclick = () => this.returnToBox();
     this.$('stockShelf').addEventListener('click', (e) => {
       const hit = e.target.closest('[data-slot]');
       if (hit) this.tapSlot(+hit.dataset.slot);
     });
     this.$('trayBooks').addEventListener('click', (e) => {
-      const b = e.target.closest('[data-book]');
-      if (b) this.tapBoxBook(b.dataset.book);
+      const b = e.target.closest('[data-id]');
+      if (b) this.tapBoxItem(b.dataset.id);
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.isOpen()) this.close(); });
   },
 
   open(scene, item) {
-    this.scene = scene; this.item = item; this.held = null;
-    if (!Array.isArray(item.slots)) item.slots = emptySlots();
-    const boxes = boxesIn(scene.layout);
-    this.boxIdx = Math.max(0, boxes.findIndex(b => b.opened && b.books.length));
+    this.scene = scene; this.item = item; this.cfg = STOCKABLE[item.type]; this.held = null;
+    if (!Array.isArray(item.slots) || item.slots.length !== slotCount(item.type)) item.slots = emptySlots(item.type);
+    const boxes = this.boxes();
+    this.boxIdx = Math.max(0, boxes.findIndex(b => b.opened && this.usable(b).length));
+    this.$('stockTitle').textContent = this.cfg.title;
+    this.$('stock').dataset.view = this.cfg.view;
     this.$('stock').hidden = false;
     scene.setInputEnabled(false);
     this.render();
@@ -1572,12 +1804,13 @@ const Stocking = {
     if (!this.isOpen()) return;
     this.$('stock').hidden = true;
     this.held = null;
-    const s = this.scene;
-    s.setInputEnabled(true);
-    s.commit();
+    this.scene.setInputEnabled(true);
+    this.scene.commit();
   },
 
-  boxes() { return boxesIn(this.scene.layout); },
+  accepts(id) { return this.cfg.accepts.includes(kindOf(id)); },
+  usable(box) { return box.contents.filter(id => this.accepts(id)); },
+  boxes() { return boxesIn(this.scene.layout, boxKindFor(this.item.type)); },
   box() {
     const boxes = this.boxes();
     if (!boxes.length) return null;
@@ -1588,35 +1821,35 @@ const Stocking = {
   // Removes boxes that have been emptied (they get flattened and recycled).
   tidyBoxes() {
     const L = this.scene.layout, before = L.items.length;
-    L.items = L.items.filter(it => it.type !== 'box' || it.books.length);
+    L.items = L.items.filter(it => it.type !== 'box' || it.contents.length);
     if (L.items.length !== before) UI.toast('Box empty! You flattened it for recycling.');
   },
 
   save() { saveLayout(this.scene.layout); },
 
-  tapBoxBook(id) {
-    if (this.held && this.held.from === 'box' && this.held.bookId === id) this.held = null;
-    else this.held = { from: 'box', bookId: id };
+  tapBoxItem(id) {
+    if (this.held && this.held.from === 'box' && this.held.id === id) this.held = null;
+    else this.held = { from: 'box', id };
     this.render();
   },
 
   tapSlot(i) {
     const slots = this.item.slots, here = slots[i], h = this.held;
     if (!h) {
-      if (here) this.held = { from: 'slot', slot: i, bookId: here };
-      else this.hint('Pick a book from the box first, then tap a spot.');
+      if (here) this.held = { from: 'slot', slot: i, id: here };
+      else this.hint('Pick something from the box first, then tap a spot.');
       return this.render();
     }
     if (h.from === 'slot' && h.slot === i) { this.held = null; return this.render(); }
-    if (h.from === 'slot') {               // move or swap within the shelf
+    if (h.from === 'slot') {               // move or swap within this display
       slots[h.slot] = here || null;
-      slots[i] = h.bookId;
-    } else {                               // from the box
-      const box = this.box();
-      box.books = box.books.filter(b => b !== h.bookId);
+      slots[i] = h.id;
+    } else {                               // from the box (removes one copy)
+      const box = this.box(), k = box.contents.indexOf(h.id);
+      if (k >= 0) box.contents.splice(k, 1);
       box.opened = true;
-      if (here) box.books.unshift(here);   // swap: the shelved book goes back in the box
-      slots[i] = h.bookId;
+      if (here) box.contents.unshift(here);   // swap: the placed item goes back in the box
+      slots[i] = h.id;
     }
     this.held = null;
     this.tidyBoxes();
@@ -1627,9 +1860,9 @@ const Stocking = {
 
   returnToBox() {
     const h = this.held, box = this.box();
-    if (!h || h.from !== 'slot' || !box) return;
+    if (!h || h.from !== 'slot') return;
     this.item.slots[h.slot] = null;
-    box.books.unshift(h.bookId);
+    if (box) box.contents.unshift(h.id);   // no box: merch just goes back to the stockroom
     this.held = null;
     this.save();
     this.render();
@@ -1642,46 +1875,71 @@ const Stocking = {
     if (!el || !el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const spark = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     spark.setAttribute('cx', +el.getAttribute('x') + +el.getAttribute('width') / 2);
-    spark.setAttribute('cy', +el.getAttribute('y') + 20);
-    spark.setAttribute('r', '10'); spark.setAttribute('fill', '#ffd166');
+    spark.setAttribute('cy', +el.getAttribute('y') + 24);
+    spark.setAttribute('r', '11'); spark.setAttribute('fill', '#ffd166');
+    spark.style.transformBox = 'fill-box'; spark.style.transformOrigin = 'center';
     el.parentNode.appendChild(spark);
     spark.animate([{ opacity: .9, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(1.6)' }],
       { duration: 380, easing: 'ease-out' }).onfinish = () => spark.remove();
-    spark.style.transformBox = 'fill-box'; spark.style.transformOrigin = 'center';
+  },
+
+  describe(id) {
+    const b = BOOKS_BY_ID[id];
+    if (b) {
+      const g = GENRES[b.genre];
+      return `<span class="gdot" style="background:${g.color}"></span><span><b>${xmlEsc(b.title)}</b> · ${xmlEsc(b.author)} · ${xmlEsc(g.label)}` +
+        `${b.series ? ' · ' + xmlEsc(b.series) : ''}${b.staffPick ? ' · <span class="pick">★ Staff pick</span>' : ''}</span>`;
+    }
+    const m = MERCH_BY_ID[id];
+    return `<span class="gdot" style="background:${m.color}"></span><span><b>${xmlEsc(m.name)}</b> · ${KIND_LABEL[m.kind]}</span>`;
   },
 
   render() {
-    const item = this.item, h = this.held, box = this.box(), boxes = this.boxes();
-    const filled = item.slots.filter(Boolean).length;
-    this.$('stockCount').textContent = `${filled} of ${STOCK.SLOTS} spots filled`;
-    this.$('stockShelf').innerHTML = closeShelfSVG(item, h);
+    const item = this.item, cfg = this.cfg, h = this.held, box = this.box(), boxes = this.boxes();
+    const filled = filledCount(item), isBooks = cfg.accepts.includes('book');
+    this.$('stockCount').textContent = `${filled} of ${slotCount(item.type)} spots filled`;
+    this.$('stockShelf').innerHTML = cfg.view === 'spines' ? closeSpinesSVG(item, h, cfg)
+      : cfg.view === 'covers' ? closeTableSVG(item, h, cfg) : closeMerchSVG(item, h, cfg);
 
-    // info line: the book you're holding, or what to do next
     const info = this.$('stockInfo');
-    if (h) {
-      const b = BOOKS_BY_ID[h.bookId], g = GENRES[b.genre];
-      info.innerHTML = `<span class="gdot" style="background:${g.color}"></span><span><b>${xmlEsc(b.title)}</b> · ${xmlEsc(b.author)} · ${xmlEsc(g.label)}${b.staffPick ? ' · <span class="pick">★ Staff pick</span>' : ''}</span>`;
-    } else if (box) info.textContent = 'Tap a book in the box, then tap a spot on the shelf. Tap a shelved book to move it.';
-    else info.textContent = filled ? 'Tap a shelved book to move it.' : 'No boxes right now.';
+    if (h) info.innerHTML = this.describe(h.id);
+    else if (box) info.textContent = `Tap ${isBooks ? 'a book' : 'an item'} in the box, then tap a spot. Tap something already placed to move it.`;
+    else info.textContent = filled ? 'Tap something placed here to move it.' : 'No boxes right now.';
 
-    // the box tray
     this.$('boxPrev').hidden = this.$('boxNext').hidden = boxes.length < 2;
-    this.$('btnReturn').hidden = !(h && h.from === 'slot' && box);
+    this.$('btnReturn').hidden = !(h && h.from === 'slot' && (box || !isBooks));
+    this.$('btnReturn').textContent = box ? 'Put back in box' : 'Put away';
     const tray = this.$('trayBooks');
     if (!box) {
       this.$('boxLabel').textContent = 'No boxes';
-      tray.innerHTML = `<p class="tray-empty">${stockroomBooks(this.scene.layout).length
-        ? 'All unpacked! Tap the door in the room for another delivery.'
-        : 'Every book is out at the fair.'}</p>`;
+      tray.innerHTML = `<p class="tray-empty">${isBooks && !stockroomBooks(this.scene.layout).length
+        ? 'Every book is out at the fair.'
+        : `No ${isBooks ? 'book' : 'merch'} boxes right now. Tap the door in the room for a delivery.`}</p>`;
       return;
     }
+    const usable = this.usable(box);
+    const what = isBooks ? 'book' : 'item';
     this.$('boxLabel').textContent = (boxes.length > 1 ? `Box ${this.boxIdx + 1} of ${boxes.length} · ` : 'Box · ') +
-      `${box.books.length} book${box.books.length === 1 ? '' : 's'}`;
-    tray.innerHTML = box.books.map(id => {
-      const b = BOOKS_BY_ID[id];
-      const on = h && h.from === 'box' && h.bookId === id;
-      return `<button class="cover${on ? ' held' : ''}" data-book="${id}" aria-pressed="${!!on}" aria-label="${xmlEsc(b.title + ' by ' + b.author)}">${coverSVG(b)}</button>`;
-    }).join('');
+      `${usable.length} ${what}${usable.length === 1 ? '' : 's'}${isBooks ? '' : ' for here'}`;
+    if (!usable.length) {
+      const want = cfg.accepts.map(k => KIND_LABEL[k].toLowerCase() + 's').join(' or ');
+      tray.innerHTML = `<p class="tray-empty">No ${want} in this box. ${boxes.length > 1 ? 'Try another box.' : 'Tap the door in the room for a delivery.'}</p>`;
+      return;
+    }
+    if (isBooks) {
+      tray.innerHTML = usable.map(id => {
+        const b = BOOKS_BY_ID[id], on = h && h.from === 'box' && h.id === id;
+        return `<button class="cover${on ? ' held' : ''}" data-id="${id}" aria-pressed="${!!on}" aria-label="${xmlEsc(b.title + ' by ' + b.author)}">${coverSVG(b)}</button>`;
+      }).join('');
+    } else {   // merch: one button per kind of item, with how many are in the box
+      const counts = new Map();
+      for (const id of usable) counts.set(id, (counts.get(id) || 0) + 1);
+      tray.innerHTML = [...counts].map(([id, n]) => {
+        const m = MERCH_BY_ID[id], on = h && h.from === 'box' && h.id === id;
+        return `<button class="merchbtn${on ? ' held' : ''}" data-id="${id}" aria-pressed="${!!on}" aria-label="${xmlEsc(m.name)}, ${n} in box">` +
+          `${merchSVG(m, 52, m.kind === 'poster' ? 70 : 66)}<span class="qty">×${n}</span></button>`;
+      }).join('');
+    }
   },
 };
 
@@ -1766,7 +2024,7 @@ const UI = {
     const b = this.$('btnAct');
     if (!item) { b.hidden = true; return; }
     b.hidden = false;
-    b.textContent = (ACTION_VERBS[item.type] || 'Look') + ' · ' + FURNITURE[item.type].label;
+    b.textContent = actionVerb(item.type) + ' · ' + FURNITURE[item.type].label;
   },
 
   refreshEdit() {
@@ -1836,10 +2094,11 @@ class RoomScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerObj, true, 0.15, 0.15);
 
     // First visit (or nothing stocked yet): a delivery is waiting by the door.
-    const anyShelved = this.layout.items.some(it => it.type === 'shelf' && shelfBooks(it).length);
-    if (!anyShelved && !boxesIn(this.layout).length && deliverBoxes(this.layout, this.grid, this.player, STOCK.DELIVERY)) {
-      this.commit();
-      this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! A delivery of books is waiting by the door. Tap a bookshelf to stock it.'));
+    const anyStocked = this.layout.items.some(it => filledCount(it));
+    if (!anyStocked && !boxesIn(this.layout).length) {
+      const got = deliverBoxes(this.layout, this.grid, this.player);
+      if (got.books + got.merch) this.commit();
+      this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! Boxes of books and merch are waiting by the door. Tap any display to stock it.'));
     } else {
       this.time.delayedCall(400, () => UI.toast('Welcome back to the book fair!'));
     }
@@ -1852,13 +2111,19 @@ class RoomScene extends Phaser.Scene {
   }
 
   requestDelivery() {
-    const waiting = boxesIn(this.layout).length;
-    if (waiting >= STOCK.DELIVERY) { UI.toast('There are boxes waiting by the door already. Unpack those first!'); return; }
-    if (!stockroomBooks(this.layout).length) { UI.toast('Every book is already out at the fair!'); return; }
-    const n = deliverBoxes(this.layout, this.grid, this.player, STOCK.DELIVERY - waiting);
-    if (!n) { UI.toast('No room by the door for boxes. Clear a little space and try again.'); return; }
+    const bookBoxes = boxesIn(this.layout, 'books').length, merchBoxes = boxesIn(this.layout, 'merch').length;
+    const moreBooks = stockroomBooks(this.layout).length > 0;
+    if ((bookBoxes >= STOCK.BOOK_BOXES || !moreBooks) && merchBoxes >= STOCK.MERCH_BOXES) {
+      UI.toast(moreBooks ? 'There are boxes waiting by the door already. Unpack those first!' : 'Every book is out at the fair! Merch boxes come when you run out.');
+      return;
+    }
+    const got = deliverBoxes(this.layout, this.grid, this.player);
+    if (!got.books && !got.merch) { UI.toast('No room by the door for boxes. Clear a little space and try again.'); return; }
     this.commit();
-    UI.toast(`Delivery! ${n} box${n === 1 ? '' : 'es'} of books just arrived by the door.`);
+    const parts = [];
+    if (got.books) parts.push(`${got.books} box${got.books === 1 ? '' : 'es'} of books`);
+    if (got.merch) parts.push('a box of merch');
+    UI.toast(`Delivery! ${parts.join(' and ')} just arrived by the door.`);
   }
 
   // ---------- Layout ----------
@@ -1906,12 +2171,15 @@ class RoomScene extends Phaser.Scene {
   // screen draw in front (that's what makes the 3/4 view work).
   // Shelves with books and opened boxes get their own drawings.
   dynamicArt(item) {
-    if (item.type === 'shelf' && item.rot !== 2 && item.slots && item.slots.some(Boolean)) {
-      const view = item.rot === 0 ? 'front' : 'side';
-      const key = `shelf-${view}#${hashStr(item.slots.map(id => id || '-').join(',')).toString(36)}`;
-      return { key, make: () => view === 'front' ? shelfFrontArt(item.slots) : shelfSideArt(item.slots) };
+    if (STOCKABLE[item.type] && item.slots && item.slots.some(Boolean)) {
+      const base = artFor(item).key;   // e.g. shelf-front, table, spinner
+      const maker = STOCK_ART[base];
+      if (maker) {
+        const key = `${base}#${hashStr(item.slots.map(id => id || '-').join(',')).toString(36)}`;
+        return { key, make: () => maker(item.slots) };
+      }
     }
-    if (item.type === 'box' && item.opened) return { key: 'box-open' };
+    if (item.type === 'box') return { key: (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
     return null;
   }
 
@@ -1949,6 +2217,26 @@ class RoomScene extends Phaser.Scene {
     for (const [id, img] of this.itemSprites) {
       if (!live.has(id)) { img.destroy(); this.itemSprites.delete(id); }
     }
+    this.drawBadges();
+  }
+
+  // A small "!" over displays that are running low (yellow) or empty (coral).
+  drawBadges() {
+    this.badges = this.badges || new Map();
+    const seen = new Set();
+    for (const it of this.layout.items) {
+      const r = fillRatio(it);
+      if (r === null || r >= STOCK.LOW) continue;
+      seen.add(it.id);
+      const img = this.itemSprites.get(it.id);
+      let b = this.badges.get(it.id);
+      if (!b) { b = this.add.image(0, 0, 'badge-empty').setOrigin(0.5, 1).setScale(1 / CONFIG.ART_RES); this.badges.set(it.id, b); }
+      const { w } = itemDims(it), T = CONFIG.TILE;
+      b.setTexture(r === 0 ? 'badge-empty' : 'badge-low')
+        .setPosition(it.x * T + w * T / 2, img.y + 6)
+        .setDepth(90000 + it.y).setVisible(this.mode === 'play');
+    }
+    for (const [id, b] of this.badges) if (!seen.has(id)) { b.destroy(); this.badges.delete(id); }
   }
 
   // Furniture whose drawing is under a point (top-most first). Lets you tap the
@@ -2134,6 +2422,7 @@ class RoomScene extends Phaser.Scene {
     this.lastActionId = undefined;
     UI.setMode(this.mode);
     this.drawSelection();
+    this.drawBadges();
   }
 
   clearEditTool() {
@@ -2221,8 +2510,8 @@ class RoomScene extends Phaser.Scene {
     const id = this.edit.selectedId;
     if (!id) return;
     const gone = this.getItem(id);
-    const n = gone ? (gone.type === 'shelf' ? shelfBooks(gone).length : gone.type === 'box' ? gone.books.length : 0) : 0;
-    if (n) UI.toast(`Its ${n} book${n === 1 ? '' : 's'} went back to the stockroom.`);
+    const n = gone ? (gone.type === 'box' ? gone.contents.length : filledCount(gone)) : 0;
+    if (n) UI.toast(`Its ${n} item${n === 1 ? '' : 's'} went back to the stockroom.`);
     this.layout.items = this.layout.items.filter(it => it.id !== id);
     this.edit.selectedId = null;
     this.commit();
@@ -2282,10 +2571,7 @@ class RoomScene extends Phaser.Scene {
 // ============================================================
 // 14. FUTURE PHASES (stubs / notes)
 // Planned additions, each meant to slot in without rewrites:
-//  - STOCKING extras: drag-and-drop, stocking display tables,
-//    ordering deliveries with earnings.
-//  - MERCH / TRINKETS: animal erasers, topper pencils, highlighters,
-//    pom-pom pens, bookmarks, stickers, on merch / spinner / posters.
+//  - STOCKING extras: drag-and-drop, ordering deliveries with earnings.
 //  - REGISTER: close-up checkout view. Hook: INTERACTIONS.register.
 //  - CUSTOMERS: CUSTOMER_LOOKS + personArt(); wander with findPath(),
 //    browse, queue at the register. No fail states.
@@ -2308,7 +2594,7 @@ const game = new Phaser.Game({
   scene: [BootScene, RoomScene],
 });
 window.addEventListener('resize', () => { if (game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
-window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, STOCK, Stocking };
+window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking };
 </script>
 </body>
 </html>
