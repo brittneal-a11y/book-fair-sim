@@ -9,8 +9,10 @@
   ============================================================
   COZY BOOK FAIR — single-file Phaser game
   ------------------------------------------------------------
-  Phase 5 (this file): customers and fair days (rushes, wish lists,
-  checkout with making change, sales and discounts), on top of
+  Phase 6 (this file): helping customers (fetching wishes and
+  recommendations), busy setting, patience in line with a returns
+  basket, card and piggy-bank payments. Phase 5: customers and fair
+  days (rushes, wish lists, checkout with making change, sales), on top of
   stocking every display, low bookcases, running-low badges, and
   illustrated art (drawn in code as SVG,
   following the art style guide), depth-sorted top-down
@@ -176,6 +178,26 @@
   .daylen { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; font-weight: 700; }
   .daylen select { font: inherit; font-weight: 600; padding: 8px; border-radius: 10px; border: 2px solid var(--panel-edge); background: #fff; color: var(--ink); }
 
+  /* helping customers */
+  .help-card { gap: 12px; max-width: 460px; }
+  .help-hint { color: var(--panel); font-size: 13.5px; line-height: 1.4; }
+  .carry { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 76px);
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px; padding: 6px 6px 6px 14px; display: flex; gap: 8px; align-items: center;
+    box-shadow: var(--shadow); font-size: 13.5px; font-weight: 700; max-width: min(92vw, 460px); }
+  .carry span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .carry button { box-shadow: none; border: 2px solid var(--ink); padding: 5px 10px; font-size: 13px; flex: none; }
+  .check { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; font-weight: 700; }
+  .check input { width: 18px; height: 18px; }
+  /* card reader */
+  .reader { display: flex; flex-direction: column; gap: 8px; align-items: center; background: #3b3b46; border: 3px solid var(--ink); border-radius: 16px; padding: 12px; width: min(100%, 240px); margin: 0 auto; }
+  .reader-screen { width: 100%; box-sizing: border-box; background: #c9e4c5; color: #1f3a2b; border-radius: 8px; padding: 8px 10px; text-align: right; font: 700 20px/1.2 ui-monospace, Menlo, Consolas, monospace; }
+  .reader-screen.ok { background: #7ed6a5; text-align: center; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+  .keypad button { box-shadow: none; border-radius: 8px; padding: 10px 0; font-size: 16px; background: #e8e6ee; border: 2px solid var(--ink); }
+  .keypad button.ok { background: #7ed6a5; }
+  .co-pile { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 48px; padding: 6px; background: #fff; border-radius: 10px; border: 2px dashed var(--panel-edge); }
+  .co-items.putback .coitem { outline: 3px dashed #d64545; outline-offset: 3px; border-radius: 6px; }
+
   /* sale switch in the stocking view */
   .sale { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--panel); font-size: 13px; font-weight: 700; }
   .sale button { box-shadow: none; padding: 5px 10px; font-size: 13px; border: 2px solid var(--ink); }
@@ -278,6 +300,7 @@
           <button id="boxPrev" aria-label="Previous box">‹</button>
           <span id="boxLabel">Box</span>
           <button id="btnReturn" hidden>Put back in box</button>
+          <button id="btnTake" class="primary" hidden>Take to customer</button>
           <button id="boxNext" aria-label="Next box">›</button>
         </div>
         <div id="trayBooks" class="tray-books"></div>
@@ -293,6 +316,18 @@
         <div id="coScreen" class="co-screen"></div>
       </div>
       <div id="coItems" class="co-items"></div>
+      <div id="coCard" class="co-pay" hidden>
+        <div id="coCardMsg"></div>
+        <div class="reader"><div id="coReader" class="reader-screen">$0.00</div>
+          <div id="coKeypad" class="keypad"></div>
+        </div>
+        <div class="co-actions"><button id="coReceipt" class="primary" hidden>Hand over receipt</button></div>
+      </div>
+      <div id="coCoins" class="co-pay" hidden>
+        <div id="coCoinMsg"></div>
+        <div id="coPile" class="co-pile"></div>
+        <div id="coCounted" class="co-given"></div>
+      </div>
       <div id="coPay" class="co-pay" hidden>
         <div id="coPaidMsg"></div>
         <div id="coChangeWrap">
@@ -307,6 +342,16 @@
       </div>
     </div>
   </div>
+
+  <div id="help" class="stock" hidden>
+    <div class="stock-card help-card" role="dialog" aria-label="Helping a customer">
+      <div class="co-cust"><div id="hpFace" class="co-face"></div><div><div id="hpName" class="co-name"></div><div id="hpSays" class="co-says"></div></div></div>
+      <div id="hpHint" class="help-hint"></div>
+      <div class="co-actions" id="hpActions"></div>
+    </div>
+  </div>
+
+  <div id="carry" class="carry" hidden><span id="carryText"></span><button id="carryDrop">Put down</button></div>
 
   <div id="summary" class="menu" hidden>
     <div class="card">
@@ -323,11 +368,16 @@
       <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
       <p><b>Stock displays:</b> tap any shelf, table, rack, bin or the checkout, then move items from the box onto it. A ! means it's running low. Tap the door for a new delivery.</p>
       <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
+      <p><b>Helping:</b> a yellow ! means a customer needs help. Tap them to hear what they want, find it on a display or in a box, tap Take to them, then tap them to hand it over.</p>
       <p><b>Fair days:</b> tap Open the fair. Customers browse, then line up at the checkout. Tap the counter to ring them up and count out change. Tap a customer to see what they're looking for.</p>
       <p class="muted">Arrange shortcuts: R rotate, Delete remove, Esc deselect.</p>
       <label class="daylen">Fair day length
         <select id="dayLength"></select>
       </label>
+      <label class="daylen">How busy
+        <select id="busy"></select>
+      </label>
+      <label class="check"><input type="checkbox" id="patience"> Customers lose patience in long lines</label>
       <div class="row">
         <button id="btnExport">Export room</button>
         <button id="btnImport">Import room</button>
@@ -494,6 +544,7 @@ function validateLayout(raw) {
     } else if (it.type === 'box') {
       const src = Array.isArray(it.contents) ? it.contents : Array.isArray(it.books) ? it.books : [];
       it.kind = it.kind === 'merch' ? 'merch' : 'books';
+      it.returns = !!it.returns;
       it.contents = src.filter(id => it.kind === 'merch' ? !!MERCH_BY_ID[id] : keepBook(id));
       delete it.books;
       it.opened = !!it.opened;
@@ -908,6 +959,16 @@ ART['mbox-open'] = () => {
     R(3, 12, 26, 17, '#c48a52', 2) + RF(13, 12, 6, 7, '#f4a3c0') + star(10, 21, 4, '#ffd166');
   return { box: [-5, 0, 42, 34], body: b };
 };
+// Returns basket: things customers left behind
+ART['basket'] = () => {
+  let b = shadow(16, 30.5, 14, 3);
+  ['#e07a5f', '#8e6cc0', '#f2b84b', '#4c9a7a'].forEach((c, i) => { b += R(7 + i * 4.6, 6 + (i % 2) * 2, 4, 12, c, .8, 'stroke-width=".9"'); });
+  b += `<path d="M4 14 H28 L25.5 30 H6.5 Z" fill="#d9a066" ${ST}/>` +
+    [9, 14, 19, 24].map(x => `<line x1="${x}" y1="15" x2="${x - (x - 16) * .12}" y2="29" stroke="#b27b45" stroke-width="1"/>`).join('') +
+    `<line x1="5" y1="20" x2="27" y2="20" stroke="#b27b45" stroke-width="1"/><line x1="5.7" y1="25" x2="26.3" y2="25" stroke="#b27b45" stroke-width="1"/>` +
+    `<path d="M8 14 Q16 2 24 14" fill="none" stroke="${INK}" stroke-width="3"/><path d="M8 14 Q16 2 24 14" fill="none" stroke="#d9a066" stroke-width="1.4"/>`;
+  return { box: [0, 0, 32, 34], body: b };
+};
 // Someone is waiting at the checkout
 ART['badge-pay'] = () => ({ box: [-1, -1, 16, 16], body: `<circle cx="7" cy="7" r="6.2" fill="#2a9d8f" ${ST}/>` + txt(7, 10.4, '$', 8.6, PAL.cream) });
 // Sale tags on displays
@@ -1093,7 +1154,9 @@ function roomSignature(layout) {
 // books left out), sorted into genres by hand.
 // To add books: append { id, title, author, genre } lines below.
 // Optional fields: subtitle, series, year, rating, staffPick (5 stars),
-// shelf (currently-reading), source. To-read and did-not-finish books are left out.
+// shelf (currently-reading), source, tags (vibes used for recommendations:
+// cozy funny magic mystery romance adventure historical truestory animals
+// school family holiday books royals scifi heartfelt classic food spooky faith). To-read and did-not-finish books are left out.
 // ============================================================
 const GENRES = {
   mystery      : { label: "Mystery & Suspense", color: '#34507a' },
@@ -1109,280 +1172,280 @@ const GENRES = {
 };
 
 const BOOKS = [
-  {"id": "b1", "title": "The House Witch", "author": "Delemhach", "genre": "fantasy", "series": "The House Witch, #1", "year": 2022, "shelf": "currently-reading", "source": "goodreads"},
-  {"id": "b2", "title": "The Marlow Murder Club", "author": "Robert Thorogood", "genre": "mystery", "series": "Marlow Murder Club, #1", "year": 2021, "rating": 4.5, "source": "goodreads"},
-  {"id": "b3", "title": "The Goblin Emperor", "author": "Katherine Addison", "genre": "fantasy", "series": "The Chronicles of Osreth, #1", "year": 2014, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b4", "title": "Getting Past Your Past", "author": "Francine Shapiro", "genre": "nonfiction", "subtitle": "Take Control of Your Life with Self-Help Techniques from EMDR Therapy", "year": 2012, "shelf": "currently-reading", "source": "goodreads"},
-  {"id": "b5", "title": "The Curse of the Pharaohs", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #2", "year": 1981, "source": "goodreads"},
-  {"id": "b6", "title": "Crocodile on the Sandbank", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #1", "year": 1975, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b7", "title": "Batcat", "author": "Meggie Ramm", "genre": "middlegrade", "subtitle": "The Ghostly Guest", "series": "Batcat, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b8", "title": "A Most Agreeable Murder", "author": "Julia Seales", "genre": "mystery", "series": "Beatrice Steele, #1", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b9", "title": "The Swifts", "author": "Beth Lincoln", "genre": "middlegrade", "subtitle": "A Dictionary of Scoundrels", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b10", "title": "Agnes Aubert's Mystical Cat Shelter", "author": "Heather Fawcett", "genre": "fantasy", "year": 2026, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b11", "title": "The Highland Falcon Thief", "author": "M.G. Leonard", "genre": "middlegrade", "series": "Adventures on Trains, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b12", "title": "The Personal Librarian", "author": "Marie Benedict", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b13", "title": "The Secret of Platform 13", "author": "Eva Ibbotson", "genre": "middlegrade", "year": 1994, "rating": 4.0, "source": "goodreads"},
-  {"id": "b14", "title": "A Prayer for the Crown-Shy", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b15", "title": "The Reading List", "author": "Sara Nisha Adams", "genre": "fiction", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b16", "title": "In This Mountain", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #7", "year": 2002, "rating": 4.0, "source": "goodreads"},
-  {"id": "b17", "title": "The Golden Spoon", "author": "Jessa Maxwell", "genre": "mystery", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b18", "title": "The Blue Castle", "author": "L.M. Montgomery", "genre": "classics", "year": 1926, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b19", "title": "The Wishing Game", "author": "Meg Shaffer", "genre": "fiction", "year": 2023, "rating": 2.0, "source": "goodreads"},
-  {"id": "b22", "title": "A Common Life", "author": "Jan Karon", "genre": "inspirational", "subtitle": "The Wedding Story", "series": "Mitford Years, #6", "year": 2001, "rating": 3.0, "source": "goodreads"},
-  {"id": "b23", "title": "Project Hail Mary", "author": "Andy Weir", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b24", "title": "Everyone in This Bank Is a Thief", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #4", "year": 2026, "rating": 4.0, "source": "goodreads"},
-  {"id": "b25", "title": "A New Song", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #5", "year": 1999, "rating": 4.0, "source": "goodreads"},
-  {"id": "b26", "title": "Out to Canaan", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #4", "year": 1997, "rating": 4.0, "source": "goodreads"},
-  {"id": "b27", "title": "Yesteryear", "author": "Caro Claire Burke", "genre": "fiction", "year": 2026, "rating": 4.0, "source": "goodreads"},
-  {"id": "b28", "title": "These High, Green Hills", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #3", "year": 1996, "rating": 4.0, "source": "goodreads"},
-  {"id": "b29", "title": "Brigands & Breadknives", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #2", "year": 2025, "rating": 3.0, "source": "goodreads"},
-  {"id": "b30", "title": "Finlay Donovan Is Killing It", "author": "Elle Cosimano", "genre": "mystery", "series": "Finlay Donovan, #1", "year": 2021, "rating": 2.0, "source": "goodreads"},
-  {"id": "b31", "title": "Heir of Fire", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #3", "year": 2014, "rating": 4.0, "source": "goodreads"},
-  {"id": "b32", "title": "Happy Place", "author": "Emily Henry", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b34", "title": "Dry", "author": "Neal Shusterman", "genre": "ya", "year": 2018, "rating": 4.0, "source": "goodreads"},
-  {"id": "b35", "title": "At Home in Mitford", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #1", "year": 1994, "rating": 3.0, "source": "goodreads"},
-  {"id": "b36", "title": "Theo of Golden", "author": "Allen Levi", "genre": "inspirational", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b37", "title": "The PLAN", "author": "Kendra Adachi", "genre": "nonfiction", "subtitle": "Manage Your Time Like a Lazy Genius", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b38", "title": "The Assassin's Blade", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #0.1-0.5", "year": 2014, "rating": 3.0, "source": "goodreads"},
-  {"id": "b39", "title": "How to Raise an Adult", "author": "Julie Lythcott-Haims", "genre": "nonfiction", "subtitle": "Break Free of the Overparenting Trap and Prepare Your Kid for Success", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b40", "title": "The Music Shop", "author": "Rachel Joyce", "genre": "fiction", "year": 2017, "rating": 3.0, "source": "goodreads"},
-  {"id": "b41", "title": "Crown of Midnight", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #2", "year": 2013, "rating": 3.0, "source": "goodreads"},
-  {"id": "b42", "title": "Miss Benson's Beetle", "author": "Rachel Joyce", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b43", "title": "The Happiness Project", "author": "Gretchen Rubin", "genre": "nonfiction", "year": 2009, "rating": 4.0, "source": "goodreads"},
-  {"id": "b44", "title": "Throne of Glass", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #1", "year": 2012, "rating": 3.0, "source": "goodreads"},
-  {"id": "b50", "title": "The Invisible Life of Addie LaRue", "author": "V.E. Schwab", "genre": "fantasy", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b52", "title": "Reconnected", "author": "Carlos Whittaker", "genre": "nonfiction", "subtitle": "How 7 Screen-Free Weeks with Monks and Amish Farmers Helped Me Recover the Lost Art of Being Human", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b53", "title": "The Dark Mirror", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #5", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b54", "title": "The Mask Falling", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #4", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b55", "title": "Miss Pettigrew Lives for a Day", "author": "Winifred Watson", "genre": "classics", "year": 1938, "rating": 4.0, "source": "goodreads"},
-  {"id": "b56", "title": "The Song Rising", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #3", "year": 2017, "rating": 3.0, "source": "goodreads"},
-  {"id": "b57", "title": "From Bad to Cursed", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #2", "year": 2022, "rating": 3.0, "source": "goodreads"},
-  {"id": "b58", "title": "The Seven Principles for Making Marriage Work", "author": "John M. Gottman", "genre": "nonfiction", "subtitle": "A Practical Guide from the Country's Foremost Relationship Expert", "year": 1999, "rating": 4.0, "source": "goodreads"},
-  {"id": "b59", "title": "The One with the Kiss Cam", "author": "Cindy Steel", "genre": "romance", "year": 2023, "rating": 2.0, "source": "goodreads"},
-  {"id": "b60", "title": "The Enchanted April", "author": "Elizabeth von Arnim", "genre": "classics", "year": 1922, "source": "goodreads"},
-  {"id": "b61", "title": "How to Do Nothing", "author": "Jenny Odell", "genre": "nonfiction", "subtitle": "Resisting the Attention Economy", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b62", "title": "Cozy Minimalist Home", "author": "Myquillyn Smith", "genre": "nonfiction", "subtitle": "More Style, Less Stuff", "year": 2018, "rating": 3.0, "source": "goodreads"},
-  {"id": "b63", "title": "I Capture the Castle", "author": "Dodie Smith", "genre": "classics", "year": 1948, "rating": 3.0, "source": "goodreads"},
-  {"id": "b64", "title": "Loose Lips", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #2", "year": 2025, "rating": 3.0, "source": "goodreads"},
-  {"id": "b65", "title": "The Vanderbeekers of 141st Street", "author": "Karina Yan Glaser", "genre": "middlegrade", "series": "The Vanderbeekers, #1", "year": 2017, "rating": 3.0, "source": "goodreads"},
-  {"id": "b66", "title": "Inspired", "author": "Rachel Held Evans", "genre": "nonfiction", "subtitle": "Slaying Giants, Walking on Water, and Loving the Bible Again", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b67", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 8", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b68", "title": "Luv, Amelia Luv, Nadia", "author": "Marissa Moss", "genre": "middlegrade", "series": "Amelia's Notebooks, #6", "year": 1999, "rating": 4.0, "source": "goodreads"},
-  {"id": "b69", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 7", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b70", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 6", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b71", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 5", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b72", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 4", "series": "The Unselected Journals of Emma M. Lion, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b73", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 3", "series": "The Unselected Journals of Emma M. Lion, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b74", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 2", "series": "The Unselected Journals of Emma M. Lion, #2", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b75", "title": "The Unselected Journals of Emma M. Lion, Vol. 1", "author": "Beth Brower", "genre": "historical", "series": "The Unselected Journals of Emma M. Lion, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b76", "title": "The Wood at Midwinter", "author": "Susanna Clarke", "genre": "fantasy", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b77", "title": "The Austen Escape", "author": "Katherine Reay", "genre": "fiction", "year": 2017, "rating": 2.0, "source": "goodreads"},
-  {"id": "b78", "title": "Kiki Kallira Conquers a Curse", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b79", "title": "The Mime Order", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b80", "title": "The Bone Season", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #1", "year": 2013, "rating": 4.0, "source": "goodreads"},
-  {"id": "b81", "title": "Kiki Kallira Breaks a Kingdom", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #1", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b82", "title": "The Tobacco Wives", "author": "Adele Myers", "genre": "historical", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b83", "title": "Playing the Witch Card", "author": "K.J. Dell'Antonia", "genre": "fantasy", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b85", "title": "Vanya and the Wild Hunt", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Vanya Vallen Adventures #1", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b86", "title": "Harry Potter and the Chamber of Secrets", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #2", "year": 1998, "rating": 4.0, "source": "goodreads"},
-  {"id": "b87", "title": "Tom Lake", "author": "Ann Patchett", "genre": "fiction", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b89", "title": "The Thursday Murder Club", "author": "Richard Osman", "genre": "mystery", "series": "Thursday Murder Club, #1", "year": 2020, "rating": 3.0, "source": "goodreads"},
-  {"id": "b90", "title": "You've Been Volunteered", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #2", "year": 2019, "rating": 3.0, "source": "goodreads"},
-  {"id": "b91", "title": "A Witch's Guide to Magical Innkeeping", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b92", "title": "Class Mom", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #1", "year": 2017, "rating": 4.0, "source": "goodreads"},
-  {"id": "b93", "title": "Payback's a Witch", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b94", "title": "The Ex Hex", "author": "Erin Sterling", "genre": "romance", "series": "The Ex Hex, #1", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b95", "title": "The Rainfall Market", "author": "You Yeong-Gwang", "genre": "fantasy", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b96", "title": "Matilda", "author": "Roald Dahl", "genre": "middlegrade", "year": 1988, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b97", "title": "Return to Sender", "author": "Vera Brosgol", "genre": "middlegrade", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b98", "title": "Miss Eliza's English Kitchen", "author": "Annabel Abbs", "genre": "historical", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b99", "title": "The Busy Body", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #1", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b100", "title": "A Psalm for the Wild-Built", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b101", "title": "A Daughter's Guide to Mothers and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "A Countess of Harleigh Mystery, #8", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b102", "title": "Vera Wong's Guide to Snooping [On a Dead Man]", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #2", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b103", "title": "The Hand on the Wall", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b104", "title": "The Vanishing Stair", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #2", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b105", "title": "The Baby Dragon Café", "author": "Aamna Qureshi", "genre": "fantasy", "series": "The Baby Dragon, #1", "year": 2025, "rating": 3.0, "source": "goodreads"},
-  {"id": "b106", "title": "Truly, Devious", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #1", "year": 2018, "rating": 3.0, "source": "goodreads"},
-  {"id": "b107", "title": "Shady Hollow", "author": "Juneau Black", "genre": "mystery", "series": "Shady Hollow, #1", "year": 2015, "rating": 3.0, "source": "goodreads"},
-  {"id": "b108", "title": "Rewitched", "author": "Lucy Jane Wood", "genre": "fantasy", "series": "Selcouth, #1", "year": 2024, "rating": 2.0, "source": "goodreads"},
-  {"id": "b109", "title": "George and Frances Roll the Dice", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery #7.5", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b110", "title": "Cotillion", "author": "Georgette Heyer", "genre": "romance", "year": 1953, "rating": 3.0, "source": "goodreads"},
-  {"id": "b111", "title": "The Rose Code", "author": "Kate Quinn", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b112", "title": "Silverborn", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Mystery of Morrigan Crow", "series": "Nevermoor, #4", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b113", "title": "Emily Wilde's Compendium of Lost Tales", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #3", "year": 2025, "rating": 4.0, "source": "goodreads"},
-  {"id": "b114", "title": "Anne of Green Gables", "author": "L.M. Montgomery", "genre": "classics", "series": "Anne of Green Gables, #1", "year": 1908, "rating": 4.0, "source": "goodreads"},
-  {"id": "b115", "title": "Wundersmith", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Calling of Morrigan Crow", "series": "Nevermoor, #2", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b116", "title": "The Bletchley Riddle", "author": "Ruta Sepetys", "genre": "middlegrade", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b117", "title": "The Wild Robot Protects", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #3", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b118", "title": "The Cosy Cottage in Ireland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #8", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b119", "title": "The Briar Club", "author": "Kate Quinn", "genre": "historical", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b120", "title": "Homecoming", "author": "Cynthia Voigt", "genre": "ya", "series": "Tillerman Cycle, #1", "year": 1981, "rating": 4.0, "source": "goodreads"},
-  {"id": "b121", "title": "The Wedding People", "author": "Alison Espach", "genre": "fiction", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b122", "title": "The Midnight Plan of the Repo Man", "author": "W. Bruce Cameron", "genre": "mystery", "series": "Ruddy McCann #1", "year": 2014, "rating": 4.0, "source": "goodreads"},
-  {"id": "b123", "title": "The Guernsey Literary and Potato Peel Pie Society", "author": "Mary Ann Shaffer", "genre": "historical", "year": 2008, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b124", "title": "The Bookish Life of Nina Hill", "author": "Abbi Waxman", "genre": "fiction", "year": 2019, "rating": 3.0, "source": "goodreads"},
-  {"id": "b125", "title": "The Time Traveller's Guide to Regency Britain", "author": "Ian Mortimer", "genre": "nonfiction", "subtitle": "The Immersive and Brilliant Historical Guide to Regency Britain", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b126", "title": "Is She Really Going Out with Him?", "author": "Sophie Cousens", "genre": "romance", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b127", "title": "The Pursuit of Love", "author": "Nancy Mitford", "genre": "classics", "series": "Radlett & Montdore, #1", "year": 1945, "rating": 4.0, "source": "goodreads"},
-  {"id": "b128", "title": "The Sicilian Inheritance", "author": "Jo Piazza", "genre": "mystery", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b129", "title": "How to Solve Your Own Murder", "author": "Kristen Perrin", "genre": "mystery", "series": "Castle Knoll Files, #1", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b130", "title": "Assassins Anonymous", "author": "Rob Hart", "genre": "mystery", "series": "Assassins Anonymous, #1", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b131", "title": "A Rather Lovely Inheritance", "author": "C.A. Belmond", "genre": "mystery", "series": "Penny Nichols, #1", "year": 2007, "rating": 3.0, "source": "goodreads"},
-  {"id": "b132", "title": "Pride and Prejudice", "author": "Jane Austen", "genre": "classics", "year": 1813, "rating": 4.0, "source": "goodreads"},
-  {"id": "b134", "title": "Time Travel for Love and Profit", "author": "Sarah Lariviere", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b136", "title": "Amari and the Despicable Wonders", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #3", "year": 2024, "rating": 2.0, "source": "goodreads"},
-  {"id": "b137", "title": "The Brothers Hawthorne", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #4", "year": 2023, "rating": 2.0, "source": "goodreads"},
-  {"id": "b138", "title": "The Bookshop on the Corner", "author": "Jenny Colgan", "genre": "romance", "series": "Kirrinfief, #1", "year": 2016, "rating": 3.0, "source": "goodreads"},
-  {"id": "b139", "title": "Amari and the Great Game", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #2", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b140", "title": "Amari and the Night Brothers", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #1", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b141", "title": "The Wild Robot Escapes", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #2", "year": 2018, "rating": 4.0, "source": "goodreads"},
-  {"id": "b142", "title": "Chocolate Chip Cookie Murder", "author": "Joanne Fluke", "genre": "mystery", "series": "Hannah Swensen, #1", "year": 2000, "rating": 3.0, "source": "goodreads"},
-  {"id": "b143", "title": "The Lightning Thief", "author": "Rick Riordan", "genre": "middlegrade", "series": "Percy Jackson and the Olympians, #1", "year": 2005, "rating": 2.0, "source": "goodreads"},
-  {"id": "b144", "title": "The Wild Robot", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b145", "title": "Death Comes to Pemberley", "author": "P.D. James", "genre": "mystery", "year": 2011, "rating": 2.0, "source": "goodreads"},
-  {"id": "b146", "title": "Longbourn", "author": "Jo Baker", "genre": "historical", "year": 2013, "rating": 3.0, "source": "goodreads"},
-  {"id": "b147", "title": "Tuesdays at the Castle", "author": "Jessica Day George", "genre": "middlegrade", "series": "Castle Glower, #1", "year": 2011, "rating": 4.0, "source": "goodreads"},
-  {"id": "b148", "title": "The Happy Life of Isadora Bentley", "author": "Courtney Walsh", "genre": "inspirational", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b149", "title": "Miss Austen", "author": "Gill Hornby", "genre": "historical", "series": "Austen Family, #1", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b150", "title": "Alone", "author": "Megan E. Freeman", "genre": "middlegrade", "series": "Alone #1", "year": 2021, "rating": 2.0, "source": "goodreads"},
-  {"id": "b151", "title": "Legends & Lattes", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #1", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b152", "title": "Spindle's End", "author": "Robin McKinley", "genre": "fantasy", "year": 2000, "rating": 4.0, "source": "goodreads"},
-  {"id": "b153", "title": "The 7½ Deaths of Evelyn Hardcastle", "author": "Stuart Turton", "genre": "mystery", "year": 2018, "rating": 4.0, "source": "goodreads"},
-  {"id": "b154", "title": "The Little Teashop in Tokyo", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #6", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b155", "title": "The Summer of Yes", "author": "Courtney Walsh", "genre": "inspirational", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b156", "title": "An Art Lover's Guide to Paris and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #7", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b157", "title": "Everyone on This Train Is a Suspect", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #2", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b158", "title": "Everyone in My Family Has Killed Someone", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b159", "title": "A Good Girl's Guide to Murder", "author": "Holly Jackson", "genre": "ya", "series": "A Good Girl's Guide to Murder, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b160", "title": "The Secret Cove in Croatia", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #5", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b161", "title": "The Northern Lights Lodge", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #4", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b162", "title": "The Hapless Milliner", "author": "Jessica Bull", "genre": "mystery", "series": "Miss Austen Investigates, #1", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b163", "title": "Loyally, Luke", "author": "Pepper Basham", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b164", "title": "A Lady's Guide to Marvels and Misadventure", "author": "Angela Bell", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads"},
-  {"id": "b166", "title": "Emily Wilde’s Map of the Otherlands", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #2", "year": 2024, "rating": 3.0, "source": "goodreads"},
-  {"id": "b167", "title": "Bookshops & Bonedust", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #0", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b168", "title": "Positively, Penelope", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #2", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b169", "title": "Remarkably Bright Creatures", "author": "Shelby Van Pelt", "genre": "fiction", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b170", "title": "The Last Bookwanderer", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #6", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b171", "title": "Earl Grafton and the Traitor", "author": "Angela E. Johnson", "genre": "romance", "series": "Fernley Family #1", "year": 2022, "rating": 3.0, "source": "goodreads"},
-  {"id": "b172", "title": "Authentically, Izzy", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #1", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b173", "title": "Vera Wong's Unsolicited Advice for Murderers", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b176", "title": "Howl's Moving Castle", "author": "Diana Wynne Jones", "genre": "middlegrade", "series": "Howl's Moving Castle, #1", "year": 1986, "rating": 3.0, "source": "goodreads"},
-  {"id": "b177", "title": "The Heir", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #4", "year": 2015, "rating": 2.0, "source": "goodreads"},
-  {"id": "b178", "title": "The Dressmaker", "author": "Kate Alcott", "genre": "historical", "year": 2012, "rating": 3.0, "source": "goodreads"},
-  {"id": "b179", "title": "The One", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #3", "year": 2014, "rating": 2.0, "source": "goodreads"},
-  {"id": "b180", "title": "The Elite", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #2", "year": 2013, "rating": 3.0, "source": "goodreads"},
-  {"id": "b181", "title": "The Selection", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #1", "year": 2012, "rating": 4.0, "source": "goodreads"},
-  {"id": "b182", "title": "The Housekeepers", "author": "Alex Hay", "genre": "historical", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b183", "title": "The Secret of White Stone Gate", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #2", "year": 2020, "rating": 2.0, "source": "goodreads"},
-  {"id": "b184", "title": "The Christmas Bookshop", "author": "Jenny Colgan", "genre": "romance", "series": "The Christmas Bookshop, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b185", "title": "Gilded Girl", "author": "Pamela M. Kelley", "genre": "historical", "year": 2020, "rating": 3.0, "source": "goodreads"},
-  {"id": "b186", "title": "In the Company of Witches", "author": "Auralee Wallace", "genre": "mystery", "series": "Evenfall Witches B&B, #1", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b187", "title": "The Christmas Castle in Scotland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #9", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b188", "title": "The School for Good and Evil", "author": "Soman Chainani", "genre": "middlegrade", "series": "The School for Good and Evil, #1", "year": 2013, "rating": 2.0, "source": "goodreads"},
-  {"id": "b189", "title": "The Mystery of Black Hollow Lane", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b191", "title": "The Roommate Pact", "author": "Allison Ashley", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads"},
-  {"id": "b192", "title": "The Treehouse Library", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co.,#5", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b193", "title": "The Little Paris Patisserie", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #3", "year": 2018, "rating": 2.0, "source": "goodreads"},
-  {"id": "b194", "title": "The Little Brooklyn Bakery", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #2", "year": 2018, "rating": 3.0, "source": "goodreads"},
-  {"id": "b195", "title": "The Little Café in Copenhagen", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #1", "year": 2018, "rating": 3.0, "source": "goodreads"},
-  {"id": "b196", "title": "Emily Wilde's Encyclopaedia of Faeries", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #1", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b197", "title": "A Lady's Guide to Etiquette and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #1", "year": 2018, "rating": 4.0, "source": "goodreads"},
-  {"id": "b198", "title": "The Very Secret Society of Irregular Witches", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b199", "title": "A Newlywed’s Guide to Fortune and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #6", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b200", "title": "Flowers for Algernon", "author": "Daniel Keyes", "genre": "classics", "year": 1966, "source": "goodreads"},
-  {"id": "b201", "title": "Ten Thousand Stitches", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b202", "title": "Half a Soul", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b203", "title": "The Hawthorne Legacy", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #2", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b204", "title": "The Final Gambit", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #3", "year": 2022, "rating": 4.0, "source": "goodreads"},
-  {"id": "b205", "title": "Witchlings", "author": "Claribel A. Ortega", "genre": "middlegrade", "series": "Witchlings, #1", "year": 2022, "rating": 3.0, "source": "goodreads"},
-  {"id": "b206", "title": "Bringing Down the Duke", "author": "Evie Dunmore", "genre": "romance", "series": "A League of Extraordinary Women, #1", "year": 2019, "rating": 2.0, "source": "goodreads"},
-  {"id": "b207", "title": "The Troubled Girls of Dragomir Academy", "author": "Anne Ursu", "genre": "middlegrade", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b208", "title": "A Bride’s Guide to Marriage and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #5", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b209", "title": "The Inheritance Games", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #1", "year": 2020, "rating": 3.0, "source": "goodreads"},
-  {"id": "b210", "title": "All My Knotted-Up Life", "author": "Beth Moore", "genre": "nonfiction", "subtitle": "A Memoir", "year": 2023, "rating": 4.0, "source": "goodreads"},
-  {"id": "b215", "title": "The Mysterious Benedict Society", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #1", "year": 2007, "rating": 3.0, "source": "goodreads"},
-  {"id": "b216", "title": "The Book Smugglers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #4", "year": 2021, "rating": 3.0, "source": "goodreads"},
-  {"id": "b218", "title": "A Pinch of Magic", "author": "Michelle Harrison", "genre": "middlegrade", "series": "A Pinch of Magic, #1", "year": 2019, "rating": 3.0, "source": "goodreads"},
-  {"id": "b219", "title": "The Sum of All Kisses", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #3", "year": 2013, "rating": 3.0, "source": "goodreads"},
-  {"id": "b220", "title": "A Night Like This", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #2", "year": 2012, "rating": 1.0, "source": "goodreads"},
-  {"id": "b221", "title": "Just Like Heaven", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #1", "year": 2011, "rating": 3.0, "source": "goodreads"},
-  {"id": "b222", "title": "Hollowpox", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Hunt for Morrigan Crow", "series": "Nevermoor, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b223", "title": "Nevermoor", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Trials of Morrigan Crow", "series": "Nevermoor, #1", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b224", "title": "Majesty", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #2", "year": 2020, "rating": 2.0, "source": "goodreads"},
-  {"id": "b225", "title": "Austenland", "author": "Shannon Hale", "genre": "romance", "series": "Austenland, #1", "year": 2007, "rating": 2.0, "source": "goodreads"},
-  {"id": "b226", "title": "American Royals", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #1", "year": 2019, "rating": 3.0, "source": "goodreads"},
-  {"id": "b231", "title": "The Year of Living Danishly", "author": "Helen Russell", "genre": "nonfiction", "subtitle": "Uncovering the Secrets of the World's Happiest Country", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b232", "title": "After Evangelicalism", "author": "David P. Gushee", "genre": "nonfiction", "subtitle": "The Path to a New Christianity", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b233", "title": "Tilly and the Map of Stories", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b234", "title": "Tilly and the Lost Fairytales", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #2", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b235", "title": "Tilly and the Bookwanderers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #1", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b236", "title": "The Little Bookshop on the Seine", "author": "Rebecca Raisin", "genre": "romance", "series": "The Little Paris Collection, #1; The Bookshop, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b237", "title": "The Gentleman and the Thief", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b239", "title": "The Lady and the Highwayman", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #1", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b240", "title": "A Fiancée's Guide to First Wives and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b241", "title": "A Lady's Guide to Mischief and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b242", "title": "Jesus and John Wayne", "author": "Kristin Kobes Du Mez", "genre": "nonfiction", "subtitle": "How White Evangelicals Corrupted a Faith and Fractured a Nation", "year": 2020, "rating": 3.0, "source": "goodreads"},
-  {"id": "b243", "title": "A Lady's Guide to Gossip and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #2", "year": 2019, "rating": 3.0, "source": "goodreads"},
-  {"id": "b244", "title": "First Comes Scandal", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #4", "year": 2020, "rating": 2.0, "source": "goodreads"},
-  {"id": "b245", "title": "The Other Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #3", "year": 2018, "rating": 3.0, "source": "goodreads"},
-  {"id": "b246", "title": "Twilight", "author": "Stephenie Meyer", "genre": "ya", "series": "The Twilight Saga, #1", "year": 2005, "source": "goodreads"},
-  {"id": "b247", "title": "When Zachary Beaver Came to Town", "author": "Kimberly Willis Holt", "genre": "middlegrade", "year": 1999, "source": "goodreads"},
-  {"id": "b248", "title": "The Girl with the Make-Believe Husband", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #2", "year": 2017, "rating": 3.0, "source": "goodreads"},
-  {"id": "b249", "title": "Because of Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b250", "title": "Flip's Fantastic Journal", "author": "Angelo DeCesare", "genre": "middlegrade", "year": 1999, "source": "goodreads"},
-  {"id": "b251", "title": "All New Square Foot Gardening", "author": "Mel Bartholomew", "genre": "nonfiction", "year": 1981, "rating": 4.0, "source": "goodreads"},
-  {"id": "b252", "title": "The Black Reckoning", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #3", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b253", "title": "The House in the Cerulean Sea", "author": "T.J. Klune", "genre": "fantasy", "series": "Cerulean Chronicles, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b254", "title": "Angels & Demons", "author": "Dan Brown", "genre": "mystery", "series": "Robert Langdon, #1", "year": 2000, "source": "goodreads"},
-  {"id": "b255", "title": "Harry Potter and the Cursed Child", "author": "John Tiffany", "genre": "middlegrade", "series": "Harry Potter, #8", "year": 2016, "rating": 3.0, "source": "goodreads"},
-  {"id": "b256", "title": "The Other Bennet Sister", "author": "Janice Hadlow", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b257", "title": "The Westing Game", "author": "Ellen Raskin", "genre": "middlegrade", "year": 1978, "source": "goodreads"},
-  {"id": "b258", "title": "The Fire Chronicle", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #2", "year": 2012, "rating": 4.0, "source": "goodreads"},
-  {"id": "b259", "title": "The Emerald Atlas", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #1", "year": 2011, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b260", "title": "The Jane Austen Project", "author": "Kathleen A. Flynn", "genre": "fantasy", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b261", "title": "The Jane Austen Society", "author": "Natalie Jenner", "genre": "historical", "series": "Jane Austen Society, #1", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b262", "title": "Mind the Gap, Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #3", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b263", "title": "Uncomfortable Conversations With a Black Man", "author": "Emmanuel Acho", "genre": "nonfiction", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b264", "title": "The Twelve Days of Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #2", "year": 2016, "rating": 3.0, "source": "goodreads"},
-  {"id": "b265", "title": "On the Way to the Wedding", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #8", "year": 2006, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b267", "title": "Stamped", "author": "Jason Reynolds", "genre": "nonfiction", "subtitle": "Racism, Antiracism, and You", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b268", "title": "Think Again", "author": "Adam Grant", "genre": "nonfiction", "subtitle": "The Power of Knowing What You Don't Know", "year": 2021, "rating": 4.0, "source": "goodreads"},
-  {"id": "b269", "title": "When He Was Wicked", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #6", "year": 2004, "rating": 4.0, "source": "goodreads"},
-  {"id": "b270", "title": "It's in His Kiss", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #7", "year": 2005, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b271", "title": "Rich People Problems", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #3", "year": 2017, "rating": 4.0, "source": "goodreads"},
-  {"id": "b272", "title": "China Rich Girlfriend", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b273", "title": "Crazy Rich Asians", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #1", "year": 2013, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b274", "title": "The Ravenmaster", "author": "Christopher Skaife", "genre": "nonfiction", "subtitle": "My Life with the Ravens at the Tower of London", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b275", "title": "Becoming", "author": "Michelle Obama", "genre": "nonfiction", "year": 2018, "rating": 4.0, "source": "goodreads"},
-  {"id": "b276", "title": "My Beloved World", "author": "Sonia Sotomayor", "genre": "nonfiction", "year": 2013, "rating": 4.0, "source": "goodreads"},
-  {"id": "b277", "title": "To Sir Phillip, With Love", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #5", "year": 2003, "rating": 3.0, "source": "goodreads"},
-  {"id": "b278", "title": "Romancing Mister Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #4", "year": 2002, "rating": 4.0, "source": "goodreads"},
-  {"id": "b279", "title": "An Offer From a Gentleman", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #3", "year": 2001, "rating": 4.0, "source": "goodreads"},
-  {"id": "b280", "title": "The Viscount Who Loved Me", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #2", "year": 2000, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b281", "title": "The Duke and I", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #1", "year": 2000, "rating": 4.0, "source": "goodreads"},
-  {"id": "b282", "title": "The Ballad of Songbirds and Snakes", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games, #0", "year": 2020, "rating": 4.0, "source": "goodreads"},
-  {"id": "b284", "title": "P.S. I Still Love You", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #2", "year": 2015, "rating": 4.0, "source": "goodreads"},
-  {"id": "b285", "title": "To All the Boys I've Loved Before", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #1", "year": 2014, "rating": 3.0, "source": "goodreads"},
-  {"id": "b286", "title": "Is Everyone Hanging Out Without Me?", "author": "Mindy Kaling", "genre": "nonfiction", "series": "And Other Concerns", "year": 2011, "rating": 3.0, "source": "goodreads"},
-  {"id": "b287", "title": "Born a Crime", "author": "Trevor Noah", "genre": "nonfiction", "subtitle": "Stories from a South African Childhood", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b289", "title": "St. Francis Society for Wayward Pets", "author": "Annie England Noblin", "genre": "fiction", "year": 2020, "rating": 3.0, "source": "goodreads"},
-  {"id": "b290", "title": "Talking to Strangers", "author": "Malcolm Gladwell", "genre": "nonfiction", "subtitle": "What We Should Know About the People We Don't Know", "year": 2019, "rating": 4.0, "source": "goodreads"},
-  {"id": "b291", "title": "The Princess", "author": "Lori Wick", "genre": "inspirational", "year": 1999, "source": "goodreads"},
-  {"id": "b292", "title": "Eleanor Oliphant Is Completely Fine", "author": "Gail Honeyman", "genre": "fiction", "year": 2017, "rating": 4.0, "source": "goodreads"},
-  {"id": "b293", "title": "Belgravia", "author": "Julian Fellowes", "genre": "historical", "year": 2016, "rating": 4.0, "source": "goodreads"},
-  {"id": "b295", "title": "The Chemist", "author": "Stephenie Meyer", "genre": "mystery", "year": 2016, "rating": 4.0, "source": "goodreads"},
-  {"id": "b296", "title": "The Kindled Flame", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #2", "year": 1994, "rating": 3.0, "source": "goodreads"},
-  {"id": "b297", "title": "The Tempering Blaze", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #3", "year": 1995, "rating": 3.0, "source": "goodreads"},
-  {"id": "b298", "title": "The Gathering Dawn", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #1", "year": 1994, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b299", "title": "The Potluck Club", "author": "Linda Evans Shepherd", "genre": "inspirational", "series": "The Potluck Club #1", "year": 2005, "source": "goodreads"},
-  {"id": "b300", "title": "The Lion, the Witch and the Wardrobe", "author": "C.S. Lewis", "genre": "middlegrade", "series": "Chronicles of Narnia, #1", "year": 1950, "rating": 2.0, "source": "goodreads"},
-  {"id": "b301", "title": "Divergent", "author": "Veronica Roth", "genre": "ya", "series": "Divergent, #1", "year": 2011, "rating": 3.0, "source": "goodreads"},
-  {"id": "b302", "title": "The Giver", "author": "Lois Lowry", "genre": "middlegrade", "series": "Giver, #1", "year": 1993, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b303", "title": "Harry Potter and the Deathly Hallows", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #7", "year": 2007, "rating": 5.0, "staffPick": true, "source": "goodreads"},
-  {"id": "b304", "title": "Lord of the Flies", "author": "William Golding", "genre": "classics", "year": 1954, "rating": 3.0, "source": "goodreads"},
-  {"id": "b305", "title": "Harry Potter and the Sorcerer's Stone", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #1", "year": 1997, "rating": 5.0, "staffPick": true, "source": "goodreads"},
+  {"id": "b1", "title": "The House Witch", "author": "Delemhach", "genre": "fantasy", "series": "The House Witch, #1", "year": 2022, "shelf": "currently-reading", "source": "goodreads", "tags": ["cozy", "magic"]},
+  {"id": "b2", "title": "The Marlow Murder Club", "author": "Robert Thorogood", "genre": "mystery", "series": "Marlow Murder Club, #1", "year": 2021, "rating": 4.5, "source": "goodreads", "tags": ["cozy", "funny", "mystery"]},
+  {"id": "b3", "title": "The Goblin Emperor", "author": "Katherine Addison", "genre": "fantasy", "series": "The Chronicles of Osreth, #1", "year": 2014, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["magic", "royals"]},
+  {"id": "b4", "title": "Getting Past Your Past", "author": "Francine Shapiro", "genre": "nonfiction", "subtitle": "Take Control of Your Life with Self-Help Techniques from EMDR Therapy", "year": 2012, "shelf": "currently-reading", "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b5", "title": "The Curse of the Pharaohs", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #2", "year": 1981, "source": "goodreads", "tags": ["adventure", "historical", "mystery", "spooky"]},
+  {"id": "b6", "title": "Crocodile on the Sandbank", "author": "Elizabeth Peters", "genre": "mystery", "series": "Amelia Peabody, #1", "year": 1975, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "animals", "historical", "mystery"]},
+  {"id": "b7", "title": "Batcat", "author": "Meggie Ramm", "genre": "middlegrade", "subtitle": "The Ghostly Guest", "series": "Batcat, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "animals", "funny", "spooky"]},
+  {"id": "b8", "title": "A Most Agreeable Murder", "author": "Julia Seales", "genre": "mystery", "series": "Beatrice Steele, #1", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b9", "title": "The Swifts", "author": "Beth Lincoln", "genre": "middlegrade", "subtitle": "A Dictionary of Scoundrels", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "funny", "mystery"]},
+  {"id": "b10", "title": "Agnes Aubert's Mystical Cat Shelter", "author": "Heather Fawcett", "genre": "fantasy", "year": 2026, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["animals", "cozy", "magic"]},
+  {"id": "b11", "title": "The Highland Falcon Thief", "author": "M.G. Leonard", "genre": "middlegrade", "series": "Adventures on Trains, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "animals", "historical", "mystery"]},
+  {"id": "b12", "title": "The Personal Librarian", "author": "Marie Benedict", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["books", "historical"]},
+  {"id": "b13", "title": "The Secret of Platform 13", "author": "Eva Ibbotson", "genre": "middlegrade", "year": 1994, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "mystery"]},
+  {"id": "b14", "title": "A Prayer for the Crown-Shy", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #2", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["animals", "cozy", "magic", "royals", "scifi"]},
+  {"id": "b15", "title": "The Reading List", "author": "Sara Nisha Adams", "genre": "fiction", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["books", "cozy", "heartfelt"]},
+  {"id": "b16", "title": "In This Mountain", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #7", "year": 2002, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b17", "title": "The Golden Spoon", "author": "Jessa Maxwell", "genre": "mystery", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["food", "mystery"]},
+  {"id": "b18", "title": "The Blue Castle", "author": "L.M. Montgomery", "genre": "classics", "year": 1926, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["classic", "cozy", "heartfelt", "romance"]},
+  {"id": "b19", "title": "The Wishing Game", "author": "Meg Shaffer", "genre": "fiction", "year": 2023, "rating": 2.0, "source": "goodreads", "tags": ["books", "cozy", "heartfelt"]},
+  {"id": "b22", "title": "A Common Life", "author": "Jan Karon", "genre": "inspirational", "subtitle": "The Wedding Story", "series": "Mitford Years, #6", "year": 2001, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b23", "title": "Project Hail Mary", "author": "Andy Weir", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "scifi"]},
+  {"id": "b24", "title": "Everyone in This Bank Is a Thief", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #4", "year": 2026, "rating": 4.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b25", "title": "A New Song", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #5", "year": 1999, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b26", "title": "Out to Canaan", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #4", "year": 1997, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b27", "title": "Yesteryear", "author": "Caro Claire Burke", "genre": "fiction", "year": 2026, "rating": 4.0, "source": "goodreads", "tags": ["heartfelt"]},
+  {"id": "b28", "title": "These High, Green Hills", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #3", "year": 1996, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b29", "title": "Brigands & Breadknives", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #2", "year": 2025, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "cozy", "food", "magic"]},
+  {"id": "b30", "title": "Finlay Donovan Is Killing It", "author": "Elle Cosimano", "genre": "mystery", "series": "Finlay Donovan, #1", "year": 2021, "rating": 2.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b31", "title": "Heir of Fire", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #3", "year": 2014, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "romance", "royals"]},
+  {"id": "b32", "title": "Happy Place", "author": "Emily Henry", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["funny", "romance"]},
+  {"id": "b34", "title": "Dry", "author": "Neal Shusterman", "genre": "ya", "year": 2018, "rating": 4.0, "source": "goodreads", "tags": ["scifi"]},
+  {"id": "b35", "title": "At Home in Mitford", "author": "Jan Karon", "genre": "inspirational", "series": "Mitford Years, #1", "year": 1994, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt"]},
+  {"id": "b36", "title": "Theo of Golden", "author": "Allen Levi", "genre": "inspirational", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["faith", "family", "heartfelt"]},
+  {"id": "b37", "title": "The PLAN", "author": "Kendra Adachi", "genre": "nonfiction", "subtitle": "Manage Your Time Like a Lazy Genius", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b38", "title": "The Assassin's Blade", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #0.1-0.5", "year": 2014, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "romance", "royals"]},
+  {"id": "b39", "title": "How to Raise an Adult", "author": "Julie Lythcott-Haims", "genre": "nonfiction", "subtitle": "Break Free of the Overparenting Trap and Prepare Your Kid for Success", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["family", "truestory"]},
+  {"id": "b40", "title": "The Music Shop", "author": "Rachel Joyce", "genre": "fiction", "year": 2017, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "heartfelt"]},
+  {"id": "b41", "title": "Crown of Midnight", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #2", "year": 2013, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "romance", "royals"]},
+  {"id": "b42", "title": "Miss Benson's Beetle", "author": "Rachel Joyce", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "animals", "heartfelt", "historical"]},
+  {"id": "b43", "title": "The Happiness Project", "author": "Gretchen Rubin", "genre": "nonfiction", "year": 2009, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b44", "title": "Throne of Glass", "author": "Sarah J. Maas", "genre": "ya", "series": "Throne of Glass, #1", "year": 2012, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "romance", "royals"]},
+  {"id": "b50", "title": "The Invisible Life of Addie LaRue", "author": "V.E. Schwab", "genre": "fantasy", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["heartfelt", "magic"]},
+  {"id": "b52", "title": "Reconnected", "author": "Carlos Whittaker", "genre": "nonfiction", "subtitle": "How 7 Screen-Free Weeks with Monks and Amish Farmers Helped Me Recover the Lost Art of Being Human", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["faith", "truestory"]},
+  {"id": "b53", "title": "The Dark Mirror", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #5", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "scifi", "spooky"]},
+  {"id": "b54", "title": "The Mask Falling", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #4", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "scifi", "spooky"]},
+  {"id": "b55", "title": "Miss Pettigrew Lives for a Day", "author": "Winifred Watson", "genre": "classics", "year": 1938, "rating": 4.0, "source": "goodreads", "tags": ["classic", "funny", "historical"]},
+  {"id": "b56", "title": "The Song Rising", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #3", "year": 2017, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "scifi", "spooky"]},
+  {"id": "b57", "title": "From Bad to Cursed", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #2", "year": 2022, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "magic", "romance"]},
+  {"id": "b58", "title": "The Seven Principles for Making Marriage Work", "author": "John M. Gottman", "genre": "nonfiction", "subtitle": "A Practical Guide from the Country's Foremost Relationship Expert", "year": 1999, "rating": 4.0, "source": "goodreads", "tags": ["family", "truestory"]},
+  {"id": "b59", "title": "The One with the Kiss Cam", "author": "Cindy Steel", "genre": "romance", "year": 2023, "rating": 2.0, "source": "goodreads", "tags": ["funny", "romance", "royals"]},
+  {"id": "b60", "title": "The Enchanted April", "author": "Elizabeth von Arnim", "genre": "classics", "year": 1922, "source": "goodreads", "tags": ["classic", "cozy", "historical"]},
+  {"id": "b61", "title": "How to Do Nothing", "author": "Jenny Odell", "genre": "nonfiction", "subtitle": "Resisting the Attention Economy", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b62", "title": "Cozy Minimalist Home", "author": "Myquillyn Smith", "genre": "nonfiction", "subtitle": "More Style, Less Stuff", "year": 2018, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "truestory"]},
+  {"id": "b63", "title": "I Capture the Castle", "author": "Dodie Smith", "genre": "classics", "year": 1948, "rating": 3.0, "source": "goodreads", "tags": ["classic", "funny", "historical"]},
+  {"id": "b64", "title": "Loose Lips", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #2", "year": 2025, "rating": 3.0, "source": "goodreads", "tags": ["books", "funny", "mystery"]},
+  {"id": "b65", "title": "The Vanderbeekers of 141st Street", "author": "Karina Yan Glaser", "genre": "middlegrade", "series": "The Vanderbeekers, #1", "year": 2017, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "cozy", "family", "heartfelt"]},
+  {"id": "b66", "title": "Inspired", "author": "Rachel Held Evans", "genre": "nonfiction", "subtitle": "Slaying Giants, Walking on Water, and Loving the Bible Again", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["faith", "truestory"]},
+  {"id": "b67", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 8", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b68", "title": "Luv, Amelia Luv, Nadia", "author": "Marissa Moss", "genre": "middlegrade", "series": "Amelia's Notebooks, #6", "year": 1999, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "funny"]},
+  {"id": "b69", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 7", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b70", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 6", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b71", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 5", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b72", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 4", "series": "The Unselected Journals of Emma M. Lion, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b73", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 3", "series": "The Unselected Journals of Emma M. Lion, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b74", "title": "The Unselected Journals of Emma M. Lion", "author": "Beth Brower", "genre": "historical", "subtitle": "Vol. 2", "series": "The Unselected Journals of Emma M. Lion, #2", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b75", "title": "The Unselected Journals of Emma M. Lion, Vol. 1", "author": "Beth Brower", "genre": "historical", "series": "The Unselected Journals of Emma M. Lion, #1", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical"]},
+  {"id": "b76", "title": "The Wood at Midwinter", "author": "Susanna Clarke", "genre": "fantasy", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["holiday", "magic", "spooky"]},
+  {"id": "b77", "title": "The Austen Escape", "author": "Katherine Reay", "genre": "fiction", "year": 2017, "rating": 2.0, "source": "goodreads", "tags": ["books", "heartfelt", "historical", "romance"]},
+  {"id": "b78", "title": "Kiki Kallira Conquers a Curse", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #2", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "family", "magic"]},
+  {"id": "b79", "title": "The Mime Order", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #2", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "scifi", "spooky"]},
+  {"id": "b80", "title": "The Bone Season", "author": "Samantha Shannon", "genre": "fantasy", "series": "The Bone Season, #1", "year": 2013, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "scifi", "spooky"]},
+  {"id": "b81", "title": "Kiki Kallira Breaks a Kingdom", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Kiki Kallira, #1", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "family", "magic", "royals"]},
+  {"id": "b82", "title": "The Tobacco Wives", "author": "Adele Myers", "genre": "historical", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["historical"]},
+  {"id": "b83", "title": "Playing the Witch Card", "author": "K.J. Dell'Antonia", "genre": "fantasy", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "magic", "romance"]},
+  {"id": "b85", "title": "Vanya and the Wild Hunt", "author": "Sangu Mandanna", "genre": "middlegrade", "series": "Vanya Vallen Adventures #1", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b86", "title": "Harry Potter and the Chamber of Secrets", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #2", "year": 1998, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b87", "title": "Tom Lake", "author": "Ann Patchett", "genre": "fiction", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["family", "heartfelt"]},
+  {"id": "b89", "title": "The Thursday Murder Club", "author": "Richard Osman", "genre": "mystery", "series": "Thursday Murder Club, #1", "year": 2020, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "funny", "mystery"]},
+  {"id": "b90", "title": "You've Been Volunteered", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #2", "year": 2019, "rating": 3.0, "source": "goodreads", "tags": ["family", "funny", "heartfelt", "school"]},
+  {"id": "b91", "title": "A Witch's Guide to Magical Innkeeping", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "food", "magic"]},
+  {"id": "b92", "title": "Class Mom", "author": "Laurie Gelman", "genre": "fiction", "series": "Class Mom, #1", "year": 2017, "rating": 4.0, "source": "goodreads", "tags": ["family", "funny", "heartfelt", "school"]},
+  {"id": "b93", "title": "Payback's a Witch", "author": "Lana Harper", "genre": "romance", "series": "The Witches of Thistle Grove, #1", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "magic", "romance"]},
+  {"id": "b94", "title": "The Ex Hex", "author": "Erin Sterling", "genre": "romance", "series": "The Ex Hex, #1", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "funny", "magic", "romance"]},
+  {"id": "b95", "title": "The Rainfall Market", "author": "You Yeong-Gwang", "genre": "fantasy", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "food", "magic"]},
+  {"id": "b96", "title": "Matilda", "author": "Roald Dahl", "genre": "middlegrade", "year": 1988, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "family", "funny", "school"]},
+  {"id": "b97", "title": "Return to Sender", "author": "Vera Brosgol", "genre": "middlegrade", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "heartfelt"]},
+  {"id": "b98", "title": "Miss Eliza's English Kitchen", "author": "Annabel Abbs", "genre": "historical", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["food", "historical"]},
+  {"id": "b99", "title": "The Busy Body", "author": "Kemper Donovan", "genre": "mystery", "series": "Ghostwriter Mystery, #1", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["books", "funny", "mystery"]},
+  {"id": "b100", "title": "A Psalm for the Wild-Built", "author": "Becky Chambers", "genre": "fantasy", "series": "Monk & Robot, #1", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["animals", "cozy", "magic", "scifi"]},
+  {"id": "b101", "title": "A Daughter's Guide to Mothers and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "A Countess of Harleigh Mystery, #8", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "family", "historical", "mystery"]},
+  {"id": "b102", "title": "Vera Wong's Guide to Snooping [On a Dead Man]", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #2", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "funny", "mystery"]},
+  {"id": "b103", "title": "The Hand on the Wall", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #3", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["mystery", "school", "spooky"]},
+  {"id": "b104", "title": "The Vanishing Stair", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #2", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["mystery", "school", "spooky"]},
+  {"id": "b105", "title": "The Baby Dragon Café", "author": "Aamna Qureshi", "genre": "fantasy", "series": "The Baby Dragon, #1", "year": 2025, "rating": 3.0, "source": "goodreads", "tags": ["animals", "cozy", "food", "magic", "romance"]},
+  {"id": "b106", "title": "Truly, Devious", "author": "Maureen Johnson", "genre": "ya", "series": "Truly Devious, #1", "year": 2018, "rating": 3.0, "source": "goodreads", "tags": ["mystery", "school", "spooky"]},
+  {"id": "b107", "title": "Shady Hollow", "author": "Juneau Black", "genre": "mystery", "series": "Shady Hollow, #1", "year": 2015, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "mystery", "spooky"]},
+  {"id": "b108", "title": "Rewitched", "author": "Lucy Jane Wood", "genre": "fantasy", "series": "Selcouth, #1", "year": 2024, "rating": 2.0, "source": "goodreads", "tags": ["cozy", "magic", "romance"]},
+  {"id": "b109", "title": "George and Frances Roll the Dice", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery #7.5", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b110", "title": "Cotillion", "author": "Georgette Heyer", "genre": "romance", "year": 1953, "rating": 3.0, "source": "goodreads", "tags": ["funny", "historical", "romance"]},
+  {"id": "b111", "title": "The Rose Code", "author": "Kate Quinn", "genre": "historical", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["historical", "mystery"]},
+  {"id": "b112", "title": "Silverborn", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Mystery of Morrigan Crow", "series": "Nevermoor, #4", "year": 2025, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b113", "title": "Emily Wilde's Compendium of Lost Tales", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #3", "year": 2025, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b114", "title": "Anne of Green Gables", "author": "L.M. Montgomery", "genre": "classics", "series": "Anne of Green Gables, #1", "year": 1908, "rating": 4.0, "source": "goodreads", "tags": ["classic", "cozy", "heartfelt"]},
+  {"id": "b115", "title": "Wundersmith", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Calling of Morrigan Crow", "series": "Nevermoor, #2", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b116", "title": "The Bletchley Riddle", "author": "Ruta Sepetys", "genre": "middlegrade", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "historical", "mystery"]},
+  {"id": "b117", "title": "The Wild Robot Protects", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #3", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "animals", "heartfelt", "scifi"]},
+  {"id": "b118", "title": "The Cosy Cottage in Ireland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #8", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "romance"]},
+  {"id": "b119", "title": "The Briar Club", "author": "Kate Quinn", "genre": "historical", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["heartfelt", "historical", "romance"]},
+  {"id": "b120", "title": "Homecoming", "author": "Cynthia Voigt", "genre": "ya", "series": "Tillerman Cycle, #1", "year": 1981, "rating": 4.0, "source": "goodreads", "tags": ["family", "heartfelt"]},
+  {"id": "b121", "title": "The Wedding People", "author": "Alison Espach", "genre": "fiction", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "funny", "heartfelt", "romance"]},
+  {"id": "b122", "title": "The Midnight Plan of the Repo Man", "author": "W. Bruce Cameron", "genre": "mystery", "series": "Ruddy McCann #1", "year": 2014, "rating": 4.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b123", "title": "The Guernsey Literary and Potato Peel Pie Society", "author": "Mary Ann Shaffer", "genre": "historical", "year": 2008, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["books", "cozy", "historical"]},
+  {"id": "b124", "title": "The Bookish Life of Nina Hill", "author": "Abbi Waxman", "genre": "fiction", "year": 2019, "rating": 3.0, "source": "goodreads", "tags": ["books", "funny", "heartfelt"]},
+  {"id": "b125", "title": "The Time Traveller's Guide to Regency Britain", "author": "Ian Mortimer", "genre": "nonfiction", "subtitle": "The Immersive and Brilliant Historical Guide to Regency Britain", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["historical", "scifi", "truestory"]},
+  {"id": "b126", "title": "Is She Really Going Out with Him?", "author": "Sophie Cousens", "genre": "romance", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["funny", "romance"]},
+  {"id": "b127", "title": "The Pursuit of Love", "author": "Nancy Mitford", "genre": "classics", "series": "Radlett & Montdore, #1", "year": 1945, "rating": 4.0, "source": "goodreads", "tags": ["classic", "cozy", "funny", "historical"]},
+  {"id": "b128", "title": "The Sicilian Inheritance", "author": "Jo Piazza", "genre": "mystery", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "family", "mystery"]},
+  {"id": "b129", "title": "How to Solve Your Own Murder", "author": "Kristen Perrin", "genre": "mystery", "series": "Castle Knoll Files, #1", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b130", "title": "Assassins Anonymous", "author": "Rob Hart", "genre": "mystery", "series": "Assassins Anonymous, #1", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "funny", "mystery"]},
+  {"id": "b131", "title": "A Rather Lovely Inheritance", "author": "C.A. Belmond", "genre": "mystery", "series": "Penny Nichols, #1", "year": 2007, "rating": 3.0, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b132", "title": "Pride and Prejudice", "author": "Jane Austen", "genre": "classics", "year": 1813, "rating": 4.0, "source": "goodreads", "tags": ["classic", "historical", "romance"]},
+  {"id": "b134", "title": "Time Travel for Love and Profit", "author": "Sarah Lariviere", "genre": "fantasy", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["magic", "scifi"]},
+  {"id": "b136", "title": "Amari and the Despicable Wonders", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #3", "year": 2024, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "magic", "mystery"]},
+  {"id": "b137", "title": "The Brothers Hawthorne", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #4", "year": 2023, "rating": 2.0, "source": "goodreads", "tags": ["family", "mystery"]},
+  {"id": "b138", "title": "The Bookshop on the Corner", "author": "Jenny Colgan", "genre": "romance", "series": "Kirrinfief, #1", "year": 2016, "rating": 3.0, "source": "goodreads", "tags": ["books", "cozy", "romance"]},
+  {"id": "b139", "title": "Amari and the Great Game", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #2", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "mystery"]},
+  {"id": "b140", "title": "Amari and the Night Brothers", "author": "B.B. Alston", "genre": "middlegrade", "series": "Supernatural Investigations, #1", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "mystery"]},
+  {"id": "b141", "title": "The Wild Robot Escapes", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #2", "year": 2018, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "animals", "heartfelt", "scifi"]},
+  {"id": "b142", "title": "Chocolate Chip Cookie Murder", "author": "Joanne Fluke", "genre": "mystery", "series": "Hannah Swensen, #1", "year": 2000, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "food", "mystery"]},
+  {"id": "b143", "title": "The Lightning Thief", "author": "Rick Riordan", "genre": "middlegrade", "series": "Percy Jackson and the Olympians, #1", "year": 2005, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b144", "title": "The Wild Robot", "author": "Peter Brown", "genre": "middlegrade", "series": "The Wild Robot, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "animals", "heartfelt", "scifi"]},
+  {"id": "b145", "title": "Death Comes to Pemberley", "author": "P.D. James", "genre": "mystery", "year": 2011, "rating": 2.0, "source": "goodreads", "tags": ["historical", "mystery"]},
+  {"id": "b146", "title": "Longbourn", "author": "Jo Baker", "genre": "historical", "year": 2013, "rating": 3.0, "source": "goodreads", "tags": ["historical", "romance"]},
+  {"id": "b147", "title": "Tuesdays at the Castle", "author": "Jessica Day George", "genre": "middlegrade", "series": "Castle Glower, #1", "year": 2011, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "funny", "magic"]},
+  {"id": "b148", "title": "The Happy Life of Isadora Bentley", "author": "Courtney Walsh", "genre": "inspirational", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt", "romance"]},
+  {"id": "b149", "title": "Miss Austen", "author": "Gill Hornby", "genre": "historical", "series": "Austen Family, #1", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical"]},
+  {"id": "b150", "title": "Alone", "author": "Megan E. Freeman", "genre": "middlegrade", "series": "Alone #1", "year": 2021, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "heartfelt"]},
+  {"id": "b151", "title": "Legends & Lattes", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #1", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "food", "magic"]},
+  {"id": "b152", "title": "Spindle's End", "author": "Robin McKinley", "genre": "fantasy", "year": 2000, "rating": 4.0, "source": "goodreads", "tags": ["magic"]},
+  {"id": "b153", "title": "The 7½ Deaths of Evelyn Hardcastle", "author": "Stuart Turton", "genre": "mystery", "year": 2018, "rating": 4.0, "source": "goodreads", "tags": ["mystery", "spooky"]},
+  {"id": "b154", "title": "The Little Teashop in Tokyo", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #6", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "food", "romance"]},
+  {"id": "b155", "title": "The Summer of Yes", "author": "Courtney Walsh", "genre": "inspirational", "year": 2024, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt", "romance"]},
+  {"id": "b156", "title": "An Art Lover's Guide to Paris and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #7", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b157", "title": "Everyone on This Train Is a Suspect", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #2", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["funny", "mystery"]},
+  {"id": "b158", "title": "Everyone in My Family Has Killed Someone", "author": "Benjamin Stevenson", "genre": "mystery", "series": "Ernest Cunningham, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "funny", "mystery"]},
+  {"id": "b159", "title": "A Good Girl's Guide to Murder", "author": "Holly Jackson", "genre": "ya", "series": "A Good Girl's Guide to Murder, #1", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["mystery", "school"]},
+  {"id": "b160", "title": "The Secret Cove in Croatia", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #5", "year": 2019, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "romance"]},
+  {"id": "b161", "title": "The Northern Lights Lodge", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #4", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "holiday", "romance"]},
+  {"id": "b162", "title": "The Hapless Milliner", "author": "Jessica Bull", "genre": "mystery", "series": "Miss Austen Investigates, #1", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["historical", "mystery"]},
+  {"id": "b163", "title": "Loyally, Luke", "author": "Pepper Basham", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt", "romance"]},
+  {"id": "b164", "title": "A Lady's Guide to Marvels and Misadventure", "author": "Angela Bell", "genre": "inspirational", "year": 2024, "rating": 4.0, "source": "goodreads", "tags": ["faith", "heartfelt", "historical"]},
+  {"id": "b166", "title": "Emily Wilde’s Map of the Otherlands", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #2", "year": 2024, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b167", "title": "Bookshops & Bonedust", "author": "Travis Baldree", "genre": "fantasy", "series": "Legends & Lattes, #0", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["books", "cozy", "food", "magic"]},
+  {"id": "b168", "title": "Positively, Penelope", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #2", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt", "romance"]},
+  {"id": "b169", "title": "Remarkably Bright Creatures", "author": "Shelby Van Pelt", "genre": "fiction", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["animals", "family", "heartfelt"]},
+  {"id": "b170", "title": "The Last Bookwanderer", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #6", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b171", "title": "Earl Grafton and the Traitor", "author": "Angela E. Johnson", "genre": "romance", "series": "Fernley Family #1", "year": 2022, "rating": 3.0, "source": "goodreads", "tags": ["family", "historical", "mystery", "romance", "royals"]},
+  {"id": "b172", "title": "Authentically, Izzy", "author": "Pepper Basham", "genre": "inspirational", "series": "Skymar, #1", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "faith", "heartfelt", "romance"]},
+  {"id": "b173", "title": "Vera Wong's Unsolicited Advice for Murderers", "author": "Jesse Q. Sutanto", "genre": "mystery", "series": "Vera Wong, #1", "year": 2023, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "funny", "mystery"]},
+  {"id": "b176", "title": "Howl's Moving Castle", "author": "Diana Wynne Jones", "genre": "middlegrade", "series": "Howl's Moving Castle, #1", "year": 1986, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b177", "title": "The Heir", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #4", "year": 2015, "rating": 2.0, "source": "goodreads", "tags": ["romance", "royals", "school"]},
+  {"id": "b178", "title": "The Dressmaker", "author": "Kate Alcott", "genre": "historical", "year": 2012, "rating": 3.0, "source": "goodreads", "tags": ["historical"]},
+  {"id": "b179", "title": "The One", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #3", "year": 2014, "rating": 2.0, "source": "goodreads", "tags": ["romance", "royals", "school"]},
+  {"id": "b180", "title": "The Elite", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #2", "year": 2013, "rating": 3.0, "source": "goodreads", "tags": ["romance", "royals", "school"]},
+  {"id": "b181", "title": "The Selection", "author": "Kiera Cass", "genre": "ya", "series": "The Selection, #1", "year": 2012, "rating": 4.0, "source": "goodreads", "tags": ["romance", "royals", "school"]},
+  {"id": "b182", "title": "The Housekeepers", "author": "Alex Hay", "genre": "historical", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["historical"]},
+  {"id": "b183", "title": "The Secret of White Stone Gate", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #2", "year": 2020, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "mystery", "school", "spooky"]},
+  {"id": "b184", "title": "The Christmas Bookshop", "author": "Jenny Colgan", "genre": "romance", "series": "The Christmas Bookshop, #1", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["books", "cozy", "holiday", "romance"]},
+  {"id": "b185", "title": "Gilded Girl", "author": "Pamela M. Kelley", "genre": "historical", "year": 2020, "rating": 3.0, "source": "goodreads", "tags": ["historical", "romance"]},
+  {"id": "b186", "title": "In the Company of Witches", "author": "Auralee Wallace", "genre": "mystery", "series": "Evenfall Witches B&B, #1", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "magic", "mystery"]},
+  {"id": "b187", "title": "The Christmas Castle in Scotland", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #9", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "holiday", "romance"]},
+  {"id": "b188", "title": "The School for Good and Evil", "author": "Soman Chainani", "genre": "middlegrade", "series": "The School for Good and Evil, #1", "year": 2013, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b189", "title": "The Mystery of Black Hollow Lane", "author": "Julia Nobel", "genre": "middlegrade", "series": "Black Hollow Lane, #1", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "mystery", "school", "spooky"]},
+  {"id": "b191", "title": "The Roommate Pact", "author": "Allison Ashley", "genre": "romance", "year": 2023, "rating": 3.0, "source": "goodreads", "tags": ["funny", "romance"]},
+  {"id": "b192", "title": "The Treehouse Library", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co.,#5", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b193", "title": "The Little Paris Patisserie", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #3", "year": 2018, "rating": 2.0, "source": "goodreads", "tags": ["cozy", "food", "romance"]},
+  {"id": "b194", "title": "The Little Brooklyn Bakery", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #2", "year": 2018, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "food", "romance"]},
+  {"id": "b195", "title": "The Little Café in Copenhagen", "author": "Julie Caplin", "genre": "romance", "series": "Romantic Escapes, #1", "year": 2018, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "food", "romance"]},
+  {"id": "b196", "title": "Emily Wilde's Encyclopaedia of Faeries", "author": "Heather Fawcett", "genre": "fantasy", "series": "Emily Wilde, #1", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b197", "title": "A Lady's Guide to Etiquette and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #1", "year": 2018, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b198", "title": "The Very Secret Society of Irregular Witches", "author": "Sangu Mandanna", "genre": "fantasy", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "magic", "romance"]},
+  {"id": "b199", "title": "A Newlywed’s Guide to Fortune and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #6", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b200", "title": "Flowers for Algernon", "author": "Daniel Keyes", "genre": "classics", "year": 1966, "source": "goodreads", "tags": ["classic", "heartfelt", "scifi"]},
+  {"id": "b201", "title": "Ten Thousand Stitches", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["historical", "magic", "romance"]},
+  {"id": "b202", "title": "Half a Soul", "author": "Olivia Atwater", "genre": "fantasy", "series": "Regency Faerie Tales, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["historical", "magic", "romance"]},
+  {"id": "b203", "title": "The Hawthorne Legacy", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #2", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["family", "mystery"]},
+  {"id": "b204", "title": "The Final Gambit", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #3", "year": 2022, "rating": 4.0, "source": "goodreads", "tags": ["family", "mystery"]},
+  {"id": "b205", "title": "Witchlings", "author": "Claribel A. Ortega", "genre": "middlegrade", "series": "Witchlings, #1", "year": 2022, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b206", "title": "Bringing Down the Duke", "author": "Evie Dunmore", "genre": "romance", "series": "A League of Extraordinary Women, #1", "year": 2019, "rating": 2.0, "source": "goodreads", "tags": ["historical", "romance", "royals"]},
+  {"id": "b207", "title": "The Troubled Girls of Dragomir Academy", "author": "Anne Ursu", "genre": "middlegrade", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b208", "title": "A Bride’s Guide to Marriage and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #5", "year": 2022, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b209", "title": "The Inheritance Games", "author": "Jennifer Lynn Barnes", "genre": "ya", "series": "The Inheritance Games, #1", "year": 2020, "rating": 3.0, "source": "goodreads", "tags": ["family", "mystery"]},
+  {"id": "b210", "title": "All My Knotted-Up Life", "author": "Beth Moore", "genre": "nonfiction", "subtitle": "A Memoir", "year": 2023, "rating": 4.0, "source": "goodreads", "tags": ["faith", "family", "truestory"]},
+  {"id": "b215", "title": "The Mysterious Benedict Society", "author": "Trenton Lee Stewart", "genre": "middlegrade", "series": "The Mysterious Benedict Society, #1", "year": 2007, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "mystery", "school"]},
+  {"id": "b216", "title": "The Book Smugglers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #4", "year": 2021, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b218", "title": "A Pinch of Magic", "author": "Michelle Harrison", "genre": "middlegrade", "series": "A Pinch of Magic, #1", "year": 2019, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b219", "title": "The Sum of All Kisses", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #3", "year": 2013, "rating": 3.0, "source": "goodreads", "tags": ["historical", "romance"]},
+  {"id": "b220", "title": "A Night Like This", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #2", "year": 2012, "rating": 1.0, "source": "goodreads", "tags": ["historical", "romance"]},
+  {"id": "b221", "title": "Just Like Heaven", "author": "Julia Quinn", "genre": "romance", "series": "Smythe-Smith Quartet, #1", "year": 2011, "rating": 3.0, "source": "goodreads", "tags": ["historical", "romance"]},
+  {"id": "b222", "title": "Hollowpox", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Hunt for Morrigan Crow", "series": "Nevermoor, #3", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "spooky"]},
+  {"id": "b223", "title": "Nevermoor", "author": "Jessica Townsend", "genre": "middlegrade", "subtitle": "The Trials of Morrigan Crow", "series": "Nevermoor, #1", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b224", "title": "Majesty", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #2", "year": 2020, "rating": 2.0, "source": "goodreads", "tags": ["romance", "royals"]},
+  {"id": "b225", "title": "Austenland", "author": "Shannon Hale", "genre": "romance", "series": "Austenland, #1", "year": 2007, "rating": 2.0, "source": "goodreads", "tags": ["funny", "historical", "romance"]},
+  {"id": "b226", "title": "American Royals", "author": "Katharine McGee", "genre": "ya", "series": "American Royals, #1", "year": 2019, "rating": 3.0, "source": "goodreads", "tags": ["romance", "royals"]},
+  {"id": "b231", "title": "The Year of Living Danishly", "author": "Helen Russell", "genre": "nonfiction", "subtitle": "Uncovering the Secrets of the World's Happiest Country", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["funny", "truestory"]},
+  {"id": "b232", "title": "After Evangelicalism", "author": "David P. Gushee", "genre": "nonfiction", "subtitle": "The Path to a New Christianity", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["faith", "truestory"]},
+  {"id": "b233", "title": "Tilly and the Map of Stories", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #3", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b234", "title": "Tilly and the Lost Fairytales", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #2", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b235", "title": "Tilly and the Bookwanderers", "author": "Anna James", "genre": "middlegrade", "series": "Pages & Co., #1", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b236", "title": "The Little Bookshop on the Seine", "author": "Rebecca Raisin", "genre": "romance", "series": "The Little Paris Collection, #1; The Bookshop, #2", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["books", "cozy", "romance"]},
+  {"id": "b237", "title": "The Gentleman and the Thief", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #2", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "historical", "romance"]},
+  {"id": "b239", "title": "The Lady and the Highwayman", "author": "Sarah M. Eden", "genre": "romance", "series": "The Dread Penny Society, #1", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "historical", "romance"]},
+  {"id": "b240", "title": "A Fiancée's Guide to First Wives and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #4", "year": 2021, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b241", "title": "A Lady's Guide to Mischief and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #3", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b242", "title": "Jesus and John Wayne", "author": "Kristin Kobes Du Mez", "genre": "nonfiction", "subtitle": "How White Evangelicals Corrupted a Faith and Fractured a Nation", "year": 2020, "rating": 3.0, "source": "goodreads", "tags": ["faith", "truestory"]},
+  {"id": "b243", "title": "A Lady's Guide to Gossip and Murder", "author": "Dianne Freeman", "genre": "mystery", "series": "Countess of Harleigh Mystery, #2", "year": 2019, "rating": 3.0, "source": "goodreads", "tags": ["cozy", "historical", "mystery"]},
+  {"id": "b244", "title": "First Comes Scandal", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #4", "year": 2020, "rating": 2.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b245", "title": "The Other Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #3", "year": 2018, "rating": 3.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b246", "title": "Twilight", "author": "Stephenie Meyer", "genre": "ya", "series": "The Twilight Saga, #1", "year": 2005, "source": "goodreads", "tags": ["magic", "romance", "school", "spooky"]},
+  {"id": "b247", "title": "When Zachary Beaver Came to Town", "author": "Kimberly Willis Holt", "genre": "middlegrade", "year": 1999, "source": "goodreads", "tags": ["adventure", "heartfelt"]},
+  {"id": "b248", "title": "The Girl with the Make-Believe Husband", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #2", "year": 2017, "rating": 3.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b249", "title": "Because of Miss Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Rokesbys, #1", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b250", "title": "Flip's Fantastic Journal", "author": "Angelo DeCesare", "genre": "middlegrade", "year": 1999, "source": "goodreads", "tags": ["adventure", "funny"]},
+  {"id": "b251", "title": "All New Square Foot Gardening", "author": "Mel Bartholomew", "genre": "nonfiction", "year": 1981, "rating": 4.0, "source": "goodreads", "tags": ["cozy", "food", "truestory"]},
+  {"id": "b252", "title": "The Black Reckoning", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #3", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b253", "title": "The House in the Cerulean Sea", "author": "T.J. Klune", "genre": "fantasy", "series": "Cerulean Chronicles, #1", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["cozy", "heartfelt", "magic"]},
+  {"id": "b254", "title": "Angels & Demons", "author": "Dan Brown", "genre": "mystery", "series": "Robert Langdon, #1", "year": 2000, "source": "goodreads", "tags": ["adventure", "mystery", "spooky"]},
+  {"id": "b255", "title": "Harry Potter and the Cursed Child", "author": "John Tiffany", "genre": "middlegrade", "series": "Harry Potter, #8", "year": 2016, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b256", "title": "The Other Bennet Sister", "author": "Janice Hadlow", "genre": "historical", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["historical"]},
+  {"id": "b257", "title": "The Westing Game", "author": "Ellen Raskin", "genre": "middlegrade", "year": 1978, "source": "goodreads", "tags": ["adventure", "historical", "mystery"]},
+  {"id": "b258", "title": "The Fire Chronicle", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #2", "year": 2012, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b259", "title": "The Emerald Atlas", "author": "John Stephens", "genre": "middlegrade", "series": "The Books of Beginning, #1", "year": 2011, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "books", "magic"]},
+  {"id": "b260", "title": "The Jane Austen Project", "author": "Kathleen A. Flynn", "genre": "fantasy", "year": 2017, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["books", "historical", "magic", "romance", "scifi"]},
+  {"id": "b261", "title": "The Jane Austen Society", "author": "Natalie Jenner", "genre": "historical", "series": "Jane Austen Society, #1", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["books", "cozy", "historical"]},
+  {"id": "b262", "title": "Mind the Gap, Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #3", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["holiday", "romance"]},
+  {"id": "b263", "title": "Uncomfortable Conversations With a Black Man", "author": "Emmanuel Acho", "genre": "nonfiction", "year": 2020, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b264", "title": "The Twelve Days of Dash & Lily", "author": "Rachel Cohn", "genre": "ya", "series": "Dash & Lily, #2", "year": 2016, "rating": 3.0, "source": "goodreads", "tags": ["holiday", "romance"]},
+  {"id": "b265", "title": "On the Way to the Wedding", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #8", "year": 2006, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b267", "title": "Stamped", "author": "Jason Reynolds", "genre": "nonfiction", "subtitle": "Racism, Antiracism, and You", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b268", "title": "Think Again", "author": "Adam Grant", "genre": "nonfiction", "subtitle": "The Power of Knowing What You Don't Know", "year": 2021, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b269", "title": "When He Was Wicked", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #6", "year": 2004, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b270", "title": "It's in His Kiss", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #7", "year": 2005, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b271", "title": "Rich People Problems", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #3", "year": 2017, "rating": 4.0, "source": "goodreads", "tags": ["family", "funny", "heartfelt"]},
+  {"id": "b272", "title": "China Rich Girlfriend", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #2", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["family", "funny", "heartfelt"]},
+  {"id": "b273", "title": "Crazy Rich Asians", "author": "Kevin Kwan", "genre": "fiction", "series": "Crazy Rich Asians, #1", "year": 2013, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "funny", "heartfelt"]},
+  {"id": "b274", "title": "The Ravenmaster", "author": "Christopher Skaife", "genre": "nonfiction", "subtitle": "My Life with the Ravens at the Tower of London", "year": 2018, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["animals", "historical", "truestory"]},
+  {"id": "b275", "title": "Becoming", "author": "Michelle Obama", "genre": "nonfiction", "year": 2018, "rating": 4.0, "source": "goodreads", "tags": ["family", "heartfelt", "truestory"]},
+  {"id": "b276", "title": "My Beloved World", "author": "Sonia Sotomayor", "genre": "nonfiction", "year": 2013, "rating": 4.0, "source": "goodreads", "tags": ["family", "truestory"]},
+  {"id": "b277", "title": "To Sir Phillip, With Love", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #5", "year": 2003, "rating": 3.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b278", "title": "Romancing Mister Bridgerton", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #4", "year": 2002, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b279", "title": "An Offer From a Gentleman", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #3", "year": 2001, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical", "romance"]},
+  {"id": "b280", "title": "The Viscount Who Loved Me", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #2", "year": 2000, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "historical", "romance", "royals"]},
+  {"id": "b281", "title": "The Duke and I", "author": "Julia Quinn", "genre": "romance", "series": "Bridgertons, #1", "year": 2000, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical", "romance", "royals"]},
+  {"id": "b282", "title": "The Ballad of Songbirds and Snakes", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games, #0", "year": 2020, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "scifi"]},
+  {"id": "b284", "title": "P.S. I Still Love You", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #2", "year": 2015, "rating": 4.0, "source": "goodreads", "tags": ["romance"]},
+  {"id": "b285", "title": "To All the Boys I've Loved Before", "author": "Jenny Han", "genre": "ya", "series": "To All the Boys I've Loved Before, #1", "year": 2014, "rating": 3.0, "source": "goodreads", "tags": ["romance"]},
+  {"id": "b286", "title": "Is Everyone Hanging Out Without Me?", "author": "Mindy Kaling", "genre": "nonfiction", "series": "And Other Concerns", "year": 2011, "rating": 3.0, "source": "goodreads", "tags": ["funny", "truestory"]},
+  {"id": "b287", "title": "Born a Crime", "author": "Trevor Noah", "genre": "nonfiction", "subtitle": "Stories from a South African Childhood", "year": 2016, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["family", "funny", "heartfelt", "truestory"]},
+  {"id": "b289", "title": "St. Francis Society for Wayward Pets", "author": "Annie England Noblin", "genre": "fiction", "year": 2020, "rating": 3.0, "source": "goodreads", "tags": ["animals", "heartfelt"]},
+  {"id": "b290", "title": "Talking to Strangers", "author": "Malcolm Gladwell", "genre": "nonfiction", "subtitle": "What We Should Know About the People We Don't Know", "year": 2019, "rating": 4.0, "source": "goodreads", "tags": ["truestory"]},
+  {"id": "b291", "title": "The Princess", "author": "Lori Wick", "genre": "inspirational", "year": 1999, "source": "goodreads", "tags": ["faith", "heartfelt", "romance", "royals"]},
+  {"id": "b292", "title": "Eleanor Oliphant Is Completely Fine", "author": "Gail Honeyman", "genre": "fiction", "year": 2017, "rating": 4.0, "source": "goodreads", "tags": ["funny", "heartfelt"]},
+  {"id": "b293", "title": "Belgravia", "author": "Julian Fellowes", "genre": "historical", "year": 2016, "rating": 4.0, "source": "goodreads", "tags": ["family", "historical"]},
+  {"id": "b295", "title": "The Chemist", "author": "Stephenie Meyer", "genre": "mystery", "year": 2016, "rating": 4.0, "source": "goodreads", "tags": ["adventure", "mystery", "scifi"]},
+  {"id": "b296", "title": "The Kindled Flame", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #2", "year": 1994, "rating": 3.0, "source": "goodreads", "tags": ["faith", "heartfelt", "historical"]},
+  {"id": "b297", "title": "The Tempering Blaze", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #3", "year": 1995, "rating": 3.0, "source": "goodreads", "tags": ["faith", "heartfelt", "historical"]},
+  {"id": "b298", "title": "The Gathering Dawn", "author": "Sally Laity", "genre": "inspirational", "series": "Freedoms Holy Light #1", "year": 1994, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["faith", "heartfelt", "historical"]},
+  {"id": "b299", "title": "The Potluck Club", "author": "Linda Evans Shepherd", "genre": "inspirational", "series": "The Potluck Club #1", "year": 2005, "source": "goodreads", "tags": ["cozy", "faith", "food", "heartfelt"]},
+  {"id": "b300", "title": "The Lion, the Witch and the Wardrobe", "author": "C.S. Lewis", "genre": "middlegrade", "series": "Chronicles of Narnia, #1", "year": 1950, "rating": 2.0, "source": "goodreads", "tags": ["adventure", "magic"]},
+  {"id": "b301", "title": "Divergent", "author": "Veronica Roth", "genre": "ya", "series": "Divergent, #1", "year": 2011, "rating": 3.0, "source": "goodreads", "tags": ["adventure", "school", "scifi"]},
+  {"id": "b302", "title": "The Giver", "author": "Lois Lowry", "genre": "middlegrade", "series": "Giver, #1", "year": 1993, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "heartfelt", "scifi"]},
+  {"id": "b303", "title": "Harry Potter and the Deathly Hallows", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #7", "year": 2007, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
+  {"id": "b304", "title": "Lord of the Flies", "author": "William Golding", "genre": "classics", "year": 1954, "rating": 3.0, "source": "goodreads", "tags": ["classic"]},
+  {"id": "b305", "title": "Harry Potter and the Sorcerer's Stone", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #1", "year": 1997, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
 ];
 
 const BOOKS_BY_ID = Object.fromEntries(BOOKS.map(b => [b.id, b]));
@@ -1402,6 +1465,7 @@ const INTERACTIONS = {
   },
   box(item, scene) {
     const n = item.contents.length, books = item.kind === 'books';
+    if (item.returns) return `A returns basket with ${n} item${n === 1 ? '' : 's'} customers left behind. Tap a display to put them back.`;
     return books ? `A box of ${n} book${n === 1 ? '' : 's'}. Tap a bookshelf or display table to unpack it.`
                  : `A box of ${n} merch item${n === 1 ? '' : 's'}: bookmarks, posters and trinkets. Tap the spinner, poster rack, merch bin or checkout to unpack it.`;
   },
@@ -1495,11 +1559,13 @@ function fillRatio(item) { return STOCKABLE[item.type] ? filledCount(item) / slo
 
 // Free floor spots near the door for boxes. Never blocks a path:
 // each spot is only used if every other floor tile stays reachable.
-function findBoxSpots(layout, grid, n, player) {
+function findBoxSpots(layout, grid, n, player, starts, avoid) {
   const entries = [];
-  for (const d of layout.doors) for (const [dx, dy] of DIRS) if (grid.walkable(d.x + dx, d.y + dy)) entries.push({ x: d.x + dx, y: d.y + dy });
+  if (starts && starts.length) entries.push(...starts);
+  else for (const d of layout.doors) for (const [dx, dy] of DIRS) if (grid.walkable(d.x + dx, d.y + dy)) entries.push({ x: d.x + dx, y: d.y + dy });
   if (!entries.length) entries.push(nearestWalkable(grid, layout.spawn.x, layout.spawn.y));
   const blocked = new Set(layout.items.filter(it => it.type === 'box').map(b => b.x + ',' + b.y));
+  const keepClear = new Set((avoid || []).map(t => t.x + ',' + t.y));
   const open = (x, y) => grid.walkable(x, y) && !blocked.has(x + ',' + y);
   const flood = () => {
     const start = entries[0], seen = new Set([start.x + ',' + start.y]), order = [start];
@@ -1514,8 +1580,9 @@ function findBoxSpots(layout, grid, n, player) {
   const spots = [];
   for (const t of order) {
     if (spots.length >= n) break;
-    if (entries.some(e => e.x === t.x && e.y === t.y)) continue;
+    if (!starts && entries.some(e => e.x === t.x && e.y === t.y)) continue;
     if (player && t.x === player.x && t.y === player.y) continue;
+    if (keepClear.has(t.x + ',' + t.y)) continue;
     const k = t.x + ',' + t.y;
     blocked.add(k);
     if (flood().length === count - 1) { spots.push(t); count--; } else blocked.delete(k);
@@ -1887,6 +1954,7 @@ const Stocking = {
     this.$('boxPrev').onclick = step(-1);
     this.$('boxNext').onclick = step(1);
     this.$('btnReturn').onclick = () => this.returnToBox();
+    this.$('btnTake').onclick = () => this.takeToCustomer();
     this.$('saleRow').addEventListener('click', (e) => {
       const b = e.target.closest('[data-sale]');
       if (!b) return;
@@ -1910,6 +1978,8 @@ const Stocking = {
     if (!Array.isArray(item.slots) || item.slots.length !== slotCount(item.type)) item.slots = emptySlots(item.type);
     const boxes = this.boxes();
     this.boxIdx = Math.max(0, boxes.findIndex(b => b.opened && this.usable(b).length));
+    const carry = scene.player.carry;
+    if (carry && this.accepts(carry.id)) this.held = { from: 'hand', id: carry.id };   // put down what you're carrying
     this.$('stockTitle').textContent = this.cfg.title;
     this.$('stock').dataset.view = this.cfg.view;
     this.$('stock').hidden = false;
@@ -1958,7 +2028,10 @@ const Stocking = {
       return this.render();
     }
     if (h.from === 'slot' && h.slot === i) { this.held = null; return this.render(); }
-    if (h.from === 'slot') {               // move or swap within this display
+    if (h.from === 'hand') {               // place what you're carrying
+      slots[i] = h.id;
+      this.scene.setCarry(here ? { id: here, price: salePrice(here, this.item.sale), sale: this.item.sale || 0 } : null);
+    } else if (h.from === 'slot') {        // move or swap within this display
       slots[h.slot] = here || null;
       slots[i] = h.id;
     } else {                               // from the box (removes one copy)
@@ -1973,6 +2046,21 @@ const Stocking = {
     this.save();
     this.render();
     this.pop(i);
+  },
+
+  // Pick something for the customer you're helping, then walk it over.
+  takeToCustomer() {
+    const h = this.held, f = this.scene.fair;
+    if (!h || h.from === 'hand' || !f.helping) return;
+    let sale = 0;
+    if (h.from === 'slot') { this.item.slots[h.slot] = null; sale = this.item.sale || 0; }
+    else { const box = this.box(), k = box.contents.indexOf(h.id); if (k >= 0) box.contents.splice(k, 1); box.opened = true; }
+    this.scene.setCarry({ id: h.id, price: salePrice(h.id, sale), sale });
+    this.held = null;
+    this.tidyBoxes();
+    this.save();
+    this.close();
+    UI.toast(`Now take it to ${f.helping.name}. Tap them to hand it over.`);
   },
 
   returnToBox() {
@@ -2020,12 +2108,17 @@ const Stocking = {
       : cfg.view === 'covers' ? closeTableSVG(item, h, cfg) : closeMerchSVG(item, h, cfg);
 
     const info = this.$('stockInfo');
-    if (h) info.innerHTML = this.describe(h.id);
+    if (h && h.from === 'hand') info.innerHTML = `<span class="pick">In your hands:</span> ` + this.describe(h.id) + ' · Tap a spot to put it here.';
+    else if (h) info.innerHTML = this.describe(h.id);
+    else if (this.scene.fair.helping && box) info.textContent = `Helping ${this.scene.fair.helping.name}: "${requestText(this.scene.fair.helping)}" Pick something, then tap Take to ${this.scene.fair.helping.name}.`;
     else if (box) info.textContent = `Tap ${isBooks ? 'a book' : 'an item'} in the box, then tap a spot. Tap something already placed to move it.`;
     else info.textContent = filled ? 'Tap something placed here to move it.' : 'No boxes right now.';
 
     this.$('boxPrev').hidden = this.$('boxNext').hidden = boxes.length < 2;
     this.$('btnReturn').hidden = !(h && h.from === 'slot' && (box || !isBooks));
+    const helping = this.scene.fair.helping;
+    this.$('btnTake').hidden = !(h && h.from !== 'hand' && helping && !this.scene.player.carry);
+    if (helping) this.$('btnTake').textContent = `Take to ${helping.name}`;
     this.$('btnReturn').textContent = box ? 'Put back in box' : 'Put away';
     const tray = this.$('trayBooks');
     if (!box) {
@@ -2037,7 +2130,7 @@ const Stocking = {
     }
     const usable = this.usable(box);
     const what = isBooks ? 'book' : 'item';
-    this.$('boxLabel').textContent = (boxes.length > 1 ? `Box ${this.boxIdx + 1} of ${boxes.length} · ` : 'Box · ') +
+    this.$('boxLabel').textContent = (box.returns ? 'Returns basket · ' : boxes.length > 1 ? `Box ${this.boxIdx + 1} of ${boxes.length} · ` : 'Box · ') +
       `${usable.length} ${what}${usable.length === 1 ? '' : 's'}${isBooks ? '' : ' for here'}`;
     if (!usable.length) {
       const want = cfg.accepts.map(k => KIND_LABEL[k].toLowerCase() + 's').join(' or ');
@@ -2075,10 +2168,14 @@ const FAIR = {
                  normal: { label: 'Normal (about 12 min)', ms: 720000 },
                  long: { label: 'Long (about 20 min)', ms: 1200000 } },
   OPEN_HOUR: 8, CLOSE_HOUR: 15,
-  MAX_IN_ROOM: 10,
+  BUSY: { calm:     { label: 'Calm',      every: [30000, 45000], max: 8 },    // a regular customer every 30-45 s
+          lively:   { label: 'Lively',    every: [14000, 22000], max: 12 },
+          bustling: { label: 'Bustling',  every: [8000, 13000],  max: 16 } },
   STEP_MS: 260,                    // customers stroll a little slower than you
-  SPAWN_EVERY: [22000, 34000],     // a regular customer every 22-34 s of fair time
+  PATIENCE: { kid: 60000, parent: 80000, teacher: 100000, grandparent: 120000 },   // fair-time ms in line
+  HELP_WAIT: 75000,                // how long a raised hand waits (patience on)
 };
+function busy() { return FAIR.BUSY[Game.data.busy] || FAIR.BUSY.lively; }
 
 // ---- prices (in cents) ----
 const BOOK_PRICES = { middlegrade: 799, ya: 1099, classics: 699, nonfiction: 1499 };   // others: 1299
@@ -2097,7 +2194,7 @@ function itemName(id) { const b = BOOKS_BY_ID[id]; return b ? b.title : MERCH_BY
 // ---- saved game progress (separate from the room layout) ----
 const GAME_KEY = 'bookfair.game.v1';
 const Game = {
-  data: { money: 0, day: 1, dayLength: 'normal', lifetime: { customers: 0, sold: 0, earned: 0 } },
+  data: { money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true, lifetime: { customers: 0, sold: 0, earned: 0 } },
   load() {
     try { const d = JSON.parse(localStorage.getItem(GAME_KEY)); if (d && typeof d === 'object') this.data = { ...this.data, ...d }; } catch (e) {}
     if (!FAIR.DAY_LENGTHS[this.data.dayLength]) this.data.dayLength = 'normal';
@@ -2163,6 +2260,79 @@ function weightedPick(list, weightFn) {
   return list[list.length - 1];
 }
 
+// ---- asking for help: what customers can ask for ----
+const VIBES = [
+  [['cozy', 'mystery'], 'a cozy mystery'], [['funny'], 'something funny'], [['magic', 'adventure'], 'a magical adventure'],
+  [['romance', 'historical'], 'a love story set long ago'], [['truestory'], 'a true story'], [['books'], 'a book about books'],
+  [['animals'], 'a story with animals in it'], [['royals'], 'a story about royals'], [['holiday'], 'something for the holidays'],
+  [['heartfelt'], 'a story that will tug at the heartstrings'], [['classic'], 'a classic'], [['food'], 'a story full of yummy food'],
+  [['school'], 'a school story'], [['spooky'], 'something a little spooky'], [['cozy', 'magic'], 'something cozy and magical'],
+  [['adventure'], 'a big adventure'], [['scifi'], 'some science fiction'], [['mystery'], 'a mystery to solve'],
+  [['faith'], 'something uplifting about faith'], [['family'], 'a story about family'], [['romance'], 'a sweet love story'],
+  [['historical'], 'a story set long ago'], [['cozy'], 'something cozy'], [['funny', 'mystery'], 'a funny mystery'],
+];
+function booksOutAndBoxed(layout) {
+  const ids = new Set();
+  for (const it of layout.items) {
+    if (it.slots) for (const id of it.slots) if (id && BOOKS_BY_ID[id]) ids.add(id);
+    if (it.type === 'box' && it.kind === 'books') for (const id of it.contents) ids.add(id);
+  }
+  return [...ids].map(id => BOOKS_BY_ID[id]);
+}
+function seriesName(b) { return (b.series || '').replace(/,?\s*#.*$/, '').trim(); }
+function fitsAudience(req, b) { return !req.forKid || b.genre === 'middlegrade' || (req.teen && b.genre === 'ya'); }
+// How well a book answers a request: 'perfect', 'good' or null
+function matchQuality(req, id) {
+  const b = BOOKS_BY_ID[id];
+  if (!b) return null;
+  if (req.kind === 'wish') return id === req.id ? 'perfect' : null;
+  if (!fitsAudience(req, b)) return null;
+  const tags = b.tags || [];
+  if (req.kind === 'vibe') {
+    const hit = req.tags.filter(t => tags.includes(t)).length;
+    return hit === req.tags.length ? 'perfect' : hit && req.tags.length > 1 ? 'good' : null;
+  }
+  const L = BOOKS_BY_ID[req.id];   // "more like this"
+  if (id === L.id) return null;
+  if (seriesName(L) && seriesName(L) === seriesName(b)) return 'perfect';
+  const shared = (L.tags || []).filter(t => tags.includes(t)).length;
+  if (b.genre === L.genre && shared >= 2) return 'perfect';
+  if (shared >= 2 || (b.genre === L.genre && shared >= 1)) return 'good';
+  return null;
+}
+// Builds a request this room can actually answer (with books out or in boxes).
+function makeRequest(c, layout) {
+  const pool = booksOutAndBoxed(layout);
+  const forKid = c.type === 'kid' || c.type === 'teacher' || ((c.type === 'parent' || c.type === 'grandparent') && Math.random() < .6);
+  const base = { forKid, teen: c.type === 'kid' && Math.random() < .35, age: randInt(7, 11) };
+  const answerable = req => pool.some(b => matchQuality(req, b.id) === 'perfect') || pool.some(b => matchQuality(req, b.id) === 'good');
+  if (Math.random() < .45) {   // "I loved X, what else?"
+    const loved = shuffle(BOOKS.filter(b => fitsAudience(base, b) && (b.tags || []).length >= 2)).slice(0, 40);
+    for (const L of loved) { const req = { ...base, kind: 'like', id: L.id }; if (answerable(req)) return req; }
+  }
+  for (const [tags, phrase] of shuffle(VIBES.slice())) {
+    const req = { ...base, kind: 'vibe', tags, phrase };
+    if (answerable(req)) return req;
+  }
+  return null;
+}
+function requestText(c) {
+  const r = c.request;
+  if (!r) return '';
+  if (r.kind === 'wish') { const b = BOOKS_BY_ID[r.id]; return `Do you have ${b.title} by ${b.author}?`; }
+  if (r.kind === 'like') {
+    const b = BOOKS_BY_ID[r.id];
+    return c.type === 'kid' ? `I loved ${b.title}! What else would I like?`
+      : r.forKid ? `My ${c.type === 'teacher' ? 'students' : c.type === 'grandparent' ? 'grandkid' : `${r.age}-year-old`} loved ${b.title}. What should they read next?`
+      : `I just finished ${b.title} and loved it. What should I read next?`;
+  }
+  const p = r.phrase;
+  if (c.type === 'kid') return `Can you help me find ${p}?`;
+  if (c.type === 'teacher') return `I'm looking for ${p} for my classroom library.`;
+  if (r.forKid) return c.type === 'grandparent' ? `My grandkid would love ${p}. Any ideas?` : `I'm looking for ${p} for my ${r.age}-year-old.`;
+  return `I'd love ${p} for myself. What do you recommend?`;
+}
+
 // Where a book is right now (for wish-list hints)
 function whereIsBook(layout, id) {
   for (const it of layout.items) {
@@ -2170,6 +2340,27 @@ function whereIsBook(layout, id) {
     if (it.type === 'box' && it.contents.includes(id)) return { place: 'box', item: it };
   }
   return { place: 'stockroom' };
+}
+
+// Items a customer left behind go into a returns basket by the checkout.
+function addToReturns(scene, ids, near) {
+  const L = scene.layout, grid = scene.grid;
+  for (const kind of ['books', 'merch']) {
+    const these = ids.filter(id => (kind === 'books') === !!BOOKS_BY_ID[id]);
+    if (!these.length) continue;
+    let basket = L.items.find(it => it.type === 'box' && it.returns && it.kind === kind);
+    if (!basket) {
+      const starts = near ? [...approachTiles(grid, near)].map(k => { const [x, y] = k.split(',').map(Number); return { x, y }; }) : null;
+      const avoid = scene.fair ? (scene.fair.queueSpots || []) : [];
+      const spot = findBoxSpots(L, grid, 1, scene.player, starts, avoid)[0];
+      if (!spot) continue;   // no room anywhere: the items go back to the stockroom
+      basket = { id: newId(), type: 'box', x: spot.x, y: spot.y, rot: 0, opened: true, kind, returns: true, contents: [] };
+      L.items.push(basket);
+    }
+    basket.contents.push(...these);
+  }
+  saveLayout(L);
+  scene.rebuild();
 }
 
 // ---- the fair manager (one per room scene) ----
@@ -2189,10 +2380,12 @@ class Fair {
     const L = this.layout;
     if (!L.doors.length) { UI.toast('The room needs a door before customers can come in.'); return; }
     this.open = true; this.closing = false; this.elapsed = 0;
-    this.stats = { customers: 0, sold: 0, earned: 0, titles: {}, missed: new Set(), events: [] };
+    this.stats = { customers: 0, sold: 0, earned: 0, titles: {}, missed: new Set(), events: [], helped: 0, walkouts: 0 };
+    this.helping = null;
     // regular customers, spread across the day
     this.spawnPlan = [];
-    for (let t = randInt(...FAIR.SPAWN_EVERY) * .3; t < this.dayMs * .93; t += randInt(...FAIR.SPAWN_EVERY))
+    const every = busy().every;
+    for (let t = randInt(...every) * .3; t < this.dayMs * .93; t += randInt(...every))
       this.spawnPlan.push({ at: t, type: weightedPick(['kid', 'parent', 'teacher', 'grandparent'], k => ({ kid: 4, parent: 3.5, teacher: 1, grandparent: 1.5 })[k]) });
     // 2-3 rushes at random times (after-school always lands late in the day)
     const names = shuffle(['classVisit', 'recess', 'grandparents']).slice(0, randInt(1, 2));
@@ -2222,7 +2415,8 @@ class Fair {
   }
 
   finishDay() {
-    this.open = false; this.closing = false;
+    this.open = false; this.closing = false; this.helping = null;
+    if (this.scene.player.carry) this.scene.dropCarry();
     const s = this.stats;
     Game.data.lifetime.customers += s.customers; Game.data.lifetime.sold += s.sold; Game.data.lifetime.earned += s.earned;
     const summary = { day: Game.data.day, ...s, missed: [...s.missed] };
@@ -2277,7 +2471,7 @@ class Fair {
   }
 
   spawn(type, name) {
-    if (this.customers.length >= FAIR.MAX_IN_ROOM) return false;
+    if (this.customers.length >= busy().max) return false;
     const T = CUSTOMER_TYPES[type], e = this.entry(), look = lookFor(type);
     const c = {
       id: this.nextId++, type, look, scale: T.scale,
@@ -2292,6 +2486,12 @@ class Fair {
       c.wish = wish.id;
       c.budget = Math.max(c.budget, basePrice(wish.id) + 300);
     }
+    // some customers ask for help (never more than 3 raised hands at once)
+    const asking = this.customers.filter(x => x.request && x.state !== 'leaving' && x.state !== 'gone').length;
+    if (asking < 3) {
+      if (c.wish && Math.random() < .35) c.request = { kind: 'wish', id: c.wish, askNow: true };
+      else if (!c.wish && Math.random() < .16) { const r = makeRequest(c, this.layout); if (r) c.request = { ...r, askNow: true }; }
+    }
     this.makeSprite(c, e.door);
     this.customers.push(c);
     this.stats.customers++;
@@ -2305,7 +2505,7 @@ class Fair {
     c.obj = s.add.container(from.x, from.y, [c.img, c.bubble]).setAlpha(0);
     c.moving = true;
     s.tweens.add({ targets: c.obj, x: to.x, y: to.y, alpha: 1, duration: FAIR.STEP_MS * 1.4, onComplete: () => { c.moving = false; } });
-    if (c.wish) this.say(c, 'wish');
+    if (c.wish && !c.request) this.say(c, 'wish');
   }
 
   // Little speech bubbles: wish (book + ?), browsing (…), happy (♥), pay ($)
@@ -2315,12 +2515,12 @@ class Fair {
     c.bubbleKind = kind;
     if (!kind) return;
     const g = s.add.graphics();
-    g.fillStyle(0xffffff, 1).lineStyle(1.5, 0x3b2f3f, 1);
+    g.fillStyle(kind === 'help' ? 0xffd166 : kind === 'grumpy' ? 0xf7c6bd : 0xffffff, 1).lineStyle(1.5, 0x3b2f3f, 1);
     g.fillRoundedRect(-9, -14, 18, 13, 5).strokeRoundedRect(-9, -14, 18, 13, 5);
     g.fillTriangle(-2, -1.5, 2, -1.5, 0, 2.5);
     c.bubble.add(g);
-    const label = { wish: '?', browse: '…', happy: '♥', pay: '$', none: '…' }[kind];
-    const color = { wish: '#3b2f3f', browse: '#3b2f3f', happy: '#e07a5f', pay: '#2a9d8f', none: '#8a7f8f' }[kind];
+    const label = { wish: '?', browse: '…', happy: '♥', pay: '$', none: '…', help: '!', helping: '?', grumpy: '!!', sad: '…' }[kind];
+    const color = { wish: '#3b2f3f', browse: '#3b2f3f', happy: '#e07a5f', pay: '#2a9d8f', none: '#8a7f8f', help: '#3b2f3f', helping: '#2a9d8f', grumpy: '#b5452f', sad: '#8a7f8f' }[kind];
     if (kind === 'wish' && c.wish) {
       const b = BOOKS_BY_ID[c.wish], col = parseInt(GENRES[b.genre].color.slice(1), 16);
       const bk = s.add.graphics();
@@ -2394,8 +2594,24 @@ class Fair {
     const s = this.scene, L = this.layout;
     switch (c.state) {
       case 'enter':
+        if (c.request && c.request.askNow) {   // walk in a little, then raise a hand
+          const spot = this.helpSpot(c);
+          if (spot) c.path = findPath(s.grid, c, (x, y) => x === spot.x && y === spot.y) || [];
+          c.state = 'raiseHand';
+          break;
+        }
         this.makePlan(c);
         c.state = 'next';
+        break;
+      case 'raiseHand':
+        c.state = 'needHelp'; c.helpWait = 0; this.say(c, 'help'); this.setFacing(c, 0, 1);
+        break;
+      case 'needHelp':
+        if (Game.data.patience && this.helping !== c) c.helpWait += dt;
+        if (c.helpWait > FAIR.HELP_WAIT || (this.closing && this.helping !== c)) this.giveUpHelp(c);
+        break;
+      case 'beingHelped':
+        if (this.closing && (c.helpWait = (c.helpWait || 0) + dt) > 30000) this.giveUpHelp(c, true);
         break;
       case 'next': {
         const id = c.plan.shift(), it = id && s.getItem(id);
@@ -2428,6 +2644,11 @@ class Fair {
         s.drawBadges();
         break;
       case 'waiting':
+        if (Game.data.patience && c.patience !== undefined) {
+          c.patience -= dt;
+          if (c.patience < c.patienceMax / 2 && c.bubbleKind !== 'grumpy') this.say(c, 'grumpy');
+          if (c.patience <= 0) this.walkOut(c);
+        }
         break;
       case 'leaving': {
         const e = this.entry();
@@ -2485,6 +2706,11 @@ class Fair {
   }
 
   decide(c) {
+    // a wish they couldn't find: sometimes they ask you for help before giving up
+    const asking = this.customers.filter(x => x.request && x !== c && x.state !== 'leaving' && x.state !== 'gone').length;
+    if (c.wish && !c.foundWish && !c.askedHelp && !this.closing && asking < 3 && Math.random() < .45) {
+      c.request = { kind: 'wish', id: c.wish }; c.state = 'raiseHand'; return;
+    }
     if (c.wish && !c.foundWish) this.stats.missed.add(c.wish);
     if (c.cart.length) {
       if (!this.register()) { this.payAuto(c); return; }
@@ -2500,6 +2726,7 @@ class Fair {
     const spots = this.queueSpots.length ? this.queueSpots : this.computeQueueSpots();
     const spot = spots[Math.min(idx, spots.length - 1)];
     c.spot = idx;
+    if (c.patience === undefined) c.patience = c.patienceMax = FAIR.PATIENCE[c.type] * (busy() === FAIR.BUSY.bustling ? 1.2 : 1);
     if (!spot) { this.payAuto(c); return; }
     const path = findPath(this.scene.grid, c, (x, y) => x === spot.x && y === spot.y);
     c.path = path || [];
@@ -2532,6 +2759,59 @@ class Fair {
     this.scene.drawBadges();
   }
 
+  // ----- helping customers -----
+  helpSpot(c) {
+    const s = this.scene, grid = s.grid, L = this.layout;
+    const cx = L.cols / 2, cy = L.rows / 2;
+    for (let tries = 0; tries < 30; tries++) {
+      const x = Math.round(cx + (Math.random() - .5) * L.cols * .55), y = Math.round(cy + (Math.random() - .3) * L.rows * .45);
+      if (grid.walkable(x, y) && findPath(grid, c, (a, b) => a === x && b === y)) return { x, y };
+    }
+    return null;
+  }
+  accept(c) {
+    if (this.helping && this.helping !== c) { const prev = this.helping; prev.state = 'needHelp'; this.say(prev, 'help'); }
+    this.helping = c; c.state = 'beingHelped'; c.askedHelp = true; this.say(c, 'helping');
+  }
+  giveUpHelp(c, polite) {
+    if (this.helping === c) this.helping = null;
+    if (c.request && c.request.kind === 'wish') this.stats.missed.add(c.request.id);
+    c.request = null; c.askedHelp = true;
+    this.say(c, polite ? 'none' : 'sad');
+    if (!c.plan.length) this.makePlan(c);
+    c.state = 'next';
+  }
+  // You hand a customer the item you're carrying. Returns { ok, text }.
+  give(c, carry) {
+    const r = c.request, q = r ? matchQuality(r, carry.id) : null;
+    if (!q) {
+      const b = BOOKS_BY_ID[r.id];
+      return { ok: false, text: r.kind === 'wish' ? `Hmm, that's not ${b.title}. That's the one I'm looking for!`
+        : r.kind === 'like' && carry.id === r.id ? 'Oh, I already read that one! Something else like it?'
+        : "Hmm, that's not quite what I had in mind. Do you have anything else?" };
+    }
+    c.cart.push({ id: carry.id, price: carry.price, sale: carry.sale || 0 });
+    if (r.kind === 'wish') c.foundWish = true;
+    c.request = null; this.helping = null; this.stats.helped++;
+    this.say(c, 'happy');
+    c.state = 'next';
+    if (c.cart.length >= c.maxItems || !c.plan.length) { c.plan = []; }
+    return { ok: true, text: q === 'perfect' ? 'Oh, this is perfect! Thank you so much!' : "Ooh, that sounds good. I'll take it!" };
+  }
+
+  // ----- patience -----
+  walkOut(c) {
+    const reg = this.register();
+    addToReturns(this.scene, c.cart.map(x => x.id), reg);
+    this.stats.walkouts++;
+    UI.toast(`${c.name} got tired of waiting and left ${c.cart.length === 1 ? 'their item' : 'their items'} on the counter.`);
+    c.cart = [];
+    this.queue = this.queue.filter(q => q !== c);
+    c.state = 'leaving'; this.say(c, 'sad');
+    this.queue.forEach((q, i) => this.placeInQueue(q, i));
+    this.scene.drawBadges();
+  }
+
   remove(c) {
     c.obj.destroy();
     this.customers = this.customers.filter(x => x !== c);
@@ -2557,6 +2837,7 @@ class Fair {
         where.place === 'display' ? ' (it\'s out on a display).' :
         where.place === 'box' ? ' (it\'s in a box by the door!)' : ' (not here yet; it may come in a delivery).');
     }
+    if (c.request && c.state !== 'needHelp') msg += ` Asked you: "${requestText(c)}"`;
     if (c.cart.length) msg += ` Carrying ${c.cart.length} item${c.cart.length === 1 ? '' : 's'}.`;
     return msg;
   }
@@ -2573,13 +2854,33 @@ const CASH = [   // drawer, in cents
   { v: 1000, label: '$10', bill: true }, { v: 500, label: '$5', bill: true }, { v: 100, label: '$1', bill: true },
   { v: 25, label: '25¢' }, { v: 10, label: '10¢' }, { v: 5, label: '5¢' }, { v: 1, label: '1¢' },
 ];
+// A kid's piggy bank: a few $1 bills plus a handful of coins. Sometimes a little short.
+function piggyPile(total) {
+  const short = Math.random() < .3;
+  let amount = short ? Math.max(100, total - randInt(2, 12) * 25) : total + (Math.random() < .5 ? 0 : randInt(1, 6) * 5);
+  const coinsPart = Math.min(amount, amount % 100 + 100 * randInt(1, 2));
+  const out = [];
+  for (let d = (amount - coinsPart) / 100; d > 0; d--) out.push(100);
+  let left = coinsPart;
+  while (left > 0) {
+    const opts = [25, 10, 5, 1].filter(v => v <= left);
+    const v = left >= 25 && Math.random() < .55 ? 25 : opts[Math.floor(Math.random() * opts.length)];
+    out.push(v); left -= v;
+  }
+  return shuffle(out);
+}
+
 const Checkout = {
   fair: null, c: null, scanned: new Set(), change: [], paid: 0, phase: 'scan',
   $(id) { return document.getElementById(id); },
   isOpen() { return !this.$('checkout').hidden; },
 
   init() {
-    this.$('coItems').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) this.scan(+b.dataset.i); });
+    this.$('coItems').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (!b) return; if (this.phase === 'short') this.putBack(+b.dataset.i); else this.scan(+b.dataset.i); });
+    this.$('coKeypad').innerHTML = '1 2 3 4 5 6 7 8 9 C 0 OK'.split(' ').map(k => `<button data-key="${k}"${k === 'OK' ? ' class="ok"' : ''}>${k}</button>`).join('');
+    this.$('coKeypad').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) this.key(b.dataset.key); });
+    this.$('coPile').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) this.count(+b.dataset.c); });
+    this.$('coReceipt').onclick = () => this.finish();
     this.$('coDrawer').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) this.add(+b.dataset.v); });
     this.$('coChange').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { this.change.splice(+b.dataset.k, 1); this.render(); } });
     this.$('coGive').onclick = () => this.give();
@@ -2592,6 +2893,7 @@ const Checkout = {
     const c = fair.waitingAtFront();
     if (!c) return;
     this.fair = fair; this.c = c; this.scanned = new Set(); this.change = []; this.phase = 'scan'; this.hint = false; this.msg = '';
+    this.typed = ''; this.pile = []; this.counted = []; this.paid = 0;
     // sometimes they grab a little something from the counter, too
     const reg = fair.register();
     if (reg && Math.random() < .35) {
@@ -2618,7 +2920,12 @@ const Checkout = {
     this.render();
   },
   pay() {
-    const t = this.total();
+    const t = this.total(), c = this.c;
+    const r = Math.random();
+    c.payWith = c.payWith || (c.type === 'kid' ? (t <= 2000 && r < .45 ? 'coins' : 'cash')
+      : c.type === 'teacher' ? (r < .7 ? 'card' : 'cash') : c.type === 'parent' ? (r < .55 ? 'card' : 'cash') : (r < .4 ? 'card' : 'cash'));
+    if (c.payWith === 'card') { this.phase = 'card'; this.typed = ''; return; }
+    if (c.payWith === 'coins') { this.pile = piggyPile(t); this.counted = []; this.phase = 'coins'; return; }
     // exact change sometimes; otherwise the smallest easy amount that covers it
     const steps = [500, 1000, 2000, 4000, 5000, 6000, 8000, 10000];
     this.paid = Math.random() < .2 ? t : (steps.find(v => v >= t) || Math.ceil(t / 2000) * 2000);
@@ -2630,6 +2937,44 @@ const Checkout = {
     if (given === due) this.finish();
     else { this.msg = given > due ? `That's ${money(given - due)} too much. Take a little back?` : `That's ${money(due - given)} short. Add a little more?`; this.render(); }
   },
+  // card reader keypad
+  key(k) {
+    if (this.phase !== 'card') return;
+    if (k === 'C') this.typed = '';
+    else if (k === 'OK') {
+      if (+this.typed === this.total()) {
+        this.phase = 'approving'; this.render();
+        setTimeout(() => { this.phase = 'approved'; this.render(); }, 900);
+        return;
+      }
+      this.msg = "That amount doesn't match the total. Press C and try again.";
+    } else if (this.typed.length < 6) this.typed = (this.typed + k).replace(/^0+/, '');
+    if (k !== 'OK') this.msg = '';
+    this.render();
+  },
+  // piggy bank: count each coin
+  count(k) {
+    if (this.phase !== 'coins') return;
+    this.counted.push(this.pile.splice(k, 1)[0]);
+    if (!this.pile.length) this.settleCoins();
+    this.render();
+  },
+  countedTotal() { return this.counted.reduce((a, b) => a + b, 0); },
+  settleCoins() {
+    const have = this.countedTotal(), t = this.total();
+    if (have < t) { this.phase = 'short'; return; }
+    this.paid = have;
+    if (have > t) this.phase = 'change'; else this.finish();
+  },
+  putBack(i) {
+    if (this.phase !== 'short') return;
+    const [x] = this.c.cart.splice(i, 1);
+    this.scanned = new Set(this.c.cart.map((_, k) => k));
+    addToReturns(this.fair.scene, [x.id], this.fair.register());
+    this.settleCoins();
+    this.render();
+  },
+
   finish() {
     this.phase = 'done';
     this.fair.checkedOut(this.c, this.total());
@@ -2653,18 +2998,45 @@ const Checkout = {
       ? `<div class="ln"><span>${xmlEsc(itemName(x.id))}${x.sale ? ` <em>${x.sale}% off</em>` : ''}</span><b>${money(x.price)}</b></div>` : '').join('');
     this.$('coScreen').innerHTML = (lines || '<div class="ln dim">Tap each item to scan it</div>') +
       `<div class="ln tot"><span>TOTAL</span><b>${money([...this.scanned].reduce((a, i) => a + c.cart[i].price, 0))}</b></div>` +
-      (this.phase !== 'scan' ? `<div class="ln"><span>PAID</span><b>${money(this.paid)}</b></div>` : '');
+      (this.phase !== 'scan' && this.paid ? `<div class="ln"><span>PAID</span><b>${money(this.paid)}</b></div>` : '') +
+      (c.payWith === 'card' && (this.phase === 'approved' || this.phase === 'done') ? `<div class="ln"><span>CARD</span><b>APPROVED</b></div>` : '');
 
     // the items on the counter
+    this.$('coItems').classList.toggle('putback', this.phase === 'short');
     this.$('coItems').innerHTML = c.cart.map((x, i) => {
-      const b = BOOKS_BY_ID[x.id], m = MERCH_BY_ID[x.id], done = this.scanned.has(i);
+      const b = BOOKS_BY_ID[x.id], m = MERCH_BY_ID[x.id], done = this.scanned.has(i) && this.phase !== 'short';
       const art = b ? coverSVG(b) : merchSVG(m, 52, m.kind === 'poster' ? 70 : 66);
       return `<button class="coitem${done ? ' done' : ''}" data-i="${i}" aria-label="Scan ${xmlEsc(itemName(x.id))}">${art}<span class="tag">${done ? '✓' : money(x.price)}</span></button>`;
     }).join('');
 
+    // card reader
+    const cardMode = ['card', 'approving', 'approved'].includes(this.phase) || (this.phase === 'done' && c.payWith === 'card');
+    this.$('coCard').hidden = !cardMode;
+    if (cardMode) {
+      const screen = this.phase === 'approving' ? 'Processing…' : this.phase === 'approved' || this.phase === 'done' ? 'APPROVED ✓' : money(+this.typed || 0);
+      this.$('coReader').textContent = screen;
+      this.$('coReader').classList.toggle('ok', this.phase === 'approved' || this.phase === 'done');
+      this.$('coCardMsg').textContent = this.phase === 'card' ? (this.msg || `${c.name} is paying by card. Key in the total, ${money(t)}, and press OK.`)
+        : this.phase === 'approving' ? `${c.name} taps their card…` : this.phase === 'approved' ? 'Approved! Hand them the receipt.' : '';
+      this.$('coKeypad').hidden = this.phase !== 'card';
+      this.$('coReceipt').hidden = this.phase !== 'approved';
+    }
+    // piggy bank
+    const coinMode = ['coins', 'short'].includes(this.phase);
+    this.$('coCoins').hidden = !coinMode;
+    if (coinMode) {
+      const label = v => v >= 100 ? '$' + v / 100 : v + '¢';
+      this.$('coPile').innerHTML = this.pile.length ? this.pile.map((v, k) => `<button class="cash ${v >= 100 ? 'bill' : 'coin c' + v}" data-c="${k}" style="transform:rotate(${(k * 37) % 30 - 15}deg)">${label(v)}</button>`).join('')
+        : '<span class="dim">All counted!</span>';
+      this.$('coCounted').textContent = `Counted so far: ${money(this.countedTotal())}`;
+      this.$('coCoinMsg').textContent = this.phase === 'short'
+        ? `"Oh no, I'm ${money(t - this.countedTotal())} short! Can I put something back?" Tap an item to put it back.`
+        : `${c.name} poured out their piggy bank! Tap each coin and bill to count it.`;
+    }
+
     // paying
     const payBox = this.$('coPay');
-    payBox.hidden = this.phase === 'scan';
+    payBox.hidden = this.phase === 'scan' || cardMode || coinMode;
     const due = this.paid - t;
     if (this.phase === 'exact') this.$('coPaidMsg').innerHTML = `${xmlEsc(c.name)} paid exactly <b>${money(t)}</b>. No change needed!`;
     else if (this.phase === 'change' || this.phase === 'done') this.$('coPaidMsg').innerHTML = `${xmlEsc(c.name)} paid with <span class="cash bill">${money(this.paid)}</span> for a <b>${money(t)}</b> total.`;
@@ -2683,9 +3055,44 @@ const Checkout = {
     this.$('coGive').hidden = !changeMode;
     const waiting = this.fair.queue.filter(q => q !== c && q.state !== 'leaving').length;
     this.$('coNext').hidden = !(this.phase === 'done' || this.phase === 'exact');
+    if (this.phase === 'done') payBox.hidden = false;
+    if (this.phase === 'done' && c.payWith !== 'cash' && c.payWith !== 'coins') this.$('coPaidMsg').innerHTML = `Paid by card: <b>${money(t)}</b>.`;
+    if (this.phase === 'done' && c.payWith === 'coins' && this.paid === t) this.$('coPaidMsg').innerHTML = `Paid in coins: exactly <b>${money(t)}</b>!`;
     if (this.phase === 'exact' && !this.$('coNext').hidden) this.$('coNext').textContent = 'Bag it up';
     if (this.phase === 'done') this.$('coNext').textContent = waiting ? `Next customer (${waiting} waiting)` : 'Done';
     this.$('coClose').hidden = this.phase === 'done';
+  },
+};
+
+// The help dialog: hear what a customer wants, accept, or hand over what you're carrying.
+const Help = {
+  $(id) { return document.getElementById(id); },
+  init() { this.$('help').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) this.act(b.dataset.act); }); },
+  show(scene, c, mode, text) {
+    this.scene = scene; this.c = c;
+    this.$('hpFace').innerHTML = `<svg viewBox="1 -13 30 30" width="84" height="84">${personArt('front', LOOKS[c.look]).body}</svg>`;
+    this.$('hpName').textContent = `${c.name} · ${CUSTOMER_TYPES[c.type].label}`;
+    this.$('hpSays').textContent = text || requestText(c);
+    let hint = '', acts = [];
+    if (mode === 'ask') {
+      if (c.request.kind === 'wish') {
+        const w = whereIsBook(scene.layout, c.request.id);
+        hint = w.place === 'display' ? 'It\'s out on a display.' : w.place === 'box' ? 'It\'s in a box by the door.' : 'It isn\'t at the fair right now.';
+      } else hint = 'Pick a book from any display or box that fits what they asked for.';
+      acts = [['accept', "I'll find it!", true], ['decline', c.request.kind === 'wish' ? "Sorry, we don't have it" : 'Sorry, not right now'], ['close', 'Back']];
+    } else acts = [['close', 'OK', true]];
+    this.$('hpHint').textContent = hint;
+    this.$('hpActions').innerHTML = acts.map(([a, label, primary]) => `<button data-act="${a}"${primary ? ' class="primary"' : ''}>${label}</button>`).join('');
+    this.$('help').hidden = false;
+    scene.setInputEnabled(false);
+  },
+  act(a) {
+    const f = this.scene.fair, c = this.c;
+    if (a === 'accept') { f.accept(c); UI.toast(`Find something for ${c.name}, then tap Take to ${c.name}.`); }
+    if (a === 'decline') f.giveUpHelp(c, true);
+    this.$('help').hidden = true;
+    this.scene.setInputEnabled(true);
+    this.scene.refreshCarry();
   },
 };
 
@@ -2710,6 +3117,15 @@ const UI = {
     sel.innerHTML = Object.entries(FAIR.DAY_LENGTHS).map(([k, d]) => `<option value="${k}">${d.label}</option>`).join('');
     sel.value = Game.data.dayLength;
     sel.onchange = () => { Game.data.dayLength = sel.value; Game.save(); this.toast('New day length starts with the next fair day.'); };
+    const busySel = this.$('busy');
+    busySel.innerHTML = Object.entries(FAIR.BUSY).map(([k, d]) => `<option value="${k}">${d.label}</option>`).join('');
+    busySel.value = Game.data.busy || 'lively';
+    busySel.onchange = () => { Game.data.busy = busySel.value; Game.save(); this.toast('New setting starts with the next fair day.'); };
+    const pat = this.$('patience');
+    pat.checked = Game.data.patience !== false;
+    pat.onchange = () => { Game.data.patience = pat.checked; Game.save(); };
+    this.$('carryDrop').onclick = () => scene.dropCarry();
+    Help.init();
     this.$('btnFair').onclick = () => { const f = scene.fair; if (!f.open) f.start(); else if (!f.closing) f.closeNow(); };
     this.$('sumClose').onclick = () => { this.$('summary').hidden = true; };
     this.setFair(scene.fair);
@@ -2808,6 +3224,7 @@ const UI = {
     this.$('sumTitle').textContent = `Day ${s.day} complete!`;
     this.$('sumBody').innerHTML =
       `<div class="sum-grid"><div><b>${s.customers}</b>customers</div><div><b>${s.sold}</b>items sold</div><div><b>${money(s.earned)}</b>earned</div></div>` +
+      (s.helped || s.walkouts ? `<p>You helped <b>${s.helped}</b> customer${s.helped === 1 ? '' : 's'} find something${s.walkouts ? `, and ${s.walkouts} got tired of waiting in line` : ''}.</p>` : '') +
       (best.length ? `<p><b>Best sellers:</b></p><ul>${best.map(([id, n]) => `<li>${xmlEsc(itemName(id))}${n > 1 ? ` ×${n}` : ''}</li>`).join('')}</ul>` : '<p>No sales today. Stock up and try again tomorrow!</p>') +
       (s.missed.length ? `<p><b>Wishes you missed:</b></p><ul>${s.missed.slice(0, 6).map(id => `<li>${xmlEsc(itemName(id))}</li>`).join('')}</ul><p class="muted">Get these out on a display and wish-list customers will find them.</p>` : '') +
       `<p class="muted">Total earnings: ${money(Game.data.money)}</p>`;
@@ -2816,7 +3233,13 @@ const UI = {
 
   openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
   closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
-  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden; },
+  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden; },
+
+  setCarry(carry, helping) {
+    const el = this.$('carry');
+    el.hidden = !carry;
+    if (carry) this.$('carryText').textContent = `Carrying ${itemName(carry.id)}` + (helping ? ` for ${helping.name}` : '');
+  },
 };
 
 // ============================================================
@@ -2882,6 +3305,7 @@ class RoomScene extends Phaser.Scene {
   }
 
   setInputEnabled(on) {
+    if (on) this.refreshCarry && this.player && this.refreshCarry();
     this.input.enabled = on;
     this.input.keyboard.enabled = on;
     if (!on) { this.player.path = []; this.player.arrive = null; }
@@ -2956,7 +3380,7 @@ class RoomScene extends Phaser.Scene {
         return { key, make: () => maker(item.slots) };
       }
     }
-    if (item.type === 'box') return { key: (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
+    if (item.type === 'box') return { key: item.returns ? 'basket' : (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
     return null;
   }
 
@@ -3187,7 +3611,7 @@ class RoomScene extends Phaser.Scene {
 
   handlePlayTap(t, hit) {
     const who = this.fair.open && this.lastPointer && this.fair.customerAt(this.lastPointer.x, this.lastPointer.y);
-    if (who) { UI.toast(this.fair.describe(who)); return; }
+    if (who) { this.tapCustomer(who); return; }
     if (t && isDoor(this.layout, t.x, t.y)) { this.requestDelivery(); return; }
     const item = hit || (t && this.getItem(this.grid.solidAt(t.x, t.y)));
     if (item) {
@@ -3198,6 +3622,48 @@ class RoomScene extends Phaser.Scene {
     if (t && this.grid.walkable(t.x, t.y)) {
       if (this.walkTo((x, y) => x === t.x && y === t.y)) this.tapMarker(t.x, t.y);
     }
+  }
+
+  // Customers: walk over, then hear their request or hand over what you're carrying.
+  tapCustomer(c) {
+    const f = this.fair, carry = this.player.carry;
+    const needsYou = c.state === 'needHelp' || (f.helping === c && carry);
+    if (!needsYou) { UI.toast(f.describe(c) + (f.helping === c ? ' Find it, then bring it here.' : '')); return; }
+    const near = (x, y) => Math.abs(x - c.x) + Math.abs(y - c.y) <= 1;
+    this.walkTo(near, () => {
+      if (!f.customers.includes(c)) return;
+      if (c.x < this.player.x) this.setFacing(-1, 0); else if (c.x > this.player.x) this.setFacing(1, 0); else this.setFacing(0, c.y > this.player.y ? 1 : -1);
+      if (f.helping === c && this.player.carry) {
+        const r = f.give(c, this.player.carry);
+        if (r.ok) this.setCarry(null);
+        Help.show(this, c, 'result', r.text);
+      } else if (c.state === 'needHelp') Help.show(this, c, 'ask');
+    });
+  }
+
+  setCarry(carry) {
+    this.player.carry = carry;
+    this.refreshCarry();
+  }
+  refreshCarry() {
+    const carry = this.player.carry;
+    UI.setCarry(carry, this.fair.helping);
+    if (this.carryIcon) { this.carryIcon.destroy(); this.carryIcon = null; }
+    if (!carry) return;
+    const b = BOOKS_BY_ID[carry.id], color = parseInt((b ? GENRES[b.genre].color : MERCH_BY_ID[carry.id].color).slice(1), 16);
+    const g = this.add.graphics();
+    g.fillStyle(color, 1).lineStyle(1.2, 0x3b2f3f, 1).fillRoundedRect(-5, -36, 10, 13, 1.5).strokeRoundedRect(-5, -36, 10, 13, 1.5);
+    g.fillStyle(0xffffff, .8).fillRect(-3, -33, 6, 1.6);
+    this.carryIcon = g;
+    this.playerObj.add(g);
+  }
+  // Put down what you're carrying: it goes to the returns basket by the counter.
+  dropCarry() {
+    const carry = this.player.carry;
+    if (!carry) return;
+    addToReturns(this, [carry.id], this.fair.register());
+    this.setCarry(null);
+    UI.toast('Put it in the returns basket by the counter.');
   }
 
   tapMarker(tx, ty) {
@@ -3336,6 +3802,7 @@ class RoomScene extends Phaser.Scene {
   update(time, delta) {
     const p = this.player, k = this.keys;
     const paused = UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen();
+    if (this.fair.helping && !this.fair.customers.includes(this.fair.helping)) { this.fair.helping = null; this.refreshCarry(); }
     if (!paused && this.fair.open) {
       const wasWaiting = !!this.fair.waitingAtFront();
       this.fair.tick(Math.min(delta, 100));
@@ -3395,7 +3862,7 @@ const game = new Phaser.Game({
   scene: [BootScene, RoomScene],
 });
 window.addEventListener('resize', () => { if (game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
-window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR };
+window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText };
 </script>
 </body>
 </html>
