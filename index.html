@@ -9,7 +9,10 @@
   ============================================================
   COZY BOOK FAIR — single-file Phaser game
   ------------------------------------------------------------
-  Phase 6 (this file): helping customers (fetching wishes and
+  Phase 7 (this file): players with their own saves and characters,
+  a Kids book list (picture books, graphic novels, kids' favorites),
+  redrawn posters, series colors, and quick fixes.
+  Phase 6: helping customers (fetching wishes and
   recommendations), busy setting, patience in line with a returns
   basket, card and piggy-bank payments. Phase 5: customers and fair
   days (rushes, wish lists, checkout with making change, sales), on top of
@@ -158,7 +161,12 @@
   .tray-head { display: flex; align-items: center; gap: 8px; }
   .tray-head span { flex: 1; font-weight: 700; color: var(--ink); }
   .tray-head button { box-shadow: none; border: 2px solid var(--ink); padding: 5px 11px; }
-  .tray-books { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  /* the box: one row you swipe sideways, so the whole shelf stays in view */
+  .tray-books { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 10px 4px 12px;
+    scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  .tray-books > * { flex: none; scroll-snap-align: center; }
+  .tray-books > :first-child { margin-left: auto; }
+  .tray-books > :last-child { margin-right: auto; }
   .cover { padding: 0; background: none; box-shadow: none; border-radius: 6px; line-height: 0; transition: transform .12s; }
   .cover svg { display: block; }
   .cover.held, .merchbtn.held { transform: translateY(-6px); outline: 3px solid #ffd166; outline-offset: 2px; }
@@ -166,8 +174,44 @@
   .merchbtn svg { display: block; }
   .merchbtn .qty { position: absolute; right: -6px; bottom: -6px; line-height: 1; font-size: 12px; font-weight: 800; background: var(--ink); color: var(--panel); border-radius: 999px; padding: 3px 6px; }
   .cover:focus-visible, .stock button:focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
-  .tray-empty { margin: 6px 0; font-size: 14px; color: var(--ink); text-align: center; line-height: 1.4; }
+  .tray-empty { margin: 6px 0; font-size: 14px; color: var(--ink); text-align: center; line-height: 1.4; flex: 1 1 100% !important; white-space: normal; }
   @media (prefers-reduced-motion: reduce) { .cover { transition: none; } }
+
+  /* Who's playing? */
+  .players { position: fixed; inset: 0; z-index: 40; background: #2b2235; overflow-y: auto;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: calc(env(safe-area-inset-top) + 24px) max(16px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 24px) max(16px, env(safe-area-inset-left)); }
+  .pl-card { width: min(100%, 520px); background: var(--panel); border-radius: 22px; padding: 22px 20px; box-shadow: var(--shadow); box-sizing: border-box; }
+  .pl-card h1 { margin: 0 0 16px; font-size: 26px; text-align: center; }
+  .pl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .pl-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border: 3px solid var(--panel-edge); box-shadow: none; border-radius: 18px; background: #fff; }
+  .pl-btn.last { border-color: var(--accent); }
+  .pl-btn .face { width: 92px; height: 92px; border-radius: 50%; background: #f6ead3; border: 3px solid var(--ink); overflow: hidden; }
+  .pl-btn .face svg { display: block; }
+  .pl-btn b { font-size: 17px; }
+  .pl-btn small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .pl-new { display: block; width: 100%; margin-top: 14px; box-shadow: none; border: 3px dashed var(--panel-edge); border-radius: 16px; padding: 14px; font-size: 16px; }
+  .pl-empty { text-align: center; color: var(--muted); margin: 0 0 4px; }
+  .pl-make { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 420px) { .pl-make { grid-template-columns: 1fr; justify-items: center; } .pl-fields { width: 100%; } }
+  .pl-preview { width: 120px; height: 160px; border-radius: 18px; background: #f6ead3; border: 3px solid var(--ink); display: flex; align-items: center; justify-content: center; }
+  .pl-label { font-size: 13px; font-weight: 800; margin: 10px 0 6px; display: block; }
+  .pl-input { font: inherit; font-size: 16px; font-weight: 700; width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--panel-edge); background: #fff; color: var(--ink); }
+  .pl-input:focus-visible, .pl-sw:focus-visible, .pl-list-opt:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .pl-sws { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pl-sw { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid var(--ink); box-shadow: none; }
+  .pl-sw.on { box-shadow: 0 0 0 3px var(--panel), 0 0 0 6px var(--ink); }
+  .pl-lists { display: grid; gap: 8px; }
+  .pl-list-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 2px solid var(--panel-edge); border-radius: 14px; background: #fff; cursor: pointer; }
+  .pl-list-opt:has(input:checked) { border-color: var(--accent); background: #fde8e1; }
+  .pl-list-opt input { margin-top: 3px; accent-color: var(--accent); }
+  .pl-list-opt b { display: block; font-size: 15px; }
+  .pl-list-opt span { font-size: 13px; color: var(--muted); }
+  .pl-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .pl-actions button { box-shadow: none; border: 2px solid var(--panel-edge); }
+  .me { display: flex; gap: 10px; align-items: center; background: #fff; border-radius: 14px; padding: 6px 10px; margin: 4px 0 10px; font-size: 14px; }
+  .me .face { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #f6ead3; border: 2px solid var(--ink); flex: none; }
+  .me .face svg { display: block; }
 
   /* money + fair button */
   .title { display: flex; gap: 10px; align-items: center; }
@@ -250,6 +294,7 @@
   .card {
     background: var(--panel); border-radius: 18px; padding: 18px;
     width: min(92vw, 380px); box-shadow: var(--shadow);
+    max-height: 100%; overflow-y: auto; box-sizing: border-box; overscroll-behavior: contain;
   }
   .card h2 { margin: 0 0 8px; font-size: 20px; }
   .card p { margin: 6px 0; font-size: 14px; line-height: 1.4; }
@@ -361,9 +406,34 @@
     </div>
   </div>
 
+  <div id="players" class="players" hidden>
+    <div class="pl-card" role="dialog" aria-labelledby="plTitle">
+      <div id="plPick">
+        <h1 id="plTitle">Who's playing?</h1>
+        <div id="plList" class="pl-list"></div>
+        <button id="plNew" class="pl-new">+ New player</button>
+      </div>
+      <form id="plMake" hidden>
+        <h1>New player</h1>
+        <div class="pl-make">
+          <div id="plPreview" class="pl-preview"></div>
+          <div class="pl-fields">
+            <label class="pl-label" for="plName">Name</label>
+            <input id="plName" class="pl-input" maxlength="16" autocomplete="off" placeholder="Your name" required>
+            <div id="plSwatches"></div>
+          </div>
+        </div>
+        <div class="pl-label">Book list</div>
+        <div class="pl-lists" id="plLists"></div>
+        <div class="pl-actions"><button type="button" id="plBack">Back</button><button type="submit" class="primary">Start playing</button></div>
+      </form>
+    </div>
+  </div>
+
   <div id="menu" class="menu" hidden>
     <div class="card">
       <h2>Book Fair</h2>
+      <div class="me" id="meRow"></div>
       <p><b>Walk:</b> tap or click a spot. Keyboard: WASD or arrow keys.</p>
       <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
       <p><b>Stock displays:</b> tap any shelf, table, rack, bin or the checkout, then move items from the box onto it. A ! means it's running low. Tap the door for a new delivery.</p>
@@ -382,6 +452,10 @@
         <button id="btnExport">Export room</button>
         <button id="btnImport">Import room</button>
         <button id="btnReset">Reset room</button>
+      </div>
+      <div class="row">
+        <button id="btnSwitch">Switch player</button>
+        <button id="btnNewGame">New game</button>
         <button id="btnClose" class="primary">Close</button>
       </div>
       <input id="fileImport" type="file" accept="application/json,.json" hidden>
@@ -397,7 +471,7 @@
 const CONFIG = {
   TILE: 32,                       // tile size in px (world units)
   STEP_MS: 150,                   // time to walk one tile
-  SAVE_KEY: 'bookfair.layout.v1', // localStorage key for the room
+  // Saves are per player: see playerKey() in section 4.
   LAYOUT_VERSION: 2,
   ZOOM_MIN: 1,
   ZOOM_MAX: 2.5,
@@ -507,6 +581,36 @@ function cloneLayout(layout) { return JSON.parse(JSON.stringify(layout)); }
 
 function newId() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
+// ---- players ----
+// Each player has their own name, character look, book list and save.
+// bookfair.players.v1 = { list: [{ id, name, look, bookList }], last }
+// bookfair.p.<id>.layout / bookfair.p.<id>.game = that player's save
+const PLAYERS_KEY = 'bookfair.players.v1';
+let PLAYER = null;   // the player who's playing right now
+function playerKey(what) { return `bookfair.p.${PLAYER.id}.${what}`; }
+const Players = {
+  data: { list: [], last: null },
+  load() {
+    try { const d = JSON.parse(localStorage.getItem(PLAYERS_KEY)); if (d && Array.isArray(d.list)) this.data = d; } catch (e) {}
+    return this.data;
+  },
+  save() { try { localStorage.setItem(PLAYERS_KEY, JSON.stringify(this.data)); } catch (e) {} },
+  add(name, look, bookList) {
+    const pl = { id: newId(), name: name.slice(0, 16), look, bookList };
+    this.data.list.push(pl); this.data.last = pl.id; this.save();
+    return pl;
+  },
+  get(id) { return this.data.list.find(x => x.id === id) || null; },
+  // Peek at a player's progress for the picker
+  summary(pl) {
+    try { const g = JSON.parse(localStorage.getItem(`bookfair.p.${pl.id}.game`)); if (g) return { day: g.day || 1, money: g.money || 0 }; } catch (e) {}
+    return { day: 1, money: 0 };
+  },
+  erase(pl) {   // New game: wipe this player's save only
+    try { localStorage.removeItem(`bookfair.p.${pl.id}.layout`); localStorage.removeItem(`bookfair.p.${pl.id}.game`); } catch (e) {}
+  },
+};
+
 const DECOR_OPTIONS = { floor: ['wood', 'checker', 'carpet'], wall: ['sage', 'stripes', 'stars'] };
 
 // Cleans up a layout from storage or a file. Returns null if unusable.
@@ -570,7 +674,7 @@ function migrateLayout(raw) {
 
 function loadLayout() {
   try {
-    const text = localStorage.getItem(CONFIG.SAVE_KEY);
+    const text = localStorage.getItem(playerKey('layout'));
     if (text) {
       const layout = validateLayout(migrateLayout(JSON.parse(text)));
       if (layout) return layout;
@@ -580,7 +684,7 @@ function loadLayout() {
 }
 
 function saveLayout(layout) {
-  try { localStorage.setItem(CONFIG.SAVE_KEY, JSON.stringify(layout)); return true; }
+  try { localStorage.setItem(playerKey('layout'), JSON.stringify(layout)); return true; }
   catch (e) { return false; }
 }
 
@@ -987,7 +1091,14 @@ ART['box-open'] = () => {
 
 // ---- people ----
 // One body, recolored for every character. Feet sit at the bottom of the tile.
-const PLAYER_LOOK = { shirt: '#e07a5f', hair: '#5a3825', skin: '#f1c27d', pants: '#3d5a80' };
+let PLAYER_LOOK = { shirt: '#e07a5f', hair: '#5a3825', skin: '#f1c27d', pants: '#3d5a80' };   // set from the chosen player
+// Choices on the character maker
+const LOOK_CHOICES = {
+  skin:  ['#ffe0bd', '#f5d0b0', '#f1c27d', '#e0ac69', '#c68642', '#a0522d', '#8d5524', '#5c3a24'],
+  hair:  ['#2b2b2b', '#5a3825', '#8d5524', '#d9a066', '#e0b04a', '#b56576', '#d64545', '#9c89b8'],
+  shirt: ['#e07a5f', '#f08fb3', '#9c89b8', '#5b82b8', '#81b29a', '#f2cc8f', '#4c9a7a', '#d64545'],
+  pants: ['#3d5a80', '#3b2f3f', '#6d597a', '#2a9d8f', '#5c3a24', '#457b9d', '#e5989b', '#81b29a'],
+};
 const CUSTOMER_LOOKS = [   // ready for the customers phase
   { shirt: '#81b29a', hair: '#2b2b2b', skin: '#c68642', pants: '#6d597a' },
   { shirt: '#9c89b8', hair: '#e0b04a', skin: '#ffe0bd', pants: '#457b9d' },
@@ -1154,7 +1265,7 @@ function roomSignature(layout) {
 // books left out), sorted into genres by hand.
 // To add books: append { id, title, author, genre } lines below.
 // Optional fields: subtitle, series, year, rating, staffPick (5 stars),
-// shelf (currently-reading), source, tags (vibes used for recommendations:
+// shelf (currently-reading), source ('goodreads' or 'kids'), tags (vibes used for recommendations:
 // cozy funny magic mystery romance adventure historical truestory animals
 // school family holiday books royals scifi heartfelt classic food spooky faith). To-read and did-not-finish books are left out.
 // ============================================================
@@ -1169,9 +1280,11 @@ const GENRES = {
   nonfiction   : { label: "Nonfiction & Memoir", color: '#6a994e' },
   ya           : { label: "Young Adult", color: '#f08a3c' },
   middlegrade  : { label: "Middle Grade", color: '#f2b84b' },
+  picture      : { label: "Picture Books", color: '#ef6f9a' },
+  graphic      : { label: "Graphic Novels", color: '#5b6ee1' },
 };
 
-const BOOKS = [
+const GOODREADS_BOOKS = [
   {"id": "b1", "title": "The House Witch", "author": "Delemhach", "genre": "fantasy", "series": "The House Witch, #1", "year": 2022, "shelf": "currently-reading", "source": "goodreads", "tags": ["cozy", "magic"]},
   {"id": "b2", "title": "The Marlow Murder Club", "author": "Robert Thorogood", "genre": "mystery", "series": "Marlow Murder Club, #1", "year": 2021, "rating": 4.5, "source": "goodreads", "tags": ["cozy", "funny", "mystery"]},
   {"id": "b3", "title": "The Goblin Emperor", "author": "Katherine Addison", "genre": "fantasy", "series": "The Chronicles of Osreth, #1", "year": 2014, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["magic", "royals"]},
@@ -1448,7 +1561,117 @@ const BOOKS = [
   {"id": "b305", "title": "Harry Potter and the Sorcerer's Stone", "author": "J.K. Rowling", "genre": "middlegrade", "series": "Harry Potter, #1", "year": 1997, "rating": 5.0, "staffPick": true, "source": "goodreads", "tags": ["adventure", "magic", "school"]},
 ];
 
-const BOOKS_BY_ID = Object.fromEntries(BOOKS.map(b => [b.id, b]));
+// Kids' favorites for the Kids list: picture books, graphic novels, chapter
+// books and middle grade (none of the Little Free Library titles).
+const KIDS_BOOKS = [
+  {"id": "k1", "title": "Where the Wild Things Are", "author": "Maurice Sendak", "genre": "picture", "tags": ["adventure", "classic", "magic"], "source": "kids"},
+  {"id": "k2", "title": "Goodnight Moon", "author": "Margaret Wise Brown", "genre": "picture", "tags": ["classic", "cozy"], "source": "kids"},
+  {"id": "k3", "title": "Don't Let the Pigeon Drive the Bus!", "author": "Mo Willems", "genre": "picture", "series": "Pigeon, #1", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k4", "title": "Don't Let the Pigeon Stay Up Late!", "author": "Mo Willems", "genre": "picture", "series": "Pigeon, #2", "tags": ["animals", "cozy", "funny"], "source": "kids"},
+  {"id": "k5", "title": "There Is a Bird on Your Head!", "author": "Mo Willems", "genre": "picture", "series": "Elephant & Piggie, #4", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k6", "title": "We Are in a Book!", "author": "Mo Willems", "genre": "picture", "series": "Elephant & Piggie, #13", "tags": ["animals", "books", "funny"], "source": "kids"},
+  {"id": "k7", "title": "Knuffle Bunny", "author": "Mo Willems", "genre": "picture", "tags": ["family", "funny"], "source": "kids"},
+  {"id": "k8", "title": "The Gruffalo", "author": "Julia Donaldson", "genre": "picture", "tags": ["adventure", "animals", "funny"], "source": "kids"},
+  {"id": "k9", "title": "Room on the Broom", "author": "Julia Donaldson", "genre": "picture", "tags": ["animals", "funny", "magic", "spooky"], "source": "kids"},
+  {"id": "k10", "title": "Chicka Chicka Boom Boom", "author": "Bill Martin Jr.", "genre": "picture", "tags": ["funny", "school"], "source": "kids"},
+  {"id": "k11", "title": "The Day the Crayons Quit", "author": "Drew Daywalt", "genre": "picture", "tags": ["funny", "school"], "source": "kids"},
+  {"id": "k12", "title": "Pete the Cat: I Love My White Shoes", "author": "Eric Litwin", "genre": "picture", "series": "Pete the Cat, #1", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k13", "title": "Pete the Cat: Rocking in My School Shoes", "author": "Eric Litwin", "genre": "picture", "series": "Pete the Cat, #2", "tags": ["animals", "funny", "school"], "source": "kids"},
+  {"id": "k14", "title": "Pete the Cat and His Four Groovy Buttons", "author": "Eric Litwin", "genre": "picture", "series": "Pete the Cat, #3", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k15", "title": "The Wonky Donkey", "author": "Craig Smith", "genre": "picture", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k16", "title": "Dear Zoo", "author": "Rod Campbell", "genre": "picture", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k17", "title": "Tacky the Penguin", "author": "Helen Lester", "genre": "picture", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k18", "title": "Chrysanthemum", "author": "Kevin Henkes", "genre": "picture", "tags": ["animals", "heartfelt", "school"], "source": "kids"},
+  {"id": "k19", "title": "The Mitten", "author": "Jan Brett", "genre": "picture", "tags": ["animals", "cozy", "holiday"], "source": "kids"},
+  {"id": "k20", "title": "Corduroy", "author": "Don Freeman", "genre": "picture", "tags": ["classic", "cozy", "heartfelt"], "source": "kids"},
+  {"id": "k21", "title": "Llama Llama Red Pajama", "author": "Anna Dewdney", "genre": "picture", "series": "Llama Llama, #1", "tags": ["animals", "cozy", "family"], "source": "kids"},
+  {"id": "k22", "title": "The Snowy Day", "author": "Ezra Jack Keats", "genre": "picture", "tags": ["classic", "cozy", "holiday"], "source": "kids"},
+  {"id": "k23", "title": "Dragons Love Tacos", "author": "Adam Rubin", "genre": "picture", "tags": ["food", "funny", "magic"], "source": "kids"},
+  {"id": "k24", "title": "The Rainbow Fish", "author": "Marcus Pfister", "genre": "picture", "tags": ["animals", "heartfelt"], "source": "kids"},
+  {"id": "k25", "title": "The Kissing Hand", "author": "Audrey Penn", "genre": "picture", "tags": ["animals", "family", "heartfelt", "school"], "source": "kids"},
+  {"id": "k26", "title": "The Pout-Pout Fish", "author": "Deborah Diesen", "genre": "picture", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k27", "title": "Last Stop on Market Street", "author": "Matt de la Peña", "genre": "picture", "tags": ["family", "heartfelt"], "source": "kids"},
+  {"id": "k28", "title": "Owl Moon", "author": "Jane Yolen", "genre": "picture", "tags": ["animals", "classic", "cozy"], "source": "kids"},
+  {"id": "k29", "title": "Stellaluna", "author": "Janell Cannon", "genre": "picture", "tags": ["animals", "heartfelt"], "source": "kids"},
+  {"id": "k30", "title": "The Book with No Pictures", "author": "B.J. Novak", "genre": "picture", "tags": ["books", "funny"], "source": "kids"},
+  {"id": "k31", "title": "Officer Buckle and Gloria", "author": "Peggy Rathmann", "genre": "picture", "tags": ["animals", "funny", "school"], "source": "kids"},
+  {"id": "k32", "title": "Harold and the Purple Crayon", "author": "Crockett Johnson", "genre": "picture", "tags": ["adventure", "classic", "magic"], "source": "kids"},
+  {"id": "k33", "title": "Strega Nona", "author": "Tomie dePaola", "genre": "picture", "tags": ["classic", "food", "magic"], "source": "kids"},
+  {"id": "k34", "title": "Sulwe", "author": "Lupita Nyong'o", "genre": "picture", "tags": ["family", "heartfelt"], "source": "kids"},
+  {"id": "k35", "title": "Giraffes Can't Dance", "author": "Giles Andreae", "genre": "picture", "tags": ["animals", "heartfelt"], "source": "kids"},
+  {"id": "k36", "title": "The Cat in the Hat", "author": "Dr. Seuss", "genre": "picture", "tags": ["animals", "classic", "funny"], "source": "kids"},
+  {"id": "k37", "title": "Green Eggs and Ham", "author": "Dr. Seuss", "genre": "picture", "tags": ["classic", "food", "funny"], "source": "kids"},
+  {"id": "k38", "title": "Oh, the Places You'll Go!", "author": "Dr. Seuss", "genre": "picture", "tags": ["adventure", "heartfelt"], "source": "kids"},
+  {"id": "k39", "title": "Interrupting Chicken", "author": "David Ezra Stein", "genre": "picture", "tags": ["animals", "books", "funny"], "source": "kids"},
+  {"id": "k40", "title": "Mother Bruce", "author": "Ryan T. Higgins", "genre": "picture", "series": "Mother Bruce, #1", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k41", "title": "We Don't Eat Our Classmates", "author": "Ryan T. Higgins", "genre": "picture", "tags": ["animals", "funny", "school"], "source": "kids"},
+  {"id": "k42", "title": "The Invisible String", "author": "Patrice Karst", "genre": "picture", "tags": ["family", "heartfelt"], "source": "kids"},
+  {"id": "k43", "title": "Jabari Jumps", "author": "Gaia Cornwall", "genre": "picture", "tags": ["adventure", "family"], "source": "kids"},
+  {"id": "k44", "title": "Creepy Carrots!", "author": "Aaron Reynolds", "genre": "picture", "tags": ["food", "funny", "spooky"], "source": "kids"},
+  {"id": "k45", "title": "Bear Snores On", "author": "Karma Wilson", "genre": "picture", "tags": ["animals", "cozy"], "source": "kids"},
+  {"id": "k46", "title": "Dog Man", "author": "Dav Pilkey", "genre": "graphic", "series": "Dog Man, #1", "tags": ["adventure", "animals", "funny"], "source": "kids"},
+  {"id": "k47", "title": "Dog Man Unleashed", "author": "Dav Pilkey", "genre": "graphic", "series": "Dog Man, #2", "tags": ["adventure", "animals", "funny"], "source": "kids"},
+  {"id": "k48", "title": "Dog Man: A Tale of Two Kitties", "author": "Dav Pilkey", "genre": "graphic", "series": "Dog Man, #3", "tags": ["adventure", "animals", "funny"], "source": "kids"},
+  {"id": "k49", "title": "Cat Kid Comic Club", "author": "Dav Pilkey", "genre": "graphic", "series": "Cat Kid Comic Club, #1", "tags": ["animals", "books", "funny"], "source": "kids"},
+  {"id": "k50", "title": "Smile", "author": "Raina Telgemeier", "genre": "graphic", "tags": ["family", "heartfelt", "school", "truestory"], "source": "kids"},
+  {"id": "k51", "title": "Sisters", "author": "Raina Telgemeier", "genre": "graphic", "tags": ["family", "funny", "truestory"], "source": "kids"},
+  {"id": "k52", "title": "The Baby-Sitters Club: Kristy's Great Idea", "author": "Raina Telgemeier", "genre": "graphic", "series": "The Baby-Sitters Club Graphix, #1", "tags": ["family", "funny", "school"], "source": "kids"},
+  {"id": "k53", "title": "New Kid", "author": "Jerry Craft", "genre": "graphic", "series": "New Kid, #1", "tags": ["heartfelt", "school"], "source": "kids"},
+  {"id": "k54", "title": "Amulet: The Stonekeeper", "author": "Kazu Kibuishi", "genre": "graphic", "series": "Amulet, #1", "tags": ["adventure", "magic"], "source": "kids"},
+  {"id": "k55", "title": "Hilo: The Boy Who Crashed to Earth", "author": "Judd Winick", "genre": "graphic", "series": "Hilo, #1", "tags": ["adventure", "funny", "scifi"], "source": "kids"},
+  {"id": "k56", "title": "Narwhal: Unicorn of the Sea", "author": "Ben Clanton", "genre": "graphic", "series": "Narwhal and Jelly, #1", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k57", "title": "The Bad Guys", "author": "Aaron Blabey", "genre": "graphic", "series": "The Bad Guys, #1", "tags": ["adventure", "animals", "funny"], "source": "kids"},
+  {"id": "k58", "title": "El Deafo", "author": "Cece Bell", "genre": "graphic", "tags": ["heartfelt", "school", "truestory"], "source": "kids"},
+  {"id": "k59", "title": "Lunch Lady and the Cyborg Substitute", "author": "Jarrett J. Krosoczka", "genre": "graphic", "series": "Lunch Lady, #1", "tags": ["food", "funny", "mystery", "school"], "source": "kids"},
+  {"id": "k60", "title": "Charlotte's Web", "author": "E.B. White", "genre": "middlegrade", "tags": ["animals", "classic", "heartfelt"], "source": "kids"},
+  {"id": "k61", "title": "Wonder", "author": "R.J. Palacio", "genre": "middlegrade", "tags": ["family", "heartfelt", "school"], "source": "kids"},
+  {"id": "k62", "title": "Diary of a Wimpy Kid", "author": "Jeff Kinney", "genre": "middlegrade", "series": "Diary of a Wimpy Kid, #1", "tags": ["family", "funny", "school"], "source": "kids"},
+  {"id": "k63", "title": "Rodrick Rules", "author": "Jeff Kinney", "genre": "middlegrade", "series": "Diary of a Wimpy Kid, #2", "tags": ["family", "funny", "school"], "source": "kids"},
+  {"id": "k64", "title": "The Last Straw", "author": "Jeff Kinney", "genre": "middlegrade", "series": "Diary of a Wimpy Kid, #3", "tags": ["family", "funny", "school"], "source": "kids"},
+  {"id": "k65", "title": "The Dragonet Prophecy", "author": "Tui T. Sutherland", "genre": "middlegrade", "series": "Wings of Fire, #1", "tags": ["adventure", "animals", "magic"], "source": "kids"},
+  {"id": "k66", "title": "The Lost Heir", "author": "Tui T. Sutherland", "genre": "middlegrade", "series": "Wings of Fire, #2", "tags": ["adventure", "animals", "magic"], "source": "kids"},
+  {"id": "k67", "title": "The Hidden Kingdom", "author": "Tui T. Sutherland", "genre": "middlegrade", "series": "Wings of Fire, #3", "tags": ["adventure", "animals", "magic", "royals"], "source": "kids"},
+  {"id": "k68", "title": "Dinosaurs Before Dark", "author": "Mary Pope Osborne", "genre": "middlegrade", "series": "Magic Tree House, #1", "tags": ["adventure", "animals", "historical", "magic"], "source": "kids"},
+  {"id": "k69", "title": "The Knight at Dawn", "author": "Mary Pope Osborne", "genre": "middlegrade", "series": "Magic Tree House, #2", "tags": ["adventure", "historical", "magic", "royals"], "source": "kids"},
+  {"id": "k70", "title": "Mummies in the Morning", "author": "Mary Pope Osborne", "genre": "middlegrade", "series": "Magic Tree House, #3", "tags": ["adventure", "historical", "magic", "spooky"], "source": "kids"},
+  {"id": "k71", "title": "Junie B. Jones and the Stupid Smelly Bus", "author": "Barbara Park", "genre": "middlegrade", "series": "Junie B. Jones, #1", "tags": ["funny", "school"], "source": "kids"},
+  {"id": "k72", "title": "Junie B. Jones and a Little Monkey Business", "author": "Barbara Park", "genre": "middlegrade", "series": "Junie B. Jones, #2", "tags": ["family", "funny", "school"], "source": "kids"},
+  {"id": "k73", "title": "Rise of the Earth Dragon", "author": "Tracey West", "genre": "middlegrade", "series": "Dragon Masters, #1", "tags": ["adventure", "animals", "magic"], "source": "kids"},
+  {"id": "k74", "title": "Eva's Treetop Festival", "author": "Rebecca Elliott", "genre": "middlegrade", "series": "Owl Diaries, #1", "tags": ["animals", "cozy", "school"], "source": "kids"},
+  {"id": "k75", "title": "Mercy Watson to the Rescue", "author": "Kate DiCamillo", "genre": "middlegrade", "series": "Mercy Watson, #1", "tags": ["animals", "food", "funny"], "source": "kids"},
+  {"id": "k76", "title": "The Tale of Despereaux", "author": "Kate DiCamillo", "genre": "middlegrade", "tags": ["adventure", "animals", "magic", "royals"], "source": "kids"},
+  {"id": "k77", "title": "Frindle", "author": "Andrew Clements", "genre": "middlegrade", "tags": ["books", "funny", "school"], "source": "kids"},
+  {"id": "k78", "title": "Holes", "author": "Louis Sachar", "genre": "middlegrade", "tags": ["adventure", "funny", "mystery"], "source": "kids"},
+  {"id": "k79", "title": "Charlie and the Chocolate Factory", "author": "Roald Dahl", "genre": "middlegrade", "tags": ["classic", "food", "funny", "magic"], "source": "kids"},
+  {"id": "k80", "title": "The BFG", "author": "Roald Dahl", "genre": "middlegrade", "tags": ["classic", "funny", "magic"], "source": "kids"},
+  {"id": "k81", "title": "The Sea of Monsters", "author": "Rick Riordan", "genre": "middlegrade", "series": "Percy Jackson and the Olympians, #2", "tags": ["adventure", "magic"], "source": "kids"},
+  {"id": "k82", "title": "The Titan's Curse", "author": "Rick Riordan", "genre": "middlegrade", "series": "Percy Jackson and the Olympians, #3", "tags": ["adventure", "magic"], "source": "kids"},
+  {"id": "k83", "title": "Ivy + Bean", "author": "Annie Barrows", "genre": "middlegrade", "series": "Ivy + Bean, #1", "tags": ["family", "funny"], "source": "kids"},
+  {"id": "k84", "title": "A Wrinkle in Time", "author": "Madeleine L'Engle", "genre": "middlegrade", "tags": ["adventure", "classic", "scifi"], "source": "kids"},
+  {"id": "k85", "title": "The One and Only Ivan", "author": "Katherine Applegate", "genre": "middlegrade", "tags": ["animals", "heartfelt"], "source": "kids"},
+  {"id": "k86", "title": "Front Desk", "author": "Kelly Yang", "genre": "middlegrade", "series": "Front Desk, #1", "tags": ["family", "heartfelt", "school"], "source": "kids"},
+  {"id": "k87", "title": "Escape from Mr. Lemoncello's Library", "author": "Chris Grabenstein", "genre": "middlegrade", "series": "Mr. Lemoncello's Library, #1", "tags": ["books", "funny", "mystery"], "source": "kids"},
+  {"id": "k88", "title": "Dragons and Marshmallows", "author": "Asia Citro", "genre": "middlegrade", "series": "Zoey and Sassafras, #1", "tags": ["animals", "magic", "scifi"], "source": "kids"},
+  {"id": "k89", "title": "Nate the Great", "author": "Marjorie Weinman Sharmat", "genre": "middlegrade", "series": "Nate the Great, #1", "tags": ["food", "funny", "mystery"], "source": "kids"},
+  {"id": "k90", "title": "The Sinking of the Titanic, 1912", "author": "Lauren Tarshis", "genre": "middlegrade", "series": "I Survived, #1", "tags": ["adventure", "historical"], "source": "kids"},
+  {"id": "k91", "title": "Hurricane Katrina, 2005", "author": "Lauren Tarshis", "genre": "middlegrade", "series": "I Survived, #3", "tags": ["adventure", "historical"], "source": "kids"},
+  {"id": "k92", "title": "Who Was Albert Einstein?", "author": "Jess Brallier", "genre": "middlegrade", "series": "Who Was?", "tags": ["scifi", "truestory"], "source": "kids"},
+  {"id": "k93", "title": "Bad Kitty", "author": "Nick Bruel", "genre": "middlegrade", "series": "Bad Kitty, #1", "tags": ["animals", "funny"], "source": "kids"},
+  {"id": "k94", "title": "The Princess in Black", "author": "Shannon Hale", "genre": "middlegrade", "series": "The Princess in Black, #1", "tags": ["adventure", "funny", "royals"], "source": "kids"},
+  {"id": "k95", "title": "The Hunger Games", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games, #1", "tags": ["adventure", "scifi"], "source": "kids"},
+  {"id": "k96", "title": "Catching Fire", "author": "Suzanne Collins", "genre": "ya", "series": "The Hunger Games, #2", "tags": ["adventure", "scifi"], "source": "kids"},
+];
+
+const ALL_BOOKS = GOODREADS_BOOKS.concat(KIDS_BOOKS);
+const BOOKS_BY_ID = Object.fromEntries(ALL_BOOKS.map(b => [b.id, b]));
+// Each player picks a book list. BOOKS is the active player's list.
+const BOOK_LISTS = {
+  grown: { label: 'Grown-up list', desc: "Brittney's Goodreads books, all 10 genres", has: b => b.source === 'goodreads' },
+  kids:  { label: 'Kids list', desc: "Picture books, graphic novels, kids' favorites, middle grade and YA",
+           has: b => b.source === 'kids' || b.genre === 'middlegrade' || b.genre === 'ya' },
+};
+let BOOKS = GOODREADS_BOOKS;
+function useBookList(key) { BOOKS = ALL_BOOKS.filter((BOOK_LISTS[key] || BOOK_LISTS.grown).has); }
 function booksInGenre(genre) { return BOOKS.filter(b => b.genre === genre); }
 
 // ============================================================
@@ -1512,12 +1735,12 @@ const MERCH = [
   { id: 'bm-sun',     kind: 'bookmark', name: 'Sunshine bookmark', color: '#f2b84b', motif: 'sun' },
   { id: 'bm-leaf',    kind: 'bookmark', name: 'Leaf bookmark',     color: '#6a994e', motif: 'leaf' },
   { id: 'bm-moon',    kind: 'bookmark', name: 'Moon bookmark',     color: '#34507a', motif: 'moon' },
-  { id: 'po-kitten',  kind: 'poster',   name: 'Kitten poster',     color: '#cfe3f2', face: 'cat' },
-  { id: 'po-rainbow', kind: 'poster',   name: 'Rainbow poster',    color: '#fff1cf', face: 'rainbow' },
-  { id: 'po-space',   kind: 'poster',   name: 'Outer space poster', color: '#2d3a6b', face: 'space' },
-  { id: 'po-puppy',   kind: 'poster',   name: 'Puppy poster',      color: '#f6dba6', face: 'puppy' },
-  { id: 'po-read',    kind: 'poster',   name: '"Read!" poster',    color: '#f08fb3', face: 'read' },
-  { id: 'po-ocean',   kind: 'poster',   name: 'Whale poster',      color: '#9fd3e0', face: 'whale' },
+  { id: 'po-kitten',  kind: 'poster',   name: '"Hang in there" kitten poster', color: '#cfe3f2', face: 'cat' },
+  { id: 'po-rainbow', kind: 'poster',   name: '"Dream big" rainbow poster',    color: '#fff1cf', face: 'rainbow' },
+  { id: 'po-space',   kind: 'poster',   name: '"Blast off" space poster',      color: '#2d3a6b', face: 'space' },
+  { id: 'po-puppy',   kind: 'poster',   name: '"Paws & read" puppy poster',    color: '#f6dba6', face: 'puppy' },
+  { id: 'po-read',    kind: 'poster',   name: '"Read!" poster',                color: '#f08fb3', face: 'read' },
+  { id: 'po-ocean',   kind: 'poster',   name: '"Make a splash" whale poster',  color: '#9fd3e0', face: 'whale' },
   { id: 'tr-cat',     kind: 'trinket',  name: 'Cat eraser',        color: '#f4a3c0', art: 'catEraser' },
   { id: 'tr-frog',    kind: 'trinket',  name: 'Frog eraser',       color: '#81c784', art: 'frogEraser' },
   { id: 'tr-dino',    kind: 'trinket',  name: 'Dino eraser',       color: '#80cbc4', art: 'dinoEraser' },
@@ -1537,7 +1760,33 @@ function isLightColor(hex) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150;
 }
 function xmlEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function spineColor(book) { return shade(GENRES[book.genre].color, [0.86, 0.93, 1, 1.07, 1.13][hashStr(book.id) % 5]); }
+// Book colors: every book uses its genre's color family. Each series gets
+// its own shade of that family (hue nudged, lighter or darker) plus a spine
+// pattern, so a series is easy to spot and group.
+function hexToHsl(hex) {
+  let [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  if (mx === mn) return [0, 0, l];
+  const d = mx - mn, s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+  const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+function hslToHex(h, s, l) {
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return '#' + [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function tweakColor(hex, dHue, dLight) {
+  const [h, s, l] = hexToHsl(hex);
+  return hslToHex((h + dHue + 360) % 360, s, Math.max(.16, Math.min(.86, l + dLight)));
+}
+function bookColor(book) {
+  const base = GENRES[book.genre].color, ser = seriesName(book);
+  if (ser) { const h = hashStr(ser); return tweakColor(base, ((h % 7) - 3) * 7, [-.17, -.1, -.04, .03, .09, .15][(h >>> 3) % 6]); }
+  return tweakColor(base, 0, [-.05, -.025, 0, .025, .05][hashStr(book.id) % 5]);
+}
+function seriesPattern(book) { const ser = seriesName(book); return ser ? (hashStr(ser) >>> 6) % 4 : -1; }
+const spineColor = bookColor;
 function seriesNo(book) { const m = (book.series || '').match(/#\s*([\d.]+)/); return m ? m[1] : null; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function pickRandom(list) { return list[Math.floor(Math.random() * list.length)]; }
@@ -1685,7 +1934,7 @@ function wrapTitle(title, max = 12, lines = 3) {
 
 // A book's front cover in the game style (our own motif, not the real cover). viewBox -2 -2 68 94.
 function coverInner(book) {
-  const c = GENRES[book.genre].color, tc = isLightColor(c) ? INK : CREAM;
+  const c = bookColor(book), tc = isLightColor(c) ? INK : CREAM;
   const lines = wrapTitle(book.title);
   let t = '';
   lines.forEach((ln, i) => {
@@ -1743,36 +1992,124 @@ function bookmarkArt(m) {
     `<rect x="11" y="6" width="18" height="42" rx="3" fill="${m.color}" ${ST}/><circle cx="20" cy="10.5" r="1.8" fill="${CREAM}" stroke="${INK}" stroke-width=".8"/>` + motif +
     txt(20, 43, 'READ!', 4.6, isLightColor(m.color) ? INK : CREAM);
 }
-// Poster faces: kitten, rainbow, space, puppy, "Read!", whale
+// Poster faces: kitten, rainbow, space, puppy, "Read!", whale.
+// Each is drawn on a 60 x 84 poster and scaled to fit (room size or close-up).
+function posterBanner(text, fill, size = 5.2) {
+  return `<rect x="5" y="68" width="50" height="11" rx="3" fill="${fill}" ${ST}/>` +
+    `<text x="30" y="75.6" font-size="${size}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="${CREAM}" letter-spacing=".3">${text}</text>`;
+}
+function posterFrame(bg, pattern = '') {
+  return `<rect x="0" y="0" width="60" height="84" rx="2.5" fill="${bg}" ${ST}/>` + pattern +
+    `<circle cx="30" cy="3.2" r="1.6" fill="#d64545" stroke="${INK}" stroke-width=".8"/>`;   // push pin
+}
+function cuteFace(cx, cy, s = 1, mouth = 'smile') {   // dot eyes with shine, blush, small mouth
+  const e = 3.6 * s;
+  let f = `<circle cx="${cx - e}" cy="${cy}" r="${1.5 * s}" fill="${INK}"/><circle cx="${cx + e}" cy="${cy}" r="${1.5 * s}" fill="${INK}"/>` +
+    `<circle cx="${cx - e + .5 * s}" cy="${cy - .5 * s}" r="${.5 * s}" fill="#fff"/><circle cx="${cx + e + .5 * s}" cy="${cy - .5 * s}" r="${.5 * s}" fill="#fff"/>` +
+    `<ellipse cx="${cx - e - 2 * s}" cy="${cy + 2.4 * s}" rx="${1.7 * s}" ry="${1 * s}" fill="#f4978e" opacity=".75"/><ellipse cx="${cx + e + 2 * s}" cy="${cy + 2.4 * s}" rx="${1.7 * s}" ry="${1 * s}" fill="#f4978e" opacity=".75"/>`;
+  f += mouth === 'cat' ? `<path d="M${cx - 1.6 * s} ${cy + 2.2 * s} q${.8 * s} ${1 * s} ${1.6 * s} 0 q${.8 * s} ${1 * s} ${1.6 * s} 0" fill="none" stroke="${INK}" stroke-width="${.8 * s}" stroke-linecap="round"/>`
+    : `<path d="M${cx - 1.4 * s} ${cy + 2.2 * s} Q${cx} ${cy + 3.4 * s} ${cx + 1.4 * s} ${cy + 2.2 * s}" fill="none" stroke="${INK}" stroke-width="${.8 * s}" stroke-linecap="round"/>`;
+  return f;
+}
+function sparkle(x, y, r, fill = '#fff') {
+  return `<path d="M${x} ${y - r} Q${x + r * .18} ${y - r * .18} ${x + r} ${y} Q${x + r * .18} ${y + r * .18} ${x} ${y + r} Q${x - r * .18} ${y + r * .18} ${x - r} ${y} Q${x - r * .18} ${y - r * .18} ${x} ${y - r}Z" fill="${fill}"/>`;
+}
+const POSTERS = {
+  // "Hang in there!" kitten on a branch
+  cat: () => {
+    let dots = '';
+    for (let y = 9; y < 66; y += 9) for (let x = 6 + (y % 18 ? 4.5 : 0); x < 58; x += 9) dots += `<circle cx="${x}" cy="${y}" r="1.3" fill="#e2eff8"/>`;
+    const O = '#f2a65a', D = '#d9843a';
+    return posterFrame('#cfe3f2', dots) +
+      `<path d="M3 17 Q30 13 57 18" fill="none" stroke="${INK}" stroke-width="5.4" stroke-linecap="round"/><path d="M3 17 Q30 13 57 18" fill="none" stroke="#a0714a" stroke-width="3.2" stroke-linecap="round"/>` +
+      leaf(50, 16, 40, 6, '#6a994e') + leaf(9, 16, -45, 5, '#6a994e') +
+      `<path d="M38 52 C47 54 49 62 43 64" fill="none" stroke="${INK}" stroke-width="4.2" stroke-linecap="round"/><path d="M38 52 C47 54 49 62 43 64" fill="none" stroke="${O}" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<ellipse cx="30" cy="52" rx="10" ry="9" fill="${O}" ${ST}/><ellipse cx="30" cy="54" rx="5.5" ry="5.5" fill="#fff1df"/>` +
+      `<rect x="20.5" y="15" width="5" height="20" rx="2.5" fill="${O}" ${ST}/><rect x="34.5" y="15" width="5" height="20" rx="2.5" fill="${O}" ${ST}/>` +
+      `<path d="M18.5 30 L19.5 19.5 L26 25.5 Z M41.5 30 L40.5 19.5 L34 25.5 Z" fill="${O}" ${ST}/><path d="M20.3 26.5 L20.8 22 L24 25 Z M39.7 26.5 L39.2 22 L36 25 Z" fill="#f4a3c0"/>` +
+      `<ellipse cx="30" cy="34" rx="12" ry="10.5" fill="${O}" ${ST}/>` +
+      `<path d="M27 25 L28 28.5 M30 24.5 L30 28.3 M33 25 L32 28.5" stroke="${D}" stroke-width="1.3" stroke-linecap="round"/>` +
+      cuteFace(30, 34, 1, 'cat') +
+      `<path d="M17 36 L22 36.5 M17 39 L22 38.3 M43 36 L38 36.5 M43 39 L38 38.3" stroke="${INK}" stroke-width=".6" stroke-linecap="round"/>` +
+      `<circle cx="23" cy="14.5" r="2.6" fill="${O}" ${ST}/><circle cx="37" cy="14.5" r="2.6" fill="${O}" ${ST}/>` +
+      posterBanner('HANG IN THERE!', '#5b82b8', 4.7);
+  },
+  // "Dream big" rainbow with cloud friends
+  rainbow: () => {
+    const cols = ['#e76f51', '#f4a261', '#f2cc8f', '#81b29a', '#5b82b8', '#9c89b8'];
+    let g = posterFrame('#fff1cf') + sparkle(10, 12, 3, '#f2b84b') + sparkle(50, 9, 2.4, '#f08fb3') + sparkle(53, 26, 1.8, '#81b29a') + sparkle(7, 30, 1.8, '#9c89b8');
+    cols.forEach((c, i) => { const r = 25 - i * 3.6; g += `<path d="M${30 - r} 50 A${r} ${r} 0 0 1 ${30 + r} 50 Z" fill="${c}" stroke="${INK}" stroke-width="1"/>`; });
+    g += `<path d="M${30 - 3.4} 50 A3.4 3.4 0 0 1 ${30 + 3.4} 50 Z" fill="#fff1cf" stroke="${INK}" stroke-width="1"/>`;
+    const cloud = (cx, cy) => `<g transform="translate(${cx} ${cy}) scale(.8) translate(${-cx} ${-cy})"><path d="M${cx - 10} ${cy + 4} a5 5 0 0 1 2 -9 a6 6 0 0 1 11 -2 a5 5 0 0 1 8 5 a4.5 4.5 0 0 1 -1 8 Z" fill="#fff" ${ST}/>` + cuteFace(cx + 1, cy + .5, .8) + '</g>';
+    return g + cloud(12.5, 49) + cloud(47, 49) + posterBanner('DREAM BIG', '#9c89b8');
+  },
+  // "Blast off!" smiling planet and a little rocket
+  space: () => {
+    let g = posterFrame('#2d3a6b');
+    for (const [x, y, r] of [[8, 10, .9], [20, 6, .6], [47, 8, 1], [54, 20, .7], [6, 40, .8], [14, 60, .7], [52, 44, .6], [40, 62, .9], [26, 18, .5]]) g += `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/>`;
+    g += sparkle(51, 14, 2.6, '#f2cc8f') + sparkle(9, 52, 2, '#f2cc8f') +
+      `<path d="M14 15 A6 6 0 1 0 19 25 A4.6 4.6 0 1 1 14 15Z" fill="#fff1cf" ${ST}/>` +
+      `<path d="M10 38 A20 6.5 -14 0 1 48 28" fill="none" stroke="${INK}" stroke-width="4.4"/><path d="M10 38 A20 6.5 -14 0 1 48 28" fill="none" stroke="#f08fb3" stroke-width="2.6"/>` +
+      `<circle cx="29" cy="33" r="12.5" fill="#f2b84b" ${ST}/><path d="M19 28 Q29 25 39 29" fill="none" stroke="#e09f2e" stroke-width="1.6" stroke-linecap="round"/><circle cx="35" cy="40" r="1.6" fill="#e09f2e"/>` +
+      cuteFace(29, 33, 1.05) +
+      `<path d="M10 38 A20 6.5 -14 0 0 48 28" fill="none" stroke="${INK}" stroke-width="4.4"/><path d="M10 38 A20 6.5 -14 0 0 48 28" fill="none" stroke="#f08fb3" stroke-width="2.6"/>` +
+      `<g transform="rotate(35 46 55)"><path d="M43.5 63 L46 69 L48.5 63 Z" fill="#f4a261" ${ST}/>` +
+      `<path d="M41 61 L38.5 64 L41 63.5 Z M51 61 L53.5 64 L51 63.5 Z" fill="#d64545" ${ST}/>` +
+      `<path d="M46 46 C51 50 51 57 50 63 H42 C41 57 41 50 46 46Z" fill="#fff8ec" ${ST}/><path d="M46 46 C48.5 48 49.6 50 50 52 H42 C42.4 50 43.5 48 46 46Z" fill="#d64545" ${ST}/>` +
+      `<circle cx="46" cy="56" r="2.3" fill="#6aa5c9" stroke="${INK}" stroke-width="1"/></g>` +
+      posterBanner('BLAST OFF!', '#e07a5f');
+    return g;
+  },
+  // "Paws & read" puppy with a collar tag
+  puppy: () => {
+    let paws = '';
+    for (const [x, y] of [[9, 10], [50, 13], [8, 56], [52, 58]]) paws += `<g fill="#fbe6bf"><ellipse cx="${x}" cy="${y + 2}" rx="2.8" ry="2.2"/><circle cx="${x - 2.6}" cy="${y - 1.4}" r="1.1"/><circle cx="${x}" cy="${y - 2.4}" r="1.1"/><circle cx="${x + 2.6}" cy="${y - 1.4}" r="1.1"/></g>`;
+    return posterFrame('#f6dba6', paws) +
+      `<path d="M14 26 C8 30 9 44 15 47 C19 48 20 40 20 32Z" fill="#8d5a3b" ${ST}/><path d="M46 26 C52 30 51 44 45 47 C41 48 40 40 40 32Z" fill="#8d5a3b" ${ST}/>` +
+      `<rect x="19" y="49" width="22" height="5" rx="2.5" fill="#d64545" ${ST}/><circle cx="30" cy="57" r="3.2" fill="#f2cc8f" ${ST}/>` +
+      `<ellipse cx="30" cy="36" rx="13" ry="13.5" fill="#fff3e0" ${ST}/>` +
+      `<path d="M30 23 C35 23 41 27 41.5 33 C38 34 34 31 33 27Z" fill="#e8c38f"/><ellipse cx="25" cy="33.5" rx="4" ry="3.6" fill="#e8c38f"/>` +
+      cuteFace(30, 34, 1.05) +
+      `<ellipse cx="30" cy="40" rx="5.4" ry="3.8" fill="#fff" stroke="${INK}" stroke-width=".8"/><ellipse cx="30" cy="38.4" rx="2.2" ry="1.5" fill="${INK}"/>` +
+      `<path d="M28.6 42 Q30 46 31.4 42 Z" fill="#f08fb3" stroke="${INK}" stroke-width=".7"/>` +
+      posterBanner('PAWS &amp; READ', '#6a9fb5');
+  },
+  // "Read!" with an open book full of sparkles
+  read: () => {
+    let conf = '';
+    [['#f2cc8f', 8, 30, 20], ['#81b29a', 52, 34, -30], ['#5b82b8', 12, 58, 45], ['#fff8ec', 48, 60, -10], ['#9c89b8', 50, 24, 60], ['#f2cc8f', 7, 46, -40]]
+      .forEach(([c, x, y, a]) => { conf += `<rect x="${x}" y="${y}" width="4" height="1.8" rx=".9" fill="${c}" transform="rotate(${a} ${x} ${y})"/>`; });
+    return posterFrame('#f08fb3', conf) +
+      `<text x="30" y="21" font-size="15" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="${CREAM}" stroke="${INK}" stroke-width="1.6" paint-order="stroke" letter-spacing=".5">READ!</text>` +
+      [[-55, '#f2cc8f'], [-20, '#fff8ec'], [20, '#fff8ec'], [55, '#f2cc8f']].map(([a, c]) => `<path d="M30 46 L30 30" transform="rotate(${a} 30 46)" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 2.5"/>`).join('') +
+      star(19, 32, 3.6, '#ffd166') + star(42, 31, 3, '#ffd166') +
+      `<path d="M30 33 C26 30 24 33.5 30 37.5 C36 33.5 34 30 30 33Z" fill="#e07a5f" stroke="${INK}" stroke-width=".9"/>` +
+      `<path d="M30 49 C24 44 15 44 10 46 V61 C15 59 24 59 30 63 C36 59 45 59 50 61 V46 C45 44 36 44 30 49Z" fill="#8e6cc0" ${ST}/>` +
+      `<path d="M30 48 C25 43.5 17 43.5 12 45 V58.5 C17 57 25 57 30 60.5 C35 57 43 57 48 58.5 V45 C43 43.5 35 43.5 30 48Z" fill="#fff8ec" ${ST}/>` +
+      `<path d="M30 48 V60.5" stroke="${INK}" stroke-width="1"/>` +
+      `<path d="M15 49 H26 M15 52 H26 M34 49 H45 M34 52 H45 M15 55 H23 M34 55 H42" stroke="#d9cfe6" stroke-width="1.1" stroke-linecap="round"/>` +
+      posterBanner('BOOKS ARE MAGIC', '#8e6cc0', 4.4);
+  },
+  // "Make a splash" whale
+  whale: () => {
+    let bub = '';
+    for (const [x, y, r] of [[9, 12, 2], [13, 20, 1.2], [50, 10, 1.6], [53, 30, 1.1], [7, 38, 1.4]]) bub += `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#e6f6fa" stroke-width=".9"/>`;
+    const B = '#5b82b8';
+    return posterFrame('#9fd3e0', bub) +
+      `<path d="M30 14 C28 10 24 9 22 11 M30 14 C32 10 36 9 38 11 M30 14 V20" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>` +
+      `<circle cx="21.5" cy="11.5" r="1.6" fill="#fff"/><circle cx="38.5" cy="11.5" r="1.6" fill="#fff"/>` +
+      `<path d="M46 40 C50 33 55 30 57 31 C56 35 53 38 50 40 C54 40 57 43 56 46 C53 46 49 44 46 42Z" fill="${B}" ${ST}/>` +
+      `<path d="M8 42 C8 28 20 21 31 21 C42 21 49 30 48 41 C47 50 38 54 27 54 C16 54 8 50 8 42Z" fill="${B}" ${ST}/>` +
+      `<path d="M10 45 C14 51 22 53 29 53 C37 53 44 50 46.5 45 C40 47 33 48 27 48 C20 48 14 47 10 45Z" fill="#cfe3f2"/>` +
+      `<path d="M14 47 V51 M19 48.5 V52.6 M24 49 V53.4 M29 49 V53.6 M34 48.6 V53.2" stroke="#9db9cf" stroke-width=".9"/>` +
+      cuteFace(19, 38, 1.05) +
+      `<path d="M2 60 Q7 55 12 60 T22 60 T32 60 T42 60 T52 60 T58 60 V67 H2Z" fill="#5fb0c9" stroke="${INK}" stroke-width="1" stroke-linejoin="round"/>` +
+      `<path d="M2 63 Q7 59 12 63 T22 63 T32 63 T42 63 T52 63 T58 63" fill="none" stroke="#e6f6fa" stroke-width="1" stroke-linecap="round"/>` +
+      posterBanner('MAKE A SPLASH', '#2a9d8f', 4.8);
+  },
+};
 function posterFace(x, y, w, h, kind) {
-  const bg = { cat: '#cfe3f2', rainbow: '#fff1cf', space: '#2d3a6b', puppy: '#f6dba6', read: '#f08fb3', whale: '#9fd3e0' }[kind] || '#e9dcc4';
-  let g = R(x, y, w, h, bg, 1);
-  const cx = x + w / 2;
-  if (kind === 'cat') {
-    g += `<path d="M${x + w * .28} ${y + h * .46} l${w * .13} ${-h * .18} ${w * .13} ${h * .14} M${x + w * .72} ${y + h * .46} l${-w * .13} ${-h * .18} ${-w * .13} ${h * .14}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${cx}" cy="${y + h * .58}" r="${w * .26}" fill="#f2a65a" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${x + w * .42}" cy="${y + h * .56}" r="${w * .05}" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .56}" r="${w * .05}" fill="${INK}"/>`;
-  } else if (kind === 'rainbow') {
-    ['#e76f51', '#f4a261', '#e9c46a', '#81b29a', '#5b82b8'].forEach((c, i) => {
-      const rr = w * .38 - i * w * .1;
-      g += `<path d="M${cx - rr} ${y + h * .7} A${rr} ${rr} 0 0 1 ${cx + rr} ${y + h * .7}" fill="none" stroke="${c}" stroke-width="${w * .1}"/>`;
-    });
-  } else if (kind === 'space') {
-    g += `<circle cx="${x + w * .45}" cy="${y + h * .55}" r="${w * .2}" fill="#f2b84b" stroke="${INK}" stroke-width=".8"/>` +
-      `<ellipse cx="${x + w * .45}" cy="${y + h * .55}" rx="${w * .33}" ry="${w * .08}" fill="none" stroke="#f08fb3" stroke-width="${w * .06}"/>`;
-    for (const [sx, sy] of [[.2, .2], [.8, .3], [.75, .8], [.25, .85]]) g += `<circle cx="${x + w * sx}" cy="${y + h * sy}" r="${w * .04}" fill="#fff"/>`;
-  } else if (kind === 'puppy') {
-    g += `<ellipse cx="${x + w * .28}" cy="${y + h * .5}" rx="${w * .1}" ry="${w * .2}" fill="#8d5a3b" stroke="${INK}" stroke-width=".8"/><ellipse cx="${x + w * .72}" cy="${y + h * .5}" rx="${w * .1}" ry="${w * .2}" fill="#8d5a3b" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${cx}" cy="${y + h * .55}" r="${w * .24}" fill="#e8c38f" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${x + w * .42}" cy="${y + h * .52}" r="${w * .045}" fill="${INK}"/><circle cx="${x + w * .58}" cy="${y + h * .52}" r="${w * .045}" fill="${INK}"/><ellipse cx="${cx}" cy="${y + h * .62}" rx="${w * .07}" ry="${w * .05}" fill="${INK}"/>`;
-  } else if (kind === 'read') {
-    g += star(x + w * .25, y + h * .25, w * .1, '#ffd166') + star(x + w * .76, y + h * .78, w * .08, '#ffd166') +
-      `<text x="${cx}" y="${y + h * .58}" font-size="${w * .3}" font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="${CREAM}" stroke="${INK}" stroke-width="${w * .02}">READ!</text>`;
-  } else if (kind === 'whale') {
-    g += `<path d="M${x + w * .18} ${y + h * .62} Q${x + w * .2} ${y + h * .4} ${x + w * .5} ${y + h * .42} Q${x + w * .78} ${y + h * .44} ${x + w * .8} ${y + h * .6} L${x + w * .9} ${y + h * .52} L${x + w * .88} ${y + h * .7} Q${x + w * .5} ${y + h * .78} ${x + w * .18} ${y + h * .62}Z" fill="#5b82b8" stroke="${INK}" stroke-width=".8"/>` +
-      `<circle cx="${x + w * .32}" cy="${y + h * .52}" r="${w * .04}" fill="${INK}"/><path d="M${x + w * .4} ${y + h * .38} q0 -${h * .08} ${w * .06} -${h * .1}" fill="none" stroke="#fff" stroke-width="${w * .03}"/>`;
-  }
-  return g;
+  return `<g transform="translate(${x} ${y}) scale(${(w / 60).toFixed(4)} ${(h / 84).toFixed(4)})">${(POSTERS[kind] || POSTERS.read)()}</g>`;
 }
 // Close-up merch art: returns svg content and its viewBox
 function merchArt(m) {
@@ -1787,11 +2124,25 @@ function merchSVG(m, w, h) {
 
 // ---- close-up views ----
 // Bookshelves: titled spines, a series number tag, and a genre sticker.
+// A band across the spine in the series' pattern: thick band, double band, dots or zigzag.
+function spineBand(kind, x, y, w, color) {
+  if (kind === 0) return `<rect x="${x + 1}" y="${y}" width="${w - 2}" height="4.4" fill="${color}"/>`;
+  if (kind === 1) return `<rect x="${x + 1}" y="${y}" width="${w - 2}" height="1.7" fill="${color}"/><rect x="${x + 1}" y="${y + 3}" width="${w - 2}" height="1.7" fill="${color}"/>`;
+  if (kind === 2) { let d = ''; for (let px = x + 4; px < x + w - 2; px += 4.2) d += `<circle cx="${px}" cy="${y + 2.2}" r="1.35" fill="${color}"/>`; return d; }
+  let z = `M${x + 1.5} ${y + 3.6}`;
+  for (let px = x + 1.5, up = true; px < x + w - 2; px += 3, up = !up) z += ` L${px + 3} ${y + (up ? .8 : 3.6)}`;
+  return `<path d="${z}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>`;
+}
+// Bookshelves: titled spines, a series number tag, a series pattern, and a genre sticker.
 function closeSpine(book, x, base, w, lifted) {
   const c = spineColor(book), tc = isLightColor(c) ? INK : CREAM;
   const h = 116 + hashStr(book.id) % 26, top = base - h - lifted, bot = base - lifted;
-  const cx = x + w / 2, no = seriesNo(book);
-  const textTop = top + (no ? 25 : 10), textBottom = bot - (book.staffPick ? 34 : 21);
+  const cx = x + w / 2, no = seriesNo(book), pat = seriesPattern(book);
+  const band = pat >= 0 ? (isLightColor(c) ? shade(c, .62) : tweakColor(c, 0, .26)) : null;
+  const topBand = no ? top + 23 : top + 6;
+  const textTop = pat >= 0 ? topBand + 8 : top + (no ? 25 : 10);
+  const starY = bot - (pat >= 0 ? 30 : 25);
+  const textBottom = (book.staffPick ? starY - 7 : bot - (pat >= 0 ? 26 : 21));
   const cy = (textTop + textBottom) / 2, span = textBottom - textTop;
   let lines = [book.title], size = 11.5;
   if (book.title.length * 6.2 > span) { size = 10.4; lines = wrapTitle(book.title, Math.max(4, Math.floor(span / 5.7)), 2); }
@@ -1803,9 +2154,10 @@ function closeSpine(book, x, base, w, lifted) {
     `<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="3" fill="${c}" ${ST}/>` +
     (no ? `<rect x="${x + 3}" y="${top + 5}" width="${w - 6}" height="15" rx="4" fill="${CREAM}" stroke="${INK}" stroke-width="1"/>` +
           `<text x="${cx}" y="${top + 13}" font-size="${no.length > 2 ? 8.5 : 10.5}" font-weight="bold" text-anchor="middle" dominant-baseline="central" fill="${INK}">#${xmlEsc(no)}</text>`
-        : `<rect x="${x + 1.5}" y="${top + 4}" width="${w - 3}" height="2.4" fill="${shade(c, 1.25)}"/>`) +
+        : pat < 0 ? `<rect x="${x + 1.5}" y="${top + 4}" width="${w - 3}" height="2.4" fill="${shade(c, 1.25)}"/>` : '') +
+    (pat >= 0 ? spineBand(pat, x, topBand, w, band) + spineBand(pat, x, bot - 22.5, w, band) : '') +
     text +
-    (book.staffPick ? star(cx, bot - 25, 5, '#ffd166') : '') +
+    (book.staffPick ? star(cx, starY, 5, '#ffd166') : '') +
     `<circle cx="${cx}" cy="${bot - 10}" r="5.4" fill="${CREAM}" stroke="${INK}" stroke-width="1"/><circle cx="${cx}" cy="${bot - 10}" r="3.3" fill="${GENRES[book.genre].color}"/>` +
     `</g>`;
 }
@@ -2164,9 +2516,9 @@ const Stocking = {
 // close-up view or the menu is open. No fail states.
 // ============================================================
 const FAIR = {
-  DAY_LENGTHS: { short: { label: 'Short (about 6 min)', ms: 360000 },
-                 normal: { label: 'Normal (about 12 min)', ms: 720000 },
-                 long: { label: 'Long (about 20 min)', ms: 1200000 } },
+  DAY_LENGTHS: { short: { label: 'Short (about 4 min)', ms: 240000 },
+                 normal: { label: 'Normal (about 6 min)', ms: 360000 },
+                 long: { label: 'Long (about 10 min)', ms: 600000 } },
   OPEN_HOUR: 8, CLOSE_HOUR: 15,
   BUSY: { calm:     { label: 'Calm',      every: [30000, 45000], max: 8 },    // a regular customer every 30-45 s
           lively:   { label: 'Lively',    every: [14000, 22000], max: 12 },
@@ -2178,7 +2530,7 @@ const FAIR = {
 function busy() { return FAIR.BUSY[Game.data.busy] || FAIR.BUSY.lively; }
 
 // ---- prices (in cents) ----
-const BOOK_PRICES = { middlegrade: 799, ya: 1099, classics: 699, nonfiction: 1499 };   // others: 1299
+const BOOK_PRICES = { picture: 899, graphic: 1199, middlegrade: 799, ya: 1099, classics: 699, nonfiction: 1499 };   // others: 1299
 const MERCH_PRICES = { bookmark: 99, poster: 499, 'tr-cat': 149, 'tr-frog': 149, 'tr-dino': 149, 'tr-bear': 199,
   'tr-pompom': 299, 'tr-hilite': 399, 'tr-sticker': 199 };
 function basePrice(id) {
@@ -2192,14 +2544,19 @@ function money(c) { return '$' + (c / 100).toFixed(2); }
 function itemName(id) { const b = BOOKS_BY_ID[id]; return b ? b.title : MERCH_BY_ID[id].name; }
 
 // ---- saved game progress (separate from the room layout) ----
-const GAME_KEY = 'bookfair.game.v1';
+// Per player. Fields marked "later" are ready for upcoming phases:
+// copies (Phase 8: extra copies of books), owned (Phase 9: furniture and
+// decor bought), unlockedMerch (Phase 10: themed merch sets),
+// projects (Phase 10: school project progress), scrapbook (thank-you notes).
 const Game = {
-  data: { money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true, lifetime: { customers: 0, sold: 0, earned: 0 } },
+  data: { saveVersion: 1, money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true,
+          lifetime: { customers: 0, sold: 0, earned: 0 },
+          copies: {}, owned: {}, unlockedMerch: [], projects: {}, scrapbook: [] },
   load() {
-    try { const d = JSON.parse(localStorage.getItem(GAME_KEY)); if (d && typeof d === 'object') this.data = { ...this.data, ...d }; } catch (e) {}
+    try { const d = JSON.parse(localStorage.getItem(playerKey('game'))); if (d && typeof d === 'object') this.data = { ...this.data, ...d }; } catch (e) {}
     if (!FAIR.DAY_LENGTHS[this.data.dayLength]) this.data.dayLength = 'normal';
   },
-  save() { try { localStorage.setItem(GAME_KEY, JSON.stringify(this.data)); } catch (e) {} },
+  save() { try { localStorage.setItem(playerKey('game'), JSON.stringify(this.data)); } catch (e) {} },
 };
 
 // ---- who comes to the fair ----
@@ -2214,6 +2571,15 @@ const CUSTOMER_TYPES = {
   grandparent: { label: 'Grandparent', scale: .96, budget: [2500, 5000], items: [2, 4], merch: .45,
                  genres: () => ['middlegrade', pickRandom(['classics', 'inspirational', 'historical', 'mystery'])] },
 };
+// On the Kids list, everyone shops for kids' books.
+const KIDS_LIST_GENRES = {
+  kid:         () => [pickRandom(['middlegrade', 'graphic', 'graphic', 'middlegrade', 'picture'])],
+  parent:      () => ['picture', 'middlegrade', pickRandom(['graphic', 'ya', 'picture'])],
+  teacher:     () => ['picture', 'middlegrade', 'graphic'],
+  grandparent: () => ['picture', 'middlegrade'],
+};
+function genresFor(type) { return PLAYER && PLAYER.bookList === 'kids' ? KIDS_LIST_GENRES[type]() : CUSTOMER_TYPES[type].genres(); }
+
 const FIRST_NAMES = ['Maya', 'Leo', 'Ava', 'Sam', 'Nora', 'Eli', 'Zoe', 'Theo', 'Ruby', 'Jonah', 'Ivy', 'Miles', 'Rosa', 'Ezra',
   'Luna', 'Owen', 'Hazel', 'Diego', 'June', 'Felix', 'Priya', 'Kai', 'Mae', 'Omar', 'Lila', 'Gus', 'Pia', 'Ben'];
 const TEACHER_NAMES = ['Ms. Rivera', 'Mr. Okafor', 'Mrs. Lee', 'Ms. Patel', 'Mr. Brooks', 'Mrs. Nguyen', 'Ms. Garcia', 'Mr. Hayes'];
@@ -2280,7 +2646,11 @@ function booksOutAndBoxed(layout) {
   return [...ids].map(id => BOOKS_BY_ID[id]);
 }
 function seriesName(b) { return (b.series || '').replace(/,?\s*#.*$/, '').trim(); }
-function fitsAudience(req, b) { return !req.forKid || b.genre === 'middlegrade' || (req.teen && b.genre === 'ya'); }
+function fitsAudience(req, b) {
+  if (!req.forKid) return true;
+  if (b.genre === 'picture') return req.age <= 8;
+  return b.genre === 'middlegrade' || b.genre === 'graphic' || (req.teen && b.genre === 'ya');
+}
 // How well a book answers a request: 'perfect', 'good' or null
 function matchQuality(req, id) {
   const b = BOOKS_BY_ID[id];
@@ -2303,8 +2673,9 @@ function matchQuality(req, id) {
 // Builds a request this room can actually answer (with books out or in boxes).
 function makeRequest(c, layout) {
   const pool = booksOutAndBoxed(layout);
-  const forKid = c.type === 'kid' || c.type === 'teacher' || ((c.type === 'parent' || c.type === 'grandparent') && Math.random() < .6);
-  const base = { forKid, teen: c.type === 'kid' && Math.random() < .35, age: randInt(7, 11) };
+  const kidsList = PLAYER && PLAYER.bookList === 'kids';
+  const forKid = kidsList || c.type === 'kid' || c.type === 'teacher' || ((c.type === 'parent' || c.type === 'grandparent') && Math.random() < .6);
+  const base = { forKid, teen: c.type === 'kid' && Math.random() < .35, age: randInt(kidsList ? 4 : 7, 11) };
   const answerable = req => pool.some(b => matchQuality(req, b.id) === 'perfect') || pool.some(b => matchQuality(req, b.id) === 'good');
   if (Math.random() < .45) {   // "I loved X, what else?"
     const loved = shuffle(BOOKS.filter(b => fitsAudience(base, b) && (b.tags || []).length >= 2)).slice(0, 40);
@@ -2476,7 +2847,7 @@ class Fair {
     const c = {
       id: this.nextId++, type, look, scale: T.scale,
       name: name || (type === 'grandparent' ? pickRandom(GRAND_NAMES) : pickRandom(FIRST_NAMES)),
-      genres: T.genres(), budget: randInt(...T.budget), maxItems: randInt(...T.items),
+      genres: genresFor(type), budget: randInt(...T.budget), maxItems: randInt(...T.items),
       cart: [], plan: [], visited: new Set(), state: 'enter', timer: 0, x: e.x, y: e.y, path: [], moving: false,
     };
     // about a third of customers come looking for one particular book
@@ -2854,10 +3225,22 @@ const CASH = [   // drawer, in cents
   { v: 1000, label: '$10', bill: true }, { v: 500, label: '$5', bill: true }, { v: 100, label: '$1', bill: true },
   { v: 25, label: '25¢' }, { v: 10, label: '10¢' }, { v: 5, label: '5¢' }, { v: 1, label: '1¢' },
 ];
-// A kid's piggy bank: a few $1 bills plus a handful of coins. Sometimes a little short.
-function piggyPile(total) {
-  const short = Math.random() < .3;
-  let amount = short ? Math.max(100, total - randInt(2, 12) * 25) : total + (Math.random() < .5 ? 0 : randInt(1, 6) * 5);
+// A kid's piggy bank: a few $1 bills plus a handful of coins.
+// Mostly a little extra (you make change), sometimes exactly right, and with
+// 2+ items sometimes a little short, so they put one back. A kid always has
+// enough for at least one of their items.
+function piggyAmount(cart) {
+  const prices = cart.map(x => x.price), t = prices.reduce((a, b) => a + b, 0), maxP = Math.max(...prices);
+  const r = Math.random();
+  if (cart.length >= 2 && r < .4) {
+    const k = randInt(0, cart.length - 1);
+    const floor = Math.max(t - prices[k], maxP);
+    if (floor < t) return floor + randInt(0, t - 1 - floor);
+  }
+  if (r > .82) return t;   // exactly right
+  return t + pickRandom([3, 7, 12, 18, 25, 35, 40, 50, 65, 75, 90, 100, 125, 150, 200]);
+}
+function piggyPile(amount) {
   const coinsPart = Math.min(amount, amount % 100 + 100 * randInt(1, 2));
   const out = [];
   for (let d = (amount - coinsPart) / 100; d > 0; d--) out.push(100);
@@ -2881,6 +3264,18 @@ const Checkout = {
     this.$('coKeypad').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) this.key(b.dataset.key); });
     this.$('coPile').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) this.count(+b.dataset.c); });
     this.$('coReceipt').onclick = () => this.finish();
+    // Type the total on a keyboard: numbers, Backspace, Enter (C or Delete clears)
+    document.addEventListener('keydown', e => {
+      if (!this.isOpen()) return;
+      if (this.phase === 'card') {
+        if (/^[0-9]$/.test(e.key)) this.key(e.key);
+        else if (e.key === 'Backspace') { this.typed = this.typed.slice(0, -1); this.msg = ''; this.render(); }
+        else if (e.key === 'Enter') this.key('OK');
+        else if (e.key === 'Delete' || e.key === 'c' || e.key === 'C') this.key('C');
+        else return;
+        e.preventDefault();
+      } else if (this.phase === 'approved' && e.key === 'Enter') { e.preventDefault(); this.finish(); }
+    });
     this.$('coDrawer').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) this.add(+b.dataset.v); });
     this.$('coChange').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { this.change.splice(+b.dataset.k, 1); this.render(); } });
     this.$('coGive').onclick = () => this.give();
@@ -2922,10 +3317,10 @@ const Checkout = {
   pay() {
     const t = this.total(), c = this.c;
     const r = Math.random();
-    c.payWith = c.payWith || (c.type === 'kid' ? (t <= 2000 && r < .45 ? 'coins' : 'cash')
+    c.payWith = c.payWith || (c.type === 'kid' ? (t <= 2500 && r < .45 ? 'coins' : 'cash')
       : c.type === 'teacher' ? (r < .7 ? 'card' : 'cash') : c.type === 'parent' ? (r < .55 ? 'card' : 'cash') : (r < .4 ? 'card' : 'cash'));
     if (c.payWith === 'card') { this.phase = 'card'; this.typed = ''; return; }
-    if (c.payWith === 'coins') { this.pile = piggyPile(t); this.counted = []; this.phase = 'coins'; return; }
+    if (c.payWith === 'coins') { this.pile = piggyPile(piggyAmount(c.cart)); this.counted = []; this.phase = 'coins'; return; }
     // exact change sometimes; otherwise the smallest easy amount that covers it
     const steps = [500, 1000, 2000, 4000, 5000, 6000, 8000, 10000];
     this.paid = Math.random() < .2 ? t : (steps.find(v => v >= t) || Math.ceil(t / 2000) * 2000);
@@ -2967,7 +3362,7 @@ const Checkout = {
     if (have > t) this.phase = 'change'; else this.finish();
   },
   putBack(i) {
-    if (this.phase !== 'short') return;
+    if (this.phase !== 'short' || this.c.cart.length <= 1) return;
     const [x] = this.c.cart.splice(i, 1);
     this.scanned = new Set(this.c.cart.map((_, k) => k));
     addToReturns(this.fair.scene, [x.id], this.fair.register());
@@ -3016,7 +3411,7 @@ const Checkout = {
       const screen = this.phase === 'approving' ? 'Processing…' : this.phase === 'approved' || this.phase === 'done' ? 'APPROVED ✓' : money(+this.typed || 0);
       this.$('coReader').textContent = screen;
       this.$('coReader').classList.toggle('ok', this.phase === 'approved' || this.phase === 'done');
-      this.$('coCardMsg').textContent = this.phase === 'card' ? (this.msg || `${c.name} is paying by card. Key in the total, ${money(t)}, and press OK.`)
+      this.$('coCardMsg').textContent = this.phase === 'card' ? (this.msg || `${c.name} is paying by card. Key in the total, ${money(t)}, and press OK (or type it and press Enter).`)
         : this.phase === 'approving' ? `${c.name} taps their card…` : this.phase === 'approved' ? 'Approved! Hand them the receipt.' : '';
       this.$('coKeypad').hidden = this.phase !== 'card';
       this.$('coReceipt').hidden = this.phase !== 'approved';
@@ -3139,6 +3534,14 @@ const UI = {
     this.$('btnExport').onclick = () => exportLayout(scene.layout);
     this.$('btnImport').onclick = () => this.$('fileImport').click();
     this.$('fileImport').onchange = (e) => this.importFile(e.target.files[0]);
+    this.$('meRow').innerHTML = `<span class="face">${faceSVG(PLAYER.look, 40)}</span><span>Playing as <b>${xmlEsc(PLAYER.name)}</b> · ${BOOK_LISTS[PLAYER.bookList].label}</span>`;
+    this.$('btnSwitch').onclick = () => { saveLayout(scene.layout); Game.save(); location.reload(); };
+    this.$('btnNewGame').onclick = () => {
+      if (!confirm(`Start a brand-new game for ${PLAYER.name}? Their room, books, money and fair days will be erased. Other players' games stay as they are.`)) return;
+      Players.erase(PLAYER);
+      try { sessionStorage.setItem('bookfair.autostart', PLAYER.id); } catch (e) {}
+      location.reload();
+    };
     this.$('btnReset').onclick = () => {
       if (confirm('Reset the room to the starting layout?')) { scene.applyLayout(cloneLayout(DEFAULT_LAYOUT)); this.closeMenu(); this.toast('Room reset.'); }
     };
@@ -3233,7 +3636,7 @@ const UI = {
 
   openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
   closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
-  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden; },
+  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden || !this.$('players').hidden; },
 
   setCarry(carry, helping) {
     const el = this.$('carry');
@@ -3852,17 +4255,86 @@ class RoomScene extends Phaser.Scene {
 // ============================================================
 // 17. START GAME
 // ============================================================
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  backgroundColor: '#2b2235',
-  scale: { mode: Phaser.Scale.NONE, width: innerWidth * DPR, height: innerHeight * DPR, zoom: 1 / DPR },
-  input: { activePointers: 2 },
-  render: { antialias: true, roundPixels: false },
-  scene: [BootScene, RoomScene],
-});
-window.addEventListener('resize', () => { if (game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
-window.BookFair = { game, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, BOOKS, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText };
+// The game starts once a player is picked (see the Who's playing? screen below).
+let game = null;
+function startGame(pl) {
+  PLAYER = pl;
+  PLAYER_LOOK = { ...pl.look };
+  useBookList(pl.bookList);
+  Players.data.last = pl.id; Players.save();
+  document.getElementById('players').hidden = true;
+  game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    backgroundColor: '#2b2235',
+    scale: { mode: Phaser.Scale.NONE, width: innerWidth * DPR, height: innerHeight * DPR, zoom: 1 / DPR },
+    input: { activePointers: 2 },
+    render: { antialias: true, roundPixels: false },
+    scene: [BootScene, RoomScene],
+  });
+  window.BookFair.game = game;
+}
+
+// ---- Who's playing? ----
+function faceSVG(look, size) { return `<svg viewBox="1 -13 30 30" width="${size}" height="${size}">${personArt('front', look).body}</svg>`; }
+const PlayerPicker = {
+  $(id) { return document.getElementById(id); },
+  look: null, list: 'grown',
+  show() {
+    Players.load();
+    this.$('players').hidden = false;
+    this.$('loading').hidden = true;
+    this.$('plMake').hidden = true; this.$('plPick').hidden = false;
+    const L = Players.data.list;
+    this.$('plList').innerHTML = L.length ? L.map(pl => {
+      const sm = Players.summary(pl);
+      return `<button class="pl-btn${pl.id === Players.data.last ? ' last' : ''}" data-id="${pl.id}"><span class="face">${faceSVG(pl.look, 92)}</span>` +
+        `<b>${xmlEsc(pl.name)}</b><small>Day ${sm.day} · ${money(sm.money)}</small><small>${BOOK_LISTS[pl.bookList].label}</small></button>`;
+    }).join('') : '<p class="pl-empty">Make a player to start your book fair.</p>';
+    this.$('plList').onclick = e => { const b = e.target.closest('[data-id]'); if (b) startGame(Players.get(b.dataset.id)); };
+    this.$('plNew').onclick = () => this.make();
+    if (!L.length) this.make();
+  },
+  make() {
+    this.look = { skin: pickRandom(LOOK_CHOICES.skin), hair: pickRandom(LOOK_CHOICES.hair), shirt: pickRandom(LOOK_CHOICES.shirt), pants: pickRandom(LOOK_CHOICES.pants) };
+    this.$('plPick').hidden = true; this.$('plMake').hidden = false;
+    this.$('plBack').hidden = !Players.data.list.length;
+    this.$('plName').value = '';
+    const names = { skin: 'Skin', hair: 'Hair', shirt: 'Shirt', pants: 'Pants' };
+    this.$('plSwatches').innerHTML = Object.keys(LOOK_CHOICES).map(part =>
+      `<span class="pl-label">${names[part]}</span><div class="pl-sws" role="radiogroup" aria-label="${names[part]}">` +
+      LOOK_CHOICES[part].map(c => `<button type="button" class="pl-sw" data-part="${part}" data-c="${c}" style="background:${c}" aria-label="${names[part]} ${c}"></button>`).join('') + '</div>').join('');
+    this.$('plLists').innerHTML = Object.entries(BOOK_LISTS).map(([k, d]) =>
+      `<label class="pl-list-opt"><input type="radio" name="plList" value="${k}"${k === this.list ? ' checked' : ''}><span><b>${d.label}</b><span>${d.desc}</span></span></label>`).join('');
+    this.$('plSwatches').onclick = e => { const b = e.target.closest('[data-part]'); if (b) { this.look[b.dataset.part] = b.dataset.c; this.preview(); } };
+    this.$('plBack').onclick = () => this.show();
+    this.$('plMake').onsubmit = e => {
+      e.preventDefault();
+      const name = this.$('plName').value.trim();
+      if (!name) { this.$('plName').focus(); return; }
+      const list = (this.$('plLists').querySelector('input:checked') || {}).value || 'grown';
+      startGame(Players.add(name, { ...this.look }, list));
+    };
+    this.preview();
+    setTimeout(() => this.$('plName').focus(), 50);
+  },
+  preview() {
+    this.$('plPreview').innerHTML = `<svg viewBox="2 -14 28 48" width="96" height="150">${personArt('front', this.look).body}</svg>`;
+    for (const b of this.$('plSwatches').querySelectorAll('.pl-sw')) b.classList.toggle('on', this.look[b.dataset.part] === b.dataset.c);
+  },
+};
+
+window.addEventListener('resize', () => { if (game && game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
+window.BookFair = { game, Players, PlayerPicker, startGame, ALL_BOOKS, KIDS_BOOKS, get BOOKS() { return BOOKS; }, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText };
+
+// Start: a "New game" goes straight back to the same player; otherwise ask who's playing.
+(function boot() {
+  Players.load();
+  let auto = null;
+  try { auto = sessionStorage.getItem('bookfair.autostart'); sessionStorage.removeItem('bookfair.autostart'); } catch (e) {}
+  const pl = auto && Players.get(auto);
+  if (pl) startGame(pl); else PlayerPicker.show();
+})();
 </script>
 </body>
 </html>
