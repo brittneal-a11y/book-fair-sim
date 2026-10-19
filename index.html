@@ -311,6 +311,14 @@
   .sum-grid b { display: block; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
   .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
 
+  /* first-genre picker */
+  .gp-card { width: min(94vw, 460px); }
+  .gp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; }
+  .gp-list button { box-shadow: none; border: 2px solid var(--panel-edge); border-radius: 14px; background: #fff; padding: 10px; display: flex; gap: 8px; align-items: center; text-align: left; font-size: 13.5px; }
+  .gp-list button:hover, .gp-list button:focus-visible { border-color: var(--accent); }
+  .gp-list .gdot { width: 18px; height: 18px; }
+  .gp-list small { display: block; color: var(--muted); font-weight: 600; font-size: 11.5px; }
+
   /* Arrange palette: your decor */
   .palette .sep { flex: none; align-self: center; font-size: 11px; font-weight: 800; color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg); padding: 0 2px; }
   .palette button { position: relative; }
@@ -498,6 +506,14 @@
 
   <div id="carry" class="carry" hidden><span id="carryText"></span><button id="carryDrop">Put down</button></div>
 
+  <div id="genrePick" class="menu" hidden>
+    <div class="card gp-card" role="dialog" aria-labelledby="gpTitle">
+      <h2 id="gpTitle">Pick your first genre</h2>
+      <p>Your book fair starts with one genre. Earn money to unlock more on the register computer ($75 each).</p>
+      <div id="gpList" class="gp-list"></div>
+    </div>
+  </div>
+
   <div id="pc" class="pc" hidden>
     <div class="pc-monitor" role="dialog" aria-label="Register computer">
       <div class="pc-screen">
@@ -553,7 +569,8 @@
       <p><b>Stockroom:</b> deliveries come each morning to the stockroom behind the door on the back wall. Tap a box to pick it up, carry it out, and tap a display to unpack it there.</p>
       <p><b>Stock displays:</b> tap any shelf, table, rack or bin, then move items from the box onto it. A ! means it's running low.</p>
       <p><b>Register computer:</b> tap the checkout when no one is waiting. Order books and merch, shop for holiday decor, and check your inventory, sales, wishes and calendar.</p>
-      <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
+      <p><b>Growing your fair:</b> you start with two bookshelves, a merch bin, the checkout and one genre. Buy more furniture in the Shop and unlock more genres under Ordering on the register computer.</p>
+      <p><b>Arrange:</b> place, move and rotate the furniture and decorations you own. Put away sends a piece back to storage. Your room saves automatically.</p>
       <p><b>Helping:</b> a yellow ! means a customer needs help. Tap them to hear what they want, find it on a display or in a box, tap Take to them, then tap them to hand it over.</p>
       <p><b>Fair days:</b> tap Open the fair. Customers browse, then line up at the checkout. Tap the counter to ring them up and count out change. Tap a customer to see what they're looking for.</p>
       <p class="muted">Arrange shortcuts: R rotate, Delete remove, Esc deselect.</p>
@@ -619,19 +636,19 @@ const COLORS = {
 // ============================================================
 const FURNITURE = {
   shelf:    { label: 'Bookshelf',     w: 3, h: 1, layer: 'solid', dir: true,
-              blurb: 'An empty bookshelf. Boxes of books will arrive soon.' },
+              blurb: 'Holds 36 books on three shelves.' },
   lowshelf: { label: 'Low Bookcase',  w: 2, h: 1, layer: 'solid', dir: true,
-              blurb: 'A low bookcase. Great along the side walls.' },
+              blurb: 'Holds 16 books. Great along the side walls.' },
   table:    { label: 'Display Table', w: 2, h: 2, layer: 'solid',
-              blurb: 'A display table for featured books.' },
+              blurb: 'Shows off 6 books face-up.' },
   register: { label: 'Checkout',      w: 2, h: 1, layer: 'solid', dir: true,
-              blurb: 'The checkout counter. Ringing up customers comes in a later phase.' },
+              blurb: 'The checkout counter and register computer.' },
   posters:  { label: 'Poster Rack',   w: 2, h: 1, layer: 'solid', dir: true,
-              blurb: 'Posters of kittens, rainbows and outer space.' },
+              blurb: 'Hangs 3 posters.' },
   spinner:  { label: 'Spinner Rack',  w: 1, h: 1, layer: 'solid',
-              blurb: 'A spinner rack for bookmarks.' },
+              blurb: 'Holds 12 bookmarks.' },
   merch:    { label: 'Merch Bin',     w: 1, h: 1, layer: 'solid',
-              blurb: 'Pencils, erasers, and tiny tchotchkes.' },
+              blurb: 'Holds 9 trinkets: erasers, pencils and pens.' },
   beanbag:  { label: 'Beanbag',       w: 1, h: 1, layer: 'solid',
               blurb: 'A squishy beanbag for browsing.' },
   plant:    { label: 'Plant',         w: 1, h: 1, layer: 'solid',
@@ -705,32 +722,23 @@ const DEFAULT_LAYOUT = {
   backDoor: { x: 20 },
   wallDecor: { bunting: null, lights: null, banner: null },
   spawn: { x: 10, y: 12 },
+  // A new game starts small: two bookshelves, a merch bin and the checkout.
+  // Everything else is bought on the register computer (FURNITURE_PRICES).
   items: [
-    { id: 'd1',  type: 'plant',    x: 1,  y: 1,  rot: 0 },
-    { id: 'd2',  type: 'shelf',    x: 2,  y: 1,  rot: 0 },
-    { id: 'd3',  type: 'shelf',    x: 5,  y: 1,  rot: 0 },
-    { id: 'd4',  type: 'shelf',    x: 8,  y: 1,  rot: 0 },
-    { id: 'd5',  type: 'shelf',    x: 11, y: 1,  rot: 0 },
-    { id: 'd6',  type: 'shelf',    x: 14, y: 1,  rot: 0 },
-    { id: 'd22', type: 'shelf',    x: 17, y: 1,  rot: 0 },
-    { id: 'd23', type: 'plant',    x: 20, y: 10, rot: 0 },
-    { id: 'd7',  type: 'lowshelf', x: 1,  y: 4,  rot: 0 },
-    { id: 'd8',  type: 'lowshelf', x: 1,  y: 7,  rot: 0 },
-    { id: 'd9',  type: 'lowshelf', x: 19, y: 4,  rot: 0 },
-    { id: 'd10', type: 'lowshelf', x: 19, y: 7,  rot: 0 },
-    { id: 'd11', type: 'table',    x: 6,  y: 6,  rot: 0 },
-    { id: 'd12', type: 'rug',      x: 10, y: 6,  rot: 0 },
-    { id: 'd13', type: 'table',    x: 14, y: 6,  rot: 0 },
-    { id: 'd14', type: 'posters',  x: 3,  y: 11, rot: 0 },
-    { id: 'd15', type: 'merch',    x: 5,  y: 12, rot: 0 },
-    { id: 'd16', type: 'spinner',  x: 7,  y: 12, rot: 0 },
+    { id: 'd5',  type: 'shelf',    x: 8,  y: 1,  rot: 0 },
+    { id: 'd6',  type: 'shelf',    x: 11, y: 1,  rot: 0 },
+    { id: 'd15', type: 'merch',    x: 6,  y: 11, rot: 0 },
     { id: 'd17', type: 'register', x: 14, y: 11, rot: 0 },
-    { id: 'd18', type: 'beanbag',  x: 18, y: 11, rot: 0 },
-    { id: 'd19', type: 'beanbag',  x: 19, y: 11, rot: 0 },
-    { id: 'd20', type: 'plant',    x: 20, y: 13, rot: 0 },
-    { id: 'd21', type: 'cactus',   x: 13, y: 13, rot: 0 },
   ],
 };
+
+// What a new game owns, and what everything else costs (in cents).
+// One checkout only: it can be moved but never removed.
+const STARTER_OWNED = { shelf: 2, merch: 1, register: 1 };
+const FURNITURE_PRICES = { shelf: 6000, lowshelf: 4000, table: 4500, posters: 3500, spinner: 3000, merch: 3000,
+  rug: 2500, beanbag: 2000, plant: 1200, cactus: 800 };
+// You start with one genre and buy the rights to the others.
+const GENRE_PRICE = 7500;
 
 // ============================================================
 // 4. SAVE / LOAD
@@ -763,7 +771,7 @@ const Players = {
   get(id) { return this.data.list.find(x => x.id === id) || null; },
   // Peek at a player's progress for the picker
   summary(pl) {
-    try { const g = JSON.parse(localStorage.getItem(`bookfair.p.${pl.id}.game`)); if (g) return { day: g.day || 1, money: g.money || 0 }; } catch (e) {}
+    try { const g = JSON.parse(localStorage.getItem(`bookfair.p.${pl.id}.game`)); if (g && g.saveVersion >= 3) return { day: g.day || 1, money: g.money || 0 }; } catch (e) {}
     return { day: 1, money: 0 };
   },
   erase(pl) {   // New game: wipe this player's save only
@@ -1297,6 +1305,12 @@ ART['dbox'] = () => ({ box: [-2, -4, 36, 38], body:
   RF(13.5, 2, 5, 27, '#d64545') + RF(3.5, 17.5, 25, 4, '#d64545') +
   `<path d="M16 2.5 C10 -3 7 2 15 2.6 M16 2.5 C22 -3 25 2 17 2.6" fill="#e05555" ${ST}/>` + `<circle cx="16" cy="2.4" r="1.8" fill="#d64545" ${ST}/>` });
 // "Something's waiting in the stockroom" badge over the back door
+// Furniture delivery: a wooden crate
+ART['fbox'] = () => ({ box: [-2, -2, 36, 36], body:
+  shadow(16, 30.5, 15, 3) + R(2, 4, 28, 25, '#d39a68', 2) +
+  [10.5, 18.5].map(y => `<line x1="2.5" y1="${y}" x2="29.5" y2="${y}" stroke="#a96a3e" stroke-width="1.2"/>`).join('') +
+  `<path d="M3 5 L29 28" stroke="#a96a3e" stroke-width="2.2"/>` + R(2, 4, 28, 25, 'none', 2) +
+  R(9, 12.5, 14, 5, PAL.cream, 1, 'stroke-width=".8"') + txt(16, 16.3, 'FRAGILE', 3.4, PAL.coral) });
 ART['badge-box'] = () => ({ box: [-1, -1, 18, 18], body: `<circle cx="8" cy="8" r="7.2" fill="#81b29a" ${ST}/>` +
   R(4, 6.5, 8, 5.5, '#e0ad74', 1, 'stroke-width=".9"') + R(4, 4.3, 8, 2.6, '#f2cc8f', 1, 'stroke-width=".9"') + RF(7.2, 4.5, 1.6, 7.3, '#f4a3c0') });
 
@@ -2193,9 +2207,6 @@ function isLightColor(hex) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150;
 }
 function xmlEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-// Book colors: every book uses its genre's color family. Each series gets
-// its own shade of that family (hue nudged, lighter or darker) plus a spine
-// pattern, so a series is easy to spot and group.
 function hexToHsl(hex) {
   let [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
@@ -2213,12 +2224,10 @@ function tweakColor(hex, dHue, dLight) {
   const [h, s, l] = hexToHsl(hex);
   return hslToHex((h + dHue + 360) % 360, s, Math.max(.16, Math.min(.86, l + dLight)));
 }
-function bookColor(book) {
-  const base = GENRES[book.genre].color, ser = seriesName(book);
-  if (ser) { const h = hashStr(ser); return tweakColor(base, ((h % 7) - 3) * 7, [-.17, -.1, -.04, .03, .09, .15][(h >>> 3) % 6]); }
-  return tweakColor(base, 0, [-.05, -.025, 0, .025, .05][hashStr(book.id) % 5]);
-}
-function seriesPattern(book) { const ser = seriesName(book); return ser ? (hashStr(ser) >>> 6) % 4 : -1; }
+// One color per genre. (Series are kept together on the shelf instead:
+// see Stocking.seriesCheck.)
+function bookColor(book) { return GENRES[book.genre].color; }
+function seriesPattern(book) { return -1; }   // spine band patterns retired in Phase 8.1
 const spineColor = bookColor;
 function seriesNo(book) { const m = (book.series || '').match(/#\s*([\d.]+)/); return m ? m[1] : null; }
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -2789,6 +2798,8 @@ const Stocking = {
       return this.render();
     }
     if (h.from === 'slot' && h.slot === i) { this.held = null; return this.render(); }
+    const block = this.seriesCheck(h, i);
+    if (block) { this.nope(block); return; }
     if (h.from === 'hand') {               // place what you're carrying
       slots[i] = h.id;
       this.scene.setCarry(here ? { id: here, price: salePrice(here, this.item.sale), sale: this.item.sale || 0 } : null);
@@ -2807,6 +2818,56 @@ const Stocking = {
     this.save();
     this.render();
     this.pop(i);
+  },
+
+  // Series stay together: if this display already has books from the held
+  // book's series, it can only go right next to one of them (left/right on a
+  // shelf; any side on a table). Returns { ser, mates } when the spot is wrong.
+  seriesMates(h) {
+    const b = BOOKS_BY_ID[h.id], ser = b && seriesName(b);
+    if (!ser) return null;
+    const mates = [];
+    this.item.slots.forEach((id, j) => {
+      if (id && !(h.from === 'slot' && h.slot === j) && BOOKS_BY_ID[id] && seriesName(BOOKS_BY_ID[id]) === ser) mates.push(j);
+    });
+    return mates.length ? { ser, mates } : null;
+  },
+  nextTo(a, b) {
+    const C = this.cfg.cols, ra = Math.floor(a / C), rb = Math.floor(b / C), ca = a % C, cb = b % C;
+    if (ra === rb) return Math.abs(ca - cb) === 1;
+    return this.cfg.view === 'covers' && ca === cb && Math.abs(ra - rb) === 1;
+  },
+  seriesCheck(h, i) {
+    const m = this.seriesMates(h);
+    if (!m || m.mates.includes(i)) return null;
+    if (m.mates.some(j => this.nextTo(i, j))) return null;
+    // only insist when there's a spot next to the series it could go instead
+    const ok = this.item.slots.some((_, k) => !m.mates.includes(k) && !(h.from === 'slot' && h.slot === k) && m.mates.some(j => this.nextTo(k, j)));
+    return ok ? m : null;
+  },
+  // The book gives a little shake, and the rest of its series lights up.
+  nope(m) {
+    this.hint(`That one's part of the ${m.ser} series. Put it next to the other ${m.ser} book${m.mates.length === 1 ? '' : 's'}.`);
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const h = this.held;
+    const el = h.from === 'box' ? this.$('trayBooks').querySelector('.cover.held') : this.$('stockShelf').querySelector('.lifted');
+    if (el && el.animate && !still) {
+      if (el instanceof SVGElement) { el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center'; }
+      el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px) rotate(-3deg)' }, { transform: 'translateX(6px) rotate(3deg)' },
+        { transform: 'translateX(-4px) rotate(-2deg)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'ease-out' });
+    }
+    const svg = this.$('stockShelf').querySelector('svg');
+    for (const j of m.mates) {
+      const hit = svg && svg.querySelector(`[data-slot="${j}"]`);
+      if (!hit) continue;
+      const glow = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      for (const a of ['x', 'y', 'width', 'height']) glow.setAttribute(a, hit.getAttribute(a));
+      glow.setAttribute('rx', '6'); glow.setAttribute('fill', '#ffd166'); glow.setAttribute('fill-opacity', '.28');
+      glow.setAttribute('stroke', '#ffd166'); glow.setAttribute('stroke-width', '3'); glow.setAttribute('pointer-events', 'none');
+      hit.parentNode.insertBefore(glow, hit);
+      if (glow.animate && !still) glow.animate([{ opacity: 1 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 1600 }).onfinish = () => glow.remove();
+      else setTimeout(() => glow.remove(), 1600);
+    }
   },
 
   // Pick something for the customer you're helping, then walk it over.
@@ -2871,7 +2932,10 @@ const Stocking = {
 
     const info = this.$('stockInfo');
     if (h && h.from === 'hand') info.innerHTML = `<span class="pick">In your hands:</span> ` + this.describe(h.id) + ' · Tap a spot to put it here.';
-    else if (h) info.innerHTML = this.describe(h.id);
+    else if (h) {
+      const m = this.seriesMates(h);
+      info.innerHTML = this.describe(h.id) + (m ? ` · <span class="pick">Goes next to the other ${xmlEsc(m.ser)} book${m.mates.length === 1 ? '' : 's'}</span>` : '');
+    }
     else if (this.scene.fair.helping && box) info.textContent = `Helping ${this.scene.fair.helping.name}: "${requestText(this.scene.fair.helping)}" Pick something, then tap Take to ${this.scene.fair.helping.name}.`;
     else if (box) info.textContent = `Tap ${isBooks ? 'a book' : 'an item'} in the box, then tap a spot. Tap something already placed to move it.`;
     else info.textContent = filled ? 'Tap something placed here to move it.' : 'No boxes right now.';
@@ -2929,7 +2993,7 @@ const ORDER = { SURPRISE: .40, GENRE: .50, TITLE: .65, MERCH: .60, MERCH_BOX: .4
 function wholeDollars(c) { return Math.max(100, Math.round(c / 100) * 100); }
 function avgRetail(list) { return list.length ? list.reduce((a, b) => a + basePrice(b.id), 0) / list.length : 1299; }
 const Prices = {
-  surprise() { return wholeDollars(avgRetail(BOOKS) * ORDER.BOX * ORDER.SURPRISE); },
+  surprise() { return wholeDollars(avgRetail(shopBooks()) * ORDER.BOX * ORDER.SURPRISE); },
   genre(g) { return wholeDollars(avgRetail(BOOKS.filter(b => b.genre === g)) * ORDER.BOX * ORDER.GENRE); },
   title(id) { return Math.round(basePrice(id) * ORDER.TITLE); },
   merch(id) { return Math.round(basePrice(id) * ORDER.MERCH); },
@@ -2956,19 +3020,24 @@ function stockCounts(scene) {
 }
 function ownedTotal(e) { return e ? e.display + e.floor + e.stock : 0; }
 
-// Decorations that are out in the room: id -> count
+// Furniture and decorations that are out in the room: type/id -> count
 function decorPlaced(layout) {
   const m = new Map(), add = id => m.set(id, (m.get(id) || 0) + 1);
   for (const it of layout.items) {
-    if (FURNITURE[it.type] && FURNITURE[it.type].decor) add(it.type);
+    if (it.type !== 'box') add(it.type);
     if (it.topper) add(it.topper);
   }
   for (const slot of WALL_SLOTS) if (layout.wallDecor && layout.wallDecor[slot]) add(layout.wallDecor[slot]);
   return m;
 }
+// How many you own that are in storage (owned minus what's out)
 function decorAvailable(layout, id) { return (Game.data.owned[id] || 0) - (decorPlaced(layout).get(id) || 0); }
-function decorPending(id) { return Game.data.pending.filter(o => o.kind === 'decor' && o.item === id).length +
+function decorPending(id) { return Game.data.pending.filter(o => (o.kind === 'decor' || o.kind === 'furn') && o.item === id).length +
   (ROOM ? ROOM.sr.items.filter(b => b.kind === 'decor').reduce((a, b) => a + b.contents.filter(x => x === id).length, 0) : 0); }
+function ownedName(id) { return DECOR_BY_ID[id] ? DECOR_BY_ID[id].name : FURNITURE[id] ? FURNITURE[id].label : id; }
+// Books you can order: only genres you've unlocked
+function genreOpen(g) { return (Game.data.genres || []).includes(g); }
+function shopBooks() { const list = BOOKS.filter(b => genreOpen(b.genre)); return list.length ? list : BOOKS; }
 // Decorations from this month's pack that are out, and the extra visitors they bring.
 function seasonDecorOut(layout) {
   let n = 0; const packs = new Set();
@@ -3027,7 +3096,7 @@ function stashToStockroom(scene, ids) {
 
 // ---- ordering ----
 function pickBooks(genre, n, taken) {
-  const pool = BOOKS.filter(b => !genre || b.genre === genre);
+  const pool = shopBooks().filter(b => !genre || b.genre === genre);
   if (!pool.length) return [];
   const out = [];
   for (const b of [...shuffle(pool.filter(b => !taken.has(b.id))), ...shuffle(pool.filter(b => taken.has(b.id)))]) { if (out.length >= n) break; out.push(b.id); }
@@ -3038,7 +3107,7 @@ function pickBooks(genre, n, taken) {
 function orderName(o) {
   return o.kind === 'surprise' ? 'Surprise box (10 books)' : o.kind === 'genre' ? `${GENRES[o.genre].label} box (10 books)`
     : o.kind === 'title' ? BOOKS_BY_ID[o.item].title : o.kind === 'merchbox' ? 'Mixed merch box (18 items)'
-    : o.kind === 'merch' ? MERCH_BY_ID[o.item].name : o.kind === 'decor' ? DECOR_BY_ID[o.item].name
+    : o.kind === 'merch' ? MERCH_BY_ID[o.item].name : o.kind === 'decor' ? DECOR_BY_ID[o.item].name : o.kind === 'furn' ? FURNITURE[o.item].label
     : o.kind === 'stash' ? 'Put-away box' : 'Order';
 }
 const Orders = {
@@ -3046,6 +3115,7 @@ const Orders = {
     return spec.kind === 'surprise' ? Prices.surprise() : spec.kind === 'genre' ? Prices.genre(spec.genre)
       : spec.kind === 'title' ? Prices.title(spec.item) : spec.kind === 'merchbox' ? Prices.merchBox()
       : spec.kind === 'merch' ? Prices.merch(spec.item) : spec.kind === 'decor' ? DECOR_BY_ID[spec.item].price
+      : spec.kind === 'furn' ? FURNITURE_PRICES[spec.item]
       : spec.kind === 'pack' ? packPrice(spec.pack) : 0;
   },
   // Buys something; it arrives tomorrow morning. Returns { ok, msg }.
@@ -3061,6 +3131,15 @@ const Orders = {
     UI.setMoney();
     const what = spec.kind === 'pack' ? `the ${DECOR_PACKS[spec.pack].label} pack` : qty > 1 ? `${qty} × ${orderName(spec)}` : orderName(spec);
     return { ok: true, msg: `Ordered ${what} for ${money(total)}. It arrives in the stockroom tomorrow morning.` };
+  },
+  // Genre rights take effect right away.
+  unlockGenre(g) {
+    if (genreOpen(g)) return { ok: false, msg: '' };
+    if (Game.data.money < GENRE_PRICE) return { ok: false, msg: `You need ${money(GENRE_PRICE - Game.data.money)} more to unlock ${GENRES[g].label}.` };
+    Game.data.money -= GENRE_PRICE;
+    Game.data.genres.push(g);
+    Game.save(); UI.setMoney();
+    return { ok: true, msg: `${GENRES[g].label} unlocked! You can order ${GENRES[g].label.toLowerCase()} books now, and more customers will come looking for them.` };
   },
   cancel(orderId) {
     const P = Game.data.pending, i = P.findIndex(o => o.id === orderId);
@@ -3087,6 +3166,7 @@ const Orders = {
     chunk('title', ORDER.BOX, 'books', 'Your book order');
     chunk('merch', ORDER.MERCH_PER_BOX, 'merch', 'Your merch order');
     chunk('decor', ORDER.DECOR_PER_BOX, 'decor', 'Decor delivery');
+    chunk('furn', 6, 'decor', 'Furniture delivery');
     if (free) specs.push({ orders: [], kind: 'books', label: 'Free surprise box', free: true, make: () => pickBooks(null, ORDER.BOX, taken) });
     const report = { boxes: 0, free: false, freeMissed: false, waiting: 0, decor: 0 };
     for (const sp of specs) {
@@ -3192,30 +3272,40 @@ function itemName(id) { const b = BOOKS_BY_ID[id]; return b ? b.title : MERCH_BY
 // arms), pending (orders on the way), history (each fair day), best (best
 // sellers), genreSales, wishes (books customers asked for that you didn't
 // have), calendar (special days ahead), owned (decorations you own).
+// Phase 8.2 added: genres (genres you've unlocked); owned now counts furniture
+// too. Saves from before 8.2 start over (everyone restarts with the small fair).
+const SAVE_VERSION = 3;
+function freshGameData() {
+  return { saveVersion: SAVE_VERSION, money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true,
+           lifetime: { customers: 0, sold: 0, earned: 0 }, genres: [],
+           stockroom: [], carrying: null, pending: [], history: [], best: {}, genreSales: {}, wishes: {}, calendar: {},
+           copies: {}, owned: { ...STARTER_OWNED }, unlockedMerch: [], projects: {}, scrapbook: [] };
+}
 const Game = {
-  data: { saveVersion: 2, money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true,
-          lifetime: { customers: 0, sold: 0, earned: 0 },
-          stockroom: [], carrying: null, pending: [], history: [], best: {}, genreSales: {}, wishes: {}, calendar: {},
-          copies: {}, owned: {}, unlockedMerch: [], projects: {}, scrapbook: [] },
+  data: freshGameData(),
   fresh: false, migrated: false,
   load() {
     let d = null;
     try { d = JSON.parse(localStorage.getItem(playerKey('game'))); } catch (e) {}
+    if (d && typeof d === 'object' && (d.saveVersion | 0) < SAVE_VERSION) d = null;   // older save: start over
     this.fresh = !(d && typeof d === 'object');
-    if (!this.fresh) this.data = { ...this.data, ...d };
-    if (!this.fresh && (this.data.saveVersion | 0) < 2) this.migrated = true;
-    this.data.saveVersion = 2;
+    this.data = this.fresh ? freshGameData() : { ...freshGameData(), ...d };
+    this.data.saveVersion = SAVE_VERSION;
+    if (!Array.isArray(this.data.genres)) this.data.genres = [];
+    this.data.genres = this.data.genres.filter(g => GENRES[g]);
+    if (!this.fresh && !this.data.genres.length) this.data.genres = listGenres();
+    if (!this.data.owned.register) this.data.owned.register = 1;
     if (!FAIR.DAY_LENGTHS[this.data.dayLength]) this.data.dayLength = 'normal';
     for (const k of ['pending', 'history', 'stockroom']) if (!Array.isArray(this.data[k])) this.data[k] = [];
     for (const k of ['best', 'genreSales', 'wishes', 'calendar', 'owned']) if (!this.data[k] || typeof this.data[k] !== 'object') this.data[k] = {};
     // only boxes with real things in them survive
-    const okId = (kind, id) => kind === 'decor' ? !!DECOR_BY_ID[id] : kind === 'merch' ? !!MERCH_BY_ID[id] : !!BOOKS_BY_ID[id];
+    const okId = (kind, id) => kind === 'decor' ? !!(DECOR_BY_ID[id] || FURNITURE_PRICES[id]) : kind === 'merch' ? !!MERCH_BY_ID[id] : !!BOOKS_BY_ID[id];
     const cleanBox = b => b && b.type === 'box' && Number.isInteger(b.x) && Number.isInteger(b.y) && Array.isArray(b.contents) &&
       (b.contents = b.contents.filter(id => okId(b.kind, id))).length > 0;
     this.data.stockroom = this.data.stockroom.filter(b => cleanBox(b) && isInterior(STOCKROOM, b.x, b.y));
     if (this.data.carrying && !cleanBox(this.data.carrying)) this.data.carrying = null;
     this.data.pending = this.data.pending.filter(o => o && o.kind && (o.kind !== 'title' || BOOKS_BY_ID[o.item]) && (o.kind !== 'merch' || MERCH_BY_ID[o.item]) &&
-      (o.kind !== 'decor' || DECOR_BY_ID[o.item]) && (o.kind !== 'genre' || GENRES[o.genre]));
+      (o.kind !== 'decor' || DECOR_BY_ID[o.item]) && (o.kind !== 'furn' || FURNITURE_PRICES[o.item]) && (o.kind !== 'genre' || GENRES[o.genre]));
   },
   save() { try { localStorage.setItem(playerKey('game'), JSON.stringify(this.data)); } catch (e) {} },
 };
@@ -3239,7 +3329,13 @@ const KIDS_LIST_GENRES = {
   teacher:     () => ['picture', 'middlegrade', 'graphic'],
   grandparent: () => ['picture', 'middlegrade'],
 };
-function genresFor(type) { return PLAYER && PLAYER.bookList === 'kids' ? KIDS_LIST_GENRES[type]() : CUSTOMER_TYPES[type].genres(); }
+// Customers mostly shop the genres you carry; now and then someone wants a
+// genre you haven't unlocked yet (their wishes land on Customer wishes).
+function genresFor(type) {
+  const raw = PLAYER && PLAYER.bookList === 'kids' ? KIDS_LIST_GENRES[type]() : CUSTOMER_TYPES[type].genres();
+  const open = Game.data.genres && Game.data.genres.length ? Game.data.genres : null;
+  return open ? raw.map(g => genreOpen(g) || Math.random() < .15 ? g : pickRandom(open)) : raw;
+}
 
 const FIRST_NAMES = ['Maya', 'Leo', 'Ava', 'Sam', 'Nora', 'Eli', 'Zoe', 'Theo', 'Ruby', 'Jonah', 'Ivy', 'Miles', 'Rosa', 'Ezra',
   'Luna', 'Owen', 'Hazel', 'Diego', 'June', 'Felix', 'Priya', 'Kai', 'Mae', 'Omar', 'Lila', 'Gus', 'Pia', 'Ben'];
@@ -4187,6 +4283,18 @@ const Help = {
 // Buttons and panels live in HTML over the canvas: easier to
 // tap on phones and to style. They call into the Room scene.
 // ============================================================
+// ---- pick your first genre (new games) ----
+const GenrePick = {
+  show(done) {
+    const el = document.getElementById('genrePick');
+    el.querySelector('p').textContent = `Your book fair starts with one genre. Earn money to unlock more on the register computer (${money(GENRE_PRICE)} each).`;
+    document.getElementById('gpList').innerHTML = listGenres().map(g => `<button data-g="${g}"><span class="gdot" style="background:${GENRES[g].color}"></span>` +
+      `<span><b>${xmlEsc(GENRES[g].label)}</b><small>${BOOKS.filter(b => b.genre === g).length} books</small></span></button>`).join('');
+    document.getElementById('gpList').onclick = e => { const b = e.target.closest('[data-g]'); if (!b) return; el.hidden = true; done(b.dataset.g); };
+    el.hidden = false;
+  },
+};
+
 // ---- the register computer: a retro school computer showing the book-fair website ----
 // Tabs: Ordering, Decor shop, Inventory, Sales history, Customer wishes, Fair calendar.
 // The fair clock stops while you're on it.
@@ -4205,7 +4313,7 @@ function genreBoxArt(g) {
 const PLACE_TEXT = { floor: 'Stands on the floor', top: 'Sits on top of a shelf or the checkout', wall: 'Hangs on the back wall' };
 const Computer = {
   tab: 'order', filter: { q: '', genre: '', inv: 'all', invQ: '' }, msg: '',
-  TABS: [['order', '🛒 Ordering', '#f7b3a6'], ['decor', '🎃 Decor shop', '#cdb8ea'], ['inv', '📦 Inventory', '#9fd8c8'],
+  TABS: [['order', '🛒 Ordering', '#f7b3a6'], ['decor', '🛋️ Shop', '#cdb8ea'], ['inv', '📦 Inventory', '#9fd8c8'],
          ['sales', '📈 Sales history', '#ffd98a'], ['wishes', '💭 Customer wishes', '#f7b7d2'], ['cal', '📅 Fair calendar', '#a9c8f0']],
   $(id) { return document.getElementById(id); },
   isOpen() { return !this.$('pc').hidden; },
@@ -4218,6 +4326,7 @@ const Computer = {
     this.$('pcBody').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.buy) { const r = Orders.buy(JSON.parse(b.dataset.buy), +(b.dataset.qty || 1)); this.say(r.msg); }
+      else if (b.dataset.unlock) { const r = Orders.unlockGenre(b.dataset.unlock); if (r.msg) this.say(r.msg); }
       else if (b.dataset.cancel) this.say(Orders.cancel(b.dataset.cancel));
       else if (b.dataset.unwish) { delete Game.data.wishes[b.dataset.unwish]; Game.save(); this.render(); }
       else if (b.dataset.inv) { this.filter.inv = b.dataset.inv; this.renderList(); this.render(); }
@@ -4247,7 +4356,7 @@ const Computer = {
   render() {
     for (const b of this.$('pcTabs').children) { b.classList.toggle('on', b.dataset.tab === this.tab); b.setAttribute('aria-selected', b.dataset.tab === this.tab); }
     const season = Object.keys(DECOR_PACKS).find(inSeason);
-    this.$('pcTabs').querySelector('[data-tab="decor"]').textContent = `${season ? DECOR_PACKS[season].icon : '🎀'} Decor shop`;
+    this.$('pcTabs').querySelector('[data-tab="decor"]').textContent = `${season ? DECOR_PACKS[season].icon : '🛋️'} Shop`;
     this.$('pcMoney').textContent = money(Game.data.money);
     const counter = this.scene.fair.register();
     this.$('pcCounter').hidden = !counter;
@@ -4282,9 +4391,13 @@ const Computer = {
         (o.kind === 'stash' ? '' : `<button class="s-btn light" data-cancel="${o.id}">Cancel${g.length > 1 ? ' one' : ''}</button>`) + '</div>';
     }).join('') + '</div>';
   },
+  unlockBtn(g) {
+    const can = Game.data.money >= GENRE_PRICE;
+    return `<button class="s-btn" data-unlock="${g}"${can ? '' : ' disabled'}>Unlock · ${money(GENRE_PRICE)}</button>`;
+  },
   orderTab() {
     const box = svgInline(ART.box(), 54), mbox = svgInline(ART.mbox(), 54);
-    const genres = listGenres();
+    const genres = listGenres().filter(genreOpen), locked = listGenres().filter(g => !genreOpen(g));
     return this.pendingBox() +
       `<div class="s-h">📦 Book boxes</div><p class="s-sub">Everything you order arrives in the stockroom at the start of the next fair day. A free surprise box comes every morning, too.</p>` +
       `<div class="s-cards"><div class="s-card"><div class="art">${box}</div><b>Surprise box</b><small>10 random books from your list, mostly ones you don't have yet. The best deal.</small>` +
@@ -4292,9 +4405,14 @@ const Computer = {
       genres.map(g => `<div class="s-card"><div class="art">${svgInline(genreBoxArt(g), 54)}</div>` +
         `<b>${xmlEsc(GENRES[g].label)} box</b><small>10 ${xmlEsc(GENRES[g].label.toLowerCase())} books.</small>` +
         `<div class="s-buy"><span class="s-price">${money(Prices.genre(g))}</span>${this.buyBtn({ kind: 'genre', genre: g })}</div></div>`).join('') + '</div>' +
+      (locked.length ? `<div class="s-h">🔒 Unlock more genres</div><p class="s-sub">Buy the rights to a new genre (${money(GENRE_PRICE)} each). It unlocks right away: you can order its books, and more customers come looking for it.</p>` +
+        `<div class="s-cards">${locked.map(g => { const wished = Object.entries(Game.data.wishes).filter(([id]) => BOOKS_BY_ID[id] && BOOKS_BY_ID[id].genre === g).reduce((a, [, w]) => a + w.n, 0);
+          return `<div class="s-card"><div class="art" style="opacity:.55">${svgInline(genreBoxArt(g), 54)}</div><b>🔒 ${xmlEsc(GENRES[g].label)}</b>` +
+            `<small>${BOOKS.filter(b => b.genre === g).length} books${wished ? ` · <span class="s-pill wish">Asked for ×${wished}</span>` : ''}</small>` +
+            `<div class="s-buy">${this.unlockBtn(g)}</div></div>`; }).join('')}</div>` : '') +
       `<div class="s-h">🔎 Pick your own books</div><p class="s-sub">Order the exact titles you want (as many copies as you like). Wished-for books are at the top.</p>` +
       `<div class="s-tools"><input id="pcQ" type="search" placeholder="Search titles, authors, series" value="${xmlEsc(this.filter.q)}" autocomplete="off">` +
-      `<select id="pcGenre"><option value="">All genres</option>${genres.map(g => `<option value="${g}"${this.filter.genre === g ? ' selected' : ''}>${xmlEsc(GENRES[g].label)}</option>`).join('')}</select></div>` +
+      `<select id="pcGenre"><option value="">All your genres</option>${genres.map(g => `<option value="${g}"${this.filter.genre === g ? ' selected' : ''}>${xmlEsc(GENRES[g].label)}</option>`).join('')}</select></div>` +
       `<div id="pcList"></div>` +
       `<div class="s-h">✏️ Merch</div><div class="s-cards"><div class="s-card"><div class="art">${mbox}</div><b>Mixed merch box</b><small>6 bookmarks, 3 posters and 9 trinkets, picked at random.</small>` +
       `<div class="s-buy"><span class="s-price">${money(Prices.merchBox())}</span>${this.buyBtn({ kind: 'merchbox' })}</div></div></div>` +
@@ -4310,7 +4428,7 @@ const Computer = {
     const counts = this.counts;
     if (this.tab === 'order') {
       const q = this.filter.q.trim().toLowerCase(), wish = Game.data.wishes;
-      let list = BOOKS.filter(b => (!this.filter.genre || b.genre === this.filter.genre) &&
+      let list = BOOKS.filter(b => genreOpen(b.genre) && (!this.filter.genre || b.genre === this.filter.genre) &&
         (!q || (b.title + ' ' + b.author + ' ' + (b.series || '')).toLowerCase().includes(q)));
       list.sort((a, b) => ((wish[b.id] ? wish[b.id].n : 0) - (wish[a.id] ? wish[a.id].n : 0)) || (ownedTotal(counts.get(a.id)) ? 1 : 0) - (ownedTotal(counts.get(b.id)) ? 1 : 0) || a.title.localeCompare(b.title));
       const shown = list.slice(0, 40);
@@ -4323,6 +4441,7 @@ const Computer = {
       const f = this.filter.inv, q = this.filter.invQ.trim().toLowerCase(), rows = [];
       if (f === 'all' || f === 'books') for (const b of BOOKS) {
         if (q && !(b.title + ' ' + b.author + ' ' + (b.series || '')).toLowerCase().includes(q)) continue;
+        if (!genreOpen(b.genre) && !ownedTotal(counts.get(b.id))) continue;
         rows.push({ sort: ownedTotal(counts.get(b.id)) ? 0 : 1, name: b.title, html: `<span class="gdot" style="background:${GENRES[b.genre].color}"></span><div class="t"><b>${xmlEsc(b.title)}</b><small>${xmlEsc(b.author)} · ${xmlEsc(GENRES[b.genre].label)}</small><br>${this.have(counts.get(b.id))}</div>` +
           (ownedTotal(counts.get(b.id)) ? '' : this.buyBtn({ kind: 'title', item: b.id }, `Order · ${money(Prices.title(b.id))}`, 1, true)) });
       }
@@ -4347,8 +4466,14 @@ const Computer = {
 
   // ----- Decor shop -----
   decorTab() {
-    const owned = Game.data.owned;
-    return `<p class="s-sub">Buy a whole pack (about 25% off) or just the pieces you like. Decorations arrive in the stockroom the next morning: open the box there, then put them out with Arrange. Use them any time of year!</p>` +
+    const owned = Game.data.owned, L = this.scene.layout;
+    const furn = Object.keys(FURNITURE_PRICES);
+    return `<div class="s-h">🛋️ Furniture</div><p class="s-sub">New furniture arrives in the stockroom the next morning. Open the crate there, then place it with Arrange.</p>` +
+      `<div class="s-cards">${furn.map(t => { const own = owned[t] || 0, out = decorPlaced(L).get(t) || 0, coming = decorPending(t);
+        return `<div class="s-card"><div class="art">${svgInline(ART[paletteArtKey(t)](), t === 'shelf' || t === 'rug' ? 46 : 58)}</div><b>${xmlEsc(FURNITURE[t].label)}</b>` +
+          `<small>${xmlEsc(FURNITURE[t].blurb)}${own ? ` · You have ${own}${own - out ? ` (${own - out} in storage)` : ''}` : ''}${coming ? ` · ${coming} on the way` : ''}</small>` +
+          `<div class="s-buy"><span class="s-price">${money(FURNITURE_PRICES[t])}</span>${this.buyBtn({ kind: 'furn', item: t }, 'Buy')}</div></div>`; }).join('')}</div>` +
+      `<div class="s-h">🎀 Decorations</div><p class="s-sub">Buy a whole pack (about 25% off) or just the pieces you like. Decorations arrive in the stockroom the next morning: open the box there, then put them out with Arrange. Use them any time of year!</p>` +
       Object.entries(DECOR_PACKS).map(([k, P]) => {
         const items = DECOR.filter(d => d.pack === k), sum = items.reduce((a, d) => a + d.price, 0), on = inSeason(k);
         return `<div class="s-h">${P.icon} ${P.label}${on ? ' <span class="s-pill season">In season!</span>' : ''}</div>` +
@@ -4398,7 +4523,7 @@ const Computer = {
     return `<p class="s-sub">Books customers came looking for but didn't find. Get them out on a display and wish-list customers will snap them up.</p>` +
       W.map(([id, w]) => { const b = BOOKS_BY_ID[id], e = counts.get(id);
         return `<div class="s-row"><span class="gdot" style="background:${GENRES[b.genre].color}"></span><div class="t"><b>${xmlEsc(b.title)}</b><small>${xmlEsc(b.author)} · asked ${w.n === 1 ? 'once' : w.n + ' times'}, last on day ${w.last}</small><br>${this.have(e)}</div>` +
-          `${this.buyBtn({ kind: 'title', item: id }, `Order · ${money(Prices.title(id))}`)}<button class="s-btn light" data-unwish="${id}" aria-label="Remove from the list">✕</button></div>`; }).join('');
+          `${genreOpen(b.genre) ? this.buyBtn({ kind: 'title', item: id }, `Order · ${money(Prices.title(id))}`) : `<span class="s-pill none">🔒 ${xmlEsc(GENRES[b.genre].label)}</span>${this.unlockBtn(b.genre)}`}<button class="s-btn light" data-unwish="${id}" aria-label="Remove from the list">✕</button></div>`; }).join('');
   },
 
   // ----- Fair calendar -----
@@ -4513,9 +4638,11 @@ const UI = {
       }
       sep('FURNITURE');
     }
+    // furniture you own (buy more in the Shop on the register computer)
     for (const [type, def] of Object.entries(FURNITURE)) {
-      if (def.hidden) continue;
-      add(type, ART[paletteArtKey(type)](), def.label, () => this.scene.setPlaceType(type));
+      if (def.hidden || !Game.data.owned[type]) continue;
+      const left = decorAvailable(L, type);
+      add(type, ART[paletteArtKey(type)](), def.label, () => this.scene.useDecor(type), left ? '' : 'none', '×' + left);
     }
   },
 
@@ -4553,7 +4680,7 @@ const UI = {
     const topper = s.edit.placeType && DECOR_BY_ID[s.edit.placeType] && DECOR_BY_ID[s.edit.placeType].place === 'top';
     this.$('btnRotate').disabled = (!sel && !s.edit.placeType) || topper;
     this.$('btnDelete').disabled = !sel;
-    this.$('btnDelete').textContent = sel && sel.topper ? 'Take off decor' : sel && FURNITURE[sel.type].decor ? 'Put away' : 'Remove';
+    this.$('btnDelete').textContent = sel && sel.topper ? 'Take off decor' : sel && sel.type !== 'box' ? 'Put away' : 'Remove';
     this.$('editHint').textContent =
       topper ? `Tap a bookshelf, low bookcase or the checkout to set the ${DECOR_BY_ID[s.edit.placeType].name} on top.`
       : s.edit.placeType ? 'Tap the floor to place a ' + FURNITURE[s.edit.placeType].label + '.'
@@ -4586,7 +4713,7 @@ const UI = {
 
   openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
   closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
-  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden || !this.$('players').hidden || !this.$('pc').hidden; },
+  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden || !this.$('players').hidden || !this.$('pc').hidden || !this.$('genrePick').hidden; },
 
   setCarry(carry, helping, box) {
     const el = this.$('carry');
@@ -4603,12 +4730,12 @@ const UI = {
 class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
   create() {
-    const layout = loadLayout();
+    Game.load();
+    const layout = Game.fresh ? validateLayout(cloneLayout(DEFAULT_LAYOUT)) : loadLayout();   // a new game starts with the small fair
     const jobs = Object.entries(ART).map(([key, fn]) => makeTexture(this, key, fn()));
     jobs.push(makeTexture(this, 'room-bg', roomArt(layout)));
     jobs.push(makeTexture(this, 'stock-bg', roomArt(stockroomLayout([]))));
     LOOKS.forEach((look, i) => { for (const v of ['front', 'side', 'back']) jobs.push(makeTexture(this, `cust-${i}-${v}`, personArt(v, look))); });
-    Game.load();
     Promise.all(jobs).then(() => this.scene.start('Room', { layout }));
   }
 }
@@ -4654,21 +4781,22 @@ class RoomScene extends Phaser.Scene {
     this.fitCamera();
     this.cameras.main.startFollow(this.playerObj, true, 0.15, 0.15);
 
-    // A new game starts with 3 boxes of books, a box of merch and $50.
-    // Players from before the stockroom get a thank-you box.
+    // A new game: pick your first genre, then 3 boxes of it, a box of merch
+    // and $50 are waiting. (Nothing is saved until you pick.)
     if (Game.fresh) {
-      Game.data.money = 5000; Game.fresh = false;
-      Orders.starter(this);
-      this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! Your first boxes are in the stockroom. Tap the door on the back wall to go get them.'));
-    } else if (Game.migrated) {
-      Game.migrated = false;
-      Orders.starter(this, 1, 0);
-      this.time.delayedCall(400, () => UI.toast('New: a stockroom behind the back wall! Deliveries land there each morning, and a free surprise box is waiting now.'));
+      GenrePick.show(g => {
+        Game.data.money = 5000; Game.data.genres = [g]; Game.fresh = false;
+        Orders.starter(this);
+        ensureCalendar();
+        Game.save(); saveLayout(this.layout);
+        UI.setMoney();
+        UI.toast(`Welcome to the book fair! Your first boxes of ${GENRES[g].label.toLowerCase()} are in the stockroom. Tap the door on the back wall to go get them.`);
+      });
     } else {
       this.time.delayedCall(400, () => UI.toast('Welcome back to the book fair!'));
+      ensureCalendar();
+      Game.save();
     }
-    ensureCalendar();
-    Game.save();
     UI.setMoney();
     this.refreshCarry();
   }
@@ -4749,11 +4877,11 @@ class RoomScene extends Phaser.Scene {
   }
   unpackDecor(box) {
     for (const id of box.contents) Game.data.owned[id] = (Game.data.owned[id] || 0) + 1;
-    const names = [...new Set(box.contents)].map(id => DECOR_BY_ID[id].name);
+    const names = [...new Set(box.contents)].map(ownedName);
     this.sr.items = this.sr.items.filter(it => it.id !== box.id);
     this.commit();
     UI.buildPalette();
-    UI.toast(`You unpacked ${box.contents.length === 1 ? names[0] : box.contents.length + ' decorations'}! ${box.contents.length === 1 ? "It's" : "They're"} in storage now. Tap Arrange out in the fair to put ${box.contents.length === 1 ? 'it' : 'them'} out.`);
+    UI.toast(`You unpacked ${box.contents.length === 1 ? 'the ' + names[0] : names.join(', ')}! ${box.contents.length === 1 ? "It's" : "They're"} in storage now. Tap Arrange out in the fair to put ${box.contents.length === 1 ? 'it' : 'them'} out.`);
   }
 
   // ---------- Decor ----------
@@ -4765,18 +4893,21 @@ class RoomScene extends Phaser.Scene {
       if (extra <= 0) continue;
       for (const slot of WALL_SLOTS) if (extra > 0 && L.wallDecor[slot] === id) { L.wallDecor[slot] = null; extra--; }
       for (const it of L.items) if (extra > 0 && it.topper === id) { delete it.topper; extra--; }
-      L.items = L.items.filter(it => !(extra > 0 && it.type === id && extra--));
+      const gone = L.items.filter(it => extra > 0 && it.type === id && extra-- > 0);
+      L.items = L.items.filter(it => !gone.includes(it));
+      const ids = gone.flatMap(it => (it.slots || []).filter(Boolean));
+      if (ids.length) stashToStockroom(this, ids);   // their books and merch go back to the stockroom
     }
   }
   useDecor(id) {
-    const d = DECOR_BY_ID[id], L = this.layout, left = decorAvailable(L, id);
+    const d = DECOR_BY_ID[id] || { name: FURNITURE[id].label, place: 'floor' }, L = this.layout, left = decorAvailable(L, id);
     if (d.place === 'wall') {
       if (L.wallDecor[d.slot] === id) { L.wallDecor[d.slot] = null; UI.toast(`Took down the ${d.name}. It's back in storage.`); }
       else { const old = L.wallDecor[d.slot]; L.wallDecor[d.slot] = id; UI.toast(`Hung the ${d.name} on the back wall${old ? ` (the ${DECOR_BY_ID[old].name} went back in storage)` : ''}.`); }
       this.commit(); this.refreshBackground(); UI.buildPalette(); UI.refreshEdit();
       return;
     }
-    if (left <= 0 && this.edit.placeType !== id) { UI.toast(`All your ${d.name} decorations are out. Buy another in the Decor shop on the register computer.`); return; }
+    if (left <= 0 && this.edit.placeType !== id) { UI.toast(`You've put out every ${d.name} you own. Buy another in the Shop on the register computer.`); return; }
     this.setPlaceType(id);
   }
 
@@ -4846,7 +4977,7 @@ class RoomScene extends Phaser.Scene {
         return { key, make: () => maker(item.slots) };
       }
     }
-    if (item.type === 'box') return { key: item.returns ? 'basket' : item.kind === 'decor' ? 'dbox' : (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
+    if (item.type === 'box') return { key: item.returns ? 'basket' : item.kind === 'decor' ? (item.label === 'Furniture delivery' ? 'fbox' : 'dbox') : (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
     return null;
   }
 
@@ -5278,11 +5409,12 @@ class RoomScene extends Phaser.Scene {
 
     if (this.edit.placeType) {
       const cand = { id: newId(), type: this.edit.placeType, x: tx, y: ty, rot: this.edit.placeRot };
-      if (pd && decorAvailable(this.layout, pd.id) <= 0) { this.edit.placeType = null; UI.refreshEdit(); return; }
+      if (decorAvailable(this.layout, cand.type) <= 0) { this.edit.placeType = null; UI.refreshEdit(); return; }
       if (canPlace(this.layout, cand, null, this.player)) {
         this.layout.items.push(cand);
         this.commit();
-        if (pd) { UI.buildPalette(); if (decorAvailable(this.layout, pd.id) <= 0) { this.edit.placeType = null; UI.refreshEdit(); this.drawGhost(null); return; } }
+        UI.buildPalette();
+        if (decorAvailable(this.layout, cand.type) <= 0) { this.edit.placeType = null; UI.refreshEdit(); this.drawGhost(null); return; }
         this.drawGhost(tx, ty);
       } else if (hit) {
         this.edit.placeType = null;
@@ -5342,14 +5474,17 @@ class RoomScene extends Phaser.Scene {
       UI.toast(`Took the ${d.name} off. It's back in storage.`);
       return;
     }
+    if (gone.type === 'register') { UI.toast('The checkout has to stay (it has the register computer). You can move it, though!'); return; }
     const ids = gone.type === 'box' ? gone.contents.slice() : (gone.slots || []).filter(Boolean);
     this.layout.items = this.layout.items.filter(it => it.id !== id);
     this.edit.selectedId = null;
     this.commit();
-    if (FURNITURE[gone.type].decor) { UI.buildPalette(); UI.toast(`Put the ${FURNITURE[gone.type].label} away in storage.`); }
+    UI.buildPalette();
+    if (gone.type !== 'box' && !ids.length) UI.toast(`Put the ${FURNITURE[gone.type].label} away in storage.`);
     else if (ids.length) {
       const msg = stashToStockroom(this, ids);
-      UI.toast(msg.startsWith('The stockroom is full') ? msg : `Its ${ids.length} item${ids.length === 1 ? '' : 's'} went back to the stockroom.`);
+      UI.toast(msg.startsWith('The stockroom is full') ? msg : gone.type === 'box' ? `Its ${ids.length} item${ids.length === 1 ? '' : 's'} went back to the stockroom.`
+        : `Put the ${FURNITURE[gone.type].label} away in storage. Its ${ids.length} item${ids.length === 1 ? '' : 's'} went back to the stockroom.`);
     }
   }
 
@@ -5502,7 +5637,7 @@ const PlayerPicker = {
 
 window.addEventListener('resize', () => { if (game && game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
 window.BookFair = { game, Players, PlayerPicker, startGame, ALL_BOOKS, KIDS_BOOKS, get BOOKS() { return BOOKS; }, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText,
-  Computer, Orders, Prices, DECOR, DECOR_PACKS, STOCKROOM, stockCounts, decorPlaced, seasonDecorOut, ensureCalendar, SPECIALS, migrateLayout, validateLayout };
+  Computer, Orders, Prices, genresForTest: t => genresFor(t), DECOR, DECOR_PACKS, STOCKROOM, stockCounts, decorPlaced, seasonDecorOut, ensureCalendar, SPECIALS, migrateLayout, validateLayout };
 
 // Start: a "New game" goes straight back to the same player; otherwise ask who's playing.
 (function boot() {
