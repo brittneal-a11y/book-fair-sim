@@ -9,7 +9,12 @@
   ============================================================
   COZY BOOK FAIR — single-file Phaser game
   ------------------------------------------------------------
-  Phase 7 (this file): players with their own saves and characters,
+  Phase 8 (this file): the stockroom behind the back wall (deliveries
+  land there each morning; carry boxes out one at a time), the register
+  computer (ordering, decor shop, inventory, sales history, customer
+  wishes, fair calendar), owning multiple copies, Halloween and
+  Christmas decor, scheduled special days, and a new payment mix.
+  Phase 7: players with their own saves and characters,
   a Kids book list (picture books, graphic novels, kids' favorites),
   redrawn posters, series colors, and quick fixes.
   Phase 6: helping customers (fetching wishes and
@@ -305,6 +310,101 @@
   .sum-grid div { background: #fff; border-radius: 12px; padding: 8px; text-align: center; font-size: 12px; color: var(--muted); }
   .sum-grid b { display: block; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
   .card ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
+
+  /* Arrange palette: your decor */
+  .palette .sep { flex: none; align-self: center; font-size: 11px; font-weight: 800; color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg); padding: 0 2px; }
+  .palette button { position: relative; }
+  .palette button .qty { position: absolute; top: -2px; right: -2px; font-size: 10.5px; font-weight: 800; background: var(--ink); color: var(--panel); border-radius: 999px; padding: 2px 6px; }
+  .palette button.decor { background: #fbf3ff; }
+  .palette button.hung { border-color: #9c89b8; background: #efe6fb; }
+  .palette button.none { opacity: .45; }
+
+  /* The register computer: a retro beige monitor showing the book-fair website */
+  .pc { position: fixed; inset: 0; z-index: 25; background: rgba(20, 10, 30, .62); display: flex; align-items: center; justify-content: center;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); box-sizing: border-box; }
+  .pc-monitor { width: min(100%, 800px); height: min(100%, 700px); box-sizing: border-box; display: flex; flex-direction: column;
+    background: linear-gradient(#f1e8d2, #e1d3b2); border: 3px solid var(--ink); border-radius: 26px; padding: 16px 16px 8px;
+    box-shadow: inset 0 -6px 0 rgba(0,0,0,.08), var(--shadow); }
+  .pc-screen { flex: 1; min-height: 0; border: 3px solid var(--ink); border-radius: 14px; background: #2f3a38; padding: 7px; position: relative; box-shadow: inset 0 0 0 3px #c9bb99; }
+  .pc-screen::after { content: ''; position: absolute; inset: 7px; border-radius: 9px; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(40,30,60,.04) 0 1px, transparent 1px 3px); }
+  .site { height: 100%; border-radius: 9px; overflow: hidden; display: flex; flex-direction: column; background: #fffaf0; }
+  .site-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: #fff;
+    background: #5b6ee1 radial-gradient(circle at 12% 30%, #7d8cf0 0 3px, transparent 4px) 0 0 / 46px 30px; }
+  .site-logo { font-weight: 900; font-size: 18px; letter-spacing: .3px; text-shadow: 2px 2px 0 #3b2f3f; white-space: nowrap; }
+  .site-logo .st { color: #ffd166; }
+  .site-logo i { color: #ffd166; font-style: normal; }
+  .site-money { margin-left: auto; background: var(--panel); color: #2a7a5e; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 10px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .site-tabs { display: flex; gap: 4px; padding: 7px 8px 0; background: #ffe9b8; overflow-x: auto; scrollbar-width: none; border-bottom: 3px solid var(--ink); flex: none; }
+  .site-tabs::-webkit-scrollbar { display: none; }
+  .site-tabs button { flex: none; border-radius: 11px 11px 0 0; box-shadow: none; border: 2px solid var(--ink); border-bottom: 0; padding: 7px 11px 6px; font-size: 13px; background: var(--tab); color: var(--ink); filter: saturate(.55) brightness(1.04); }
+  .site-tabs button.on { filter: none; padding-bottom: 9px; margin-bottom: -1px; }
+  .site-body { flex: 1; overflow-y: auto; padding: 12px; overscroll-behavior: contain; font-size: 14px; }
+  .site-msg { position: sticky; top: -12px; z-index: 2; margin: -12px -12px 10px; padding: 8px 12px; background: #fff1c2; border-bottom: 2px solid var(--ink); font-weight: 700; font-size: 13px; }
+  .pc-chin { display: flex; align-items: center; gap: 8px; padding: 8px 4px 2px; flex: none; }
+  .pc-brand { font: 800 11px/1 ui-monospace, Menlo, Consolas, monospace; color: #8a7a5a; letter-spacing: 2px; flex: 1; white-space: nowrap; overflow: hidden; }
+  .pc-led { width: 9px; height: 9px; border-radius: 50%; background: #5fd38d; border: 2px solid var(--ink); flex: none; }
+  .pc-chin button { box-shadow: none; border: 2px solid var(--ink); padding: 6px 12px; font-size: 13px; }
+  @media (max-width: 600px) {
+    .pc { padding: 0; }
+    .pc-monitor { border-radius: 0; height: 100%; border-width: 0; padding: calc(env(safe-area-inset-top) + 8px) 8px calc(env(safe-area-inset-bottom) + 6px); }
+    .site-logo { font-size: 15px; }
+  }
+  .s-h { font-size: 16px; font-weight: 900; margin: 16px 0 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .s-h:first-child, .site-msg + .s-h { margin-top: 2px; }
+  .s-sub { font-size: 12.5px; color: var(--muted); margin: -4px 0 10px; line-height: 1.4; }
+  .s-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .s-card { background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .s-card .art { height: 66px; display: flex; align-items: flex-end; justify-content: center; }
+  .s-card .art svg { max-height: 66px; max-width: 100%; }
+  .s-card b { font-size: 14px; line-height: 1.25; }
+  .s-card small { color: var(--muted); font-size: 12px; line-height: 1.3; }
+  .s-card.pack { grid-column: 1 / -1; background: #fff6e8; }
+  .s-strip { display: flex; gap: 6px; align-items: flex-end; overflow-x: auto; padding: 4px 0; scrollbar-width: thin; }
+  .s-strip svg { flex: none; height: 52px; width: auto; }
+  .s-buy { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin-top: auto; flex-wrap: wrap; }
+  .s-price { font-weight: 900; color: #2a7a5e; font-variant-numeric: tabular-nums; }
+  .s-was { text-decoration: line-through; color: var(--muted); font-weight: 700; font-size: 12px; margin-right: 4px; }
+  .site button.s-btn { box-shadow: none; border: 2px solid var(--ink); padding: 5px 11px; font-size: 12.5px; background: #ffd166; color: var(--ink); }
+  .site button.s-btn.light { background: #fff; }
+  .s-row { display: flex; gap: 10px; align-items: center; padding: 7px 2px; border-bottom: 1px dashed #e3d6bf; font-size: 13.5px; }
+  .s-row .t { flex: 1; min-width: 0; }
+  .s-row .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .s-row .t small { color: var(--muted); font-size: 12px; }
+  .s-row .gdot { width: 12px; height: 12px; }
+  .s-row .mini { width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .s-row .mini svg { max-width: 30px; max-height: 30px; }
+  .s-pill { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: #f3ecdf; border: 1.5px solid var(--ink); white-space: nowrap; }
+  .s-pill.season { background: #f4a261; }
+  .s-pill.wish { background: #f7b7d2; }
+  .s-pill.none { background: #fff; color: var(--muted); border-color: #cbbfae; }
+  .s-tools { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .s-tools input, .s-tools select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink); min-width: 0; flex: 1 1 140px; }
+  .s-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .site .s-chips button { box-shadow: none; border: 2px solid var(--ink); padding: 4px 10px; font-size: 12.5px; background: #fff; }
+  .site .s-chips button.on { background: #9fd8c8; }
+  .s-pending { background: #eef7f1; border: 2px dashed #4c9a7a; border-radius: 12px; padding: 6px 10px 2px; margin-bottom: 4px; }
+  .s-pending .s-row:last-child { border-bottom: 0; }
+  .s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 6px 0; }
+  .s-grid div { background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 8px; text-align: center; font-size: 12px; color: var(--muted); }
+  .s-grid b { display: block; font-size: 19px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 130px; padding: 18px 2px 0; border-bottom: 2px solid var(--ink); }
+  .bars .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+  .bars .bar i { display: block; width: 100%; max-width: 46px; background: #81b29a; border: 2px solid var(--ink); border-bottom: 0; border-radius: 6px 6px 0 0; min-height: 2px; }
+  .bars .bar span { font-size: 10.5px; font-weight: 800; white-space: nowrap; margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+  .bar-days { display: flex; gap: 6px; padding: 3px 2px 0; }
+  .bar-days span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); font-weight: 700; }
+  .hbar { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 5px 0; }
+  .hbar > span:first-child { width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar i { display: block; height: 14px; border: 2px solid var(--ink); border-radius: 6px; min-width: 4px; }
+  .cal { display: grid; gap: 8px; }
+  .cal-day { display: flex; gap: 12px; align-items: center; background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 8px 12px; }
+  .cal-day.today { background: #fff1c2; }
+  .cal-day .d { width: 58px; flex: none; text-align: center; font-weight: 900; font-size: 13px; line-height: 1.2; }
+  .cal-day .d small { display: block; font-weight: 700; color: var(--muted); font-size: 11px; }
+  .cal-day .ic { font-size: 26px; flex: none; width: 34px; text-align: center; }
+  .cal-day .t small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .s-empty { text-align: center; color: var(--muted); padding: 18px 8px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -398,6 +498,20 @@
 
   <div id="carry" class="carry" hidden><span id="carryText"></span><button id="carryDrop">Put down</button></div>
 
+  <div id="pc" class="pc" hidden>
+    <div class="pc-monitor" role="dialog" aria-label="Register computer">
+      <div class="pc-screen">
+        <div class="site">
+          <header class="site-head"><span class="site-logo"><span class="st">★</span> Book Fair <i>Online</i></span><span id="pcMoney" class="site-money"></span></header>
+          <nav id="pcTabs" class="site-tabs" role="tablist"></nav>
+          <main id="pcBody" class="site-body"></main>
+        </div>
+      </div>
+      <div class="pc-chin"><span class="pc-brand">BOOKSTAR 2000</span><span class="pc-led"></span>
+        <button id="pcCounter">Stock the counter</button><button id="pcClose" class="primary">Log off</button></div>
+    </div>
+  </div>
+
   <div id="summary" class="menu" hidden>
     <div class="card">
       <h2 id="sumTitle">Day complete!</h2>
@@ -436,7 +550,9 @@
       <div class="me" id="meRow"></div>
       <p><b>Walk:</b> tap or click a spot. Keyboard: WASD or arrow keys.</p>
       <p><b>Look:</b> tap an item, or face it and press E / Space.</p>
-      <p><b>Stock displays:</b> tap any shelf, table, rack, bin or the checkout, then move items from the box onto it. A ! means it's running low. Tap the door for a new delivery.</p>
+      <p><b>Stockroom:</b> deliveries come each morning to the stockroom behind the door on the back wall. Tap a box to pick it up, carry it out, and tap a display to unpack it there.</p>
+      <p><b>Stock displays:</b> tap any shelf, table, rack or bin, then move items from the box onto it. A ! means it's running low.</p>
+      <p><b>Register computer:</b> tap the checkout when no one is waiting. Order books and merch, shop for holiday decor, and check your inventory, sales, wishes and calendar.</p>
       <p><b>Arrange:</b> place, move, rotate and remove furniture. Your room saves automatically.</p>
       <p><b>Helping:</b> a yellow ! means a customer needs help. Tap them to hear what they want, find it on a display or in a box, tap Take to them, then tap them to hand it over.</p>
       <p><b>Fair days:</b> tap Open the fair. Customers browse, then line up at the checkout. Tap the counter to ring them up and count out change. Tap a customer to see what they're looking for.</p>
@@ -472,7 +588,7 @@ const CONFIG = {
   TILE: 32,                       // tile size in px (world units)
   STEP_MS: 150,                   // time to walk one tile
   // Saves are per player: see playerKey() in section 4.
-  LAYOUT_VERSION: 2,
+  LAYOUT_VERSION: 3,
   ZOOM_MIN: 1,
   ZOOM_MAX: 2.5,
   HUD_TOP: 60,                    // screen px reserved for the top bar
@@ -528,6 +644,46 @@ const FURNITURE = {
               blurb: 'A box of stock.' },   // arrives with deliveries; not in the Arrange palette
 };
 
+// ---- holiday decor (bought on the register computer's Decor shop) ----
+// place: 'floor' stands on the floor (or lies flat, for rugs),
+//        'top' sits on top of a bookshelf, low bookcase or the checkout,
+//        'wall' hangs on the back wall (one per slot: bunting, lights, banner).
+// Packs cost about 25% less than buying every piece. A pack is "in season"
+// in its real-world month and brings a few extra visitors while it's out.
+const DECOR_PACKS = {
+  halloween: { label: 'Halloween', icon: '🎃', month: 9,  blurb: 'Smiling pumpkins, a friendly ghost, a candy cauldron and spooky-cute bunting.' },
+  christmas: { label: 'Christmas', icon: '🎄', month: 11, blurb: 'A twinkly tree, a snowman, a pile of presents and red-and-green bunting.' },
+};
+const DECOR = [
+  { id: 'hw-pumpkins',    pack: 'halloween', place: 'floor', name: 'Pumpkin stack',         price: 1200, blurb: 'A stack of smiling pumpkins.' },
+  { id: 'hw-ghost',       pack: 'halloween', place: 'floor', name: 'Friendly ghost',        price: 1500, blurb: 'A friendly ghost cutout. Boo!' },
+  { id: 'hw-cauldron',    pack: 'halloween', place: 'floor', name: 'Candy cauldron',        price: 1400, blurb: 'A cauldron full of wrapped candy.' },
+  { id: 'hw-rug',         pack: 'halloween', place: 'floor', name: 'Pumpkin patch rug',     price: 2400, w: 3, h: 2, layer: 'floor', blurb: 'A cozy orange rug dotted with pumpkins.' },
+  { id: 'hw-minipumpkin', pack: 'halloween', place: 'top',   name: "Mini jack-o'-lantern",  price: 500 },
+  { id: 'hw-cat',         pack: 'halloween', place: 'top',   name: 'Black cat figurine',    price: 600 },
+  { id: 'hw-bunting',     pack: 'halloween', place: 'wall',  slot: 'bunting', name: 'Halloween bunting',      price: 1000 },
+  { id: 'hw-lights',      pack: 'halloween', place: 'wall',  slot: 'lights',  name: 'Pumpkin string lights',  price: 1200 },
+  { id: 'hw-banner',      pack: 'halloween', place: 'wall',  slot: 'banner',  name: '"Happy Halloween" banner', price: 900 },
+  { id: 'xm-tree',        pack: 'christmas', place: 'floor', name: 'Twinkly tree',          price: 2400, blurb: 'A little tree with ornaments and a gold star.' },
+  { id: 'xm-snowman',     pack: 'christmas', place: 'floor', name: 'Snowman',               price: 1500, blurb: 'A cheerful snowman in a red scarf.' },
+  { id: 'xm-presents',    pack: 'christmas', place: 'floor', name: 'Present pile',          price: 1200, blurb: 'A pile of wrapped presents. No peeking!' },
+  { id: 'xm-rug',         pack: 'christmas', place: 'floor', name: 'Snowflake rug',         price: 2400, w: 3, h: 2, layer: 'floor', blurb: 'A red rug with snowflakes.' },
+  { id: 'xm-snowglobe',   pack: 'christmas', place: 'top',   name: 'Snow globe',            price: 600 },
+  { id: 'xm-gingerbread', pack: 'christmas', place: 'top',   name: 'Gingerbread house',     price: 600 },
+  { id: 'xm-bunting',     pack: 'christmas', place: 'wall',  slot: 'bunting', name: 'Christmas bunting',      price: 1000 },
+  { id: 'xm-lights',      pack: 'christmas', place: 'wall',  slot: 'lights',  name: 'Twinkle lights',         price: 1200 },
+  { id: 'xm-banner',      pack: 'christmas', place: 'wall',  slot: 'banner',  name: '"Merry & Bright" banner', price: 900 },
+];
+const DECOR_BY_ID = Object.fromEntries(DECOR.map(d => [d.id, d]));
+const WALL_SLOTS = ['bunting', 'lights', 'banner'];
+const TOPPER_OK = { shelf: true, lowshelf: true, register: true };   // furniture you can set a decoration on
+// Floor decor is furniture too (placed, moved and rotated in Arrange), shown in
+// the palette only when you own one.
+for (const d of DECOR) if (d.place === 'floor')
+  FURNITURE[d.id] = { label: d.name, w: d.w || 1, h: d.h || 1, layer: d.layer || 'solid', decor: true, hidden: true, blurb: d.blurb };
+function packPrice(pack) { return Math.round(DECOR.filter(d => d.pack === pack).reduce((a, d) => a + d.price, 0) * .75 / 100) * 100; }
+function inSeason(pack) { return new Date().getMonth() === DECOR_PACKS[pack].month; }
+
 // ============================================================
 // 3. DEFAULT ROOM LAYOUT
 // The room is data, not a fixed map. This is only the starting
@@ -536,14 +692,18 @@ const FURNITURE = {
 //   rot: 0 = front faces down, 1 = left, 2 = up, 3 = right
 //   decor: floor 'wood' | 'checker' | 'carpet'
 //          wall  'sage' | 'stripes' | 'stars'
+//   backDoor: the stockroom door in the back wall (column x, row 0)
+//   wallDecor: what hangs on the back wall (bunting, lights, banner)
 // ============================================================
 const DEFAULT_LAYOUT = {
-  version: 2,
+  version: 3,
   name: 'School Library',
   cols: 22,
   rows: 15,
   decor: { floor: 'wood', wall: 'sage' },
   doors: [{ x: 10, y: 14 }, { x: 11, y: 14 }],
+  backDoor: { x: 20 },
+  wallDecor: { bunting: null, lights: null, banner: null },
   spawn: { x: 10, y: 12 },
   items: [
     { id: 'd1',  type: 'plant',    x: 1,  y: 1,  rot: 0 },
@@ -553,7 +713,7 @@ const DEFAULT_LAYOUT = {
     { id: 'd5',  type: 'shelf',    x: 11, y: 1,  rot: 0 },
     { id: 'd6',  type: 'shelf',    x: 14, y: 1,  rot: 0 },
     { id: 'd22', type: 'shelf',    x: 17, y: 1,  rot: 0 },
-    { id: 'd23', type: 'plant',    x: 20, y: 1,  rot: 0 },
+    { id: 'd23', type: 'plant',    x: 20, y: 10, rot: 0 },
     { id: 'd7',  type: 'lowshelf', x: 1,  y: 4,  rot: 0 },
     { id: 'd8',  type: 'lowshelf', x: 1,  y: 7,  rot: 0 },
     { id: 'd9',  type: 'lowshelf', x: 19, y: 4,  rot: 0 },
@@ -632,12 +792,12 @@ function validateLayout(raw) {
     ? raw.doors.filter(d => d && Number.isInteger(d.x) && Number.isInteger(d.y)) : [];
   const spawn = raw.spawn && Number.isInteger(raw.spawn.x) && Number.isInteger(raw.spawn.y)
     ? { x: raw.spawn.x, y: raw.spawn.y } : { x: 1, y: 1 };
-  // Every display gets the right number of slots. Each book can be in
-  // only one place; merch can repeat. Older saves' box.books -> contents.
-  const placed = new Set();
-  const keepBook = id => typeof id === 'string' && BOOKS_BY_ID[id] && !placed.has(id) && (placed.add(id), true);
+  // Every display gets the right number of slots. Since Phase 8 you can own
+  // several copies of a book, so ids may repeat. Older saves' box.books -> contents.
+  const keepBook = id => typeof id === 'string' && !!BOOKS_BY_ID[id];
   const keepAny = id => typeof id === 'string' && (MERCH_BY_ID[id] ? true : keepBook(id));
   for (const it of items) {
+    if (it.topper && !(DECOR_BY_ID[it.topper] && DECOR_BY_ID[it.topper].place === 'top' && TOPPER_OK[it.type])) delete it.topper;
     if (STOCKABLE[it.type]) {
       const n = slotCount(it.type);
       const sl = Array.isArray(it.slots) ? it.slots.slice(0, n) : [];
@@ -660,14 +820,47 @@ function validateLayout(raw) {
     floor: DECOR_OPTIONS.floor.includes(d.floor) ? d.floor : 'wood',
     wall: DECOR_OPTIONS.wall.includes(d.wall) ? d.wall : 'sage',
   };
-  return { ...raw, version: CONFIG.LAYOUT_VERSION, cols, rows, doors, spawn, items: liveItems, decor };
+  const bx = raw.backDoor && Number.isInteger(raw.backDoor.x) && raw.backDoor.x >= 1 && raw.backDoor.x <= cols - 2 ? raw.backDoor.x : cols - 2;
+  const wd = raw.wallDecor || {}, wallDecor = {};
+  for (const slot of WALL_SLOTS) wallDecor[slot] = DECOR_BY_ID[wd[slot]] && DECOR_BY_ID[wd[slot]].slot === slot ? wd[slot] : null;
+  return { ...raw, version: CONFIG.LAYOUT_VERSION, cols, rows, doors, spawn, items: liveItems, decor, backDoor: { x: bx }, wallDecor };
 }
 
 // Upgrades older saves. v1 -> v2: poster rack became 2 wide x 1 deep; add decor.
+// v2 -> v3: a stockroom door in the back wall. Picks a free spot along the
+// back wall (from the right); if the wall is full, the 1x1 item in the
+// right corner (usually a plant) scoots to the nearest open spot.
 function migrateLayout(raw) {
   if (raw && (raw.version | 0) < 2) {
     raw.decor = raw.decor || { floor: 'wood', wall: 'sage' };
     raw.version = 2;
+  }
+  if (raw && (raw.version | 0) < 3 && Array.isArray(raw.items) && raw.cols) {
+    const solidAt = (x, y) => raw.items.find(it => FURNITURE[it.type] && FURNITURE[it.type].layer === 'solid' && itemTiles({ ...it, rot: it.rot | 0 }).some(t => t.x === x && t.y === y));
+    let bx = null;
+    for (let x = raw.cols - 2; x >= 1 && bx === null; x--) if (!solidAt(x, 1)) bx = x;
+    if (bx === null) {
+      bx = raw.cols - 2;
+      const blocker = solidAt(bx, 1);
+      if (blocker && FURNITURE[blocker.type].w === 1 && FURNITURE[blocker.type].h === 1) {
+        const L = { ...raw, backDoor: { x: bx }, doors: raw.doors || [] };
+        const tiles = [];
+        for (let y = 1; y < raw.rows - 1; y++) for (let x = 1; x < raw.cols - 1; x++) tiles.push({ x, y });
+        const cost = t => Math.abs(t.x - bx) + Math.abs(t.y - 1) + (t.x === bx ? 0 : .5);   // prefer staying along the same wall
+        tiles.sort((a, b) => cost(a) - cost(b));
+        for (const t of tiles) {
+          const moved = { ...blocker, x: t.x, y: t.y, rot: blocker.rot | 0 };
+          if (!canPlace(L, moved, blocker.id, null)) continue;
+          const old = { x: blocker.x, y: blocker.y };
+          blocker.x = t.x; blocker.y = t.y;
+          const grid = buildGrid(L), sp = raw.spawn || { x: 1, y: 1 };
+          if (findPath(grid, nearestWalkable(grid, sp.x, sp.y), (x, y) => x === bx && y === 1)) break;
+          blocker.x = old.x; blocker.y = old.y;
+        }
+      }
+    }
+    raw.backDoor = { x: bx };
+    raw.version = 3;
   }
   return raw;
 }
@@ -680,7 +873,7 @@ function loadLayout() {
       if (layout) return layout;
     }
   } catch (e) { /* storage unavailable or corrupt: fall through */ }
-  return cloneLayout(DEFAULT_LAYOUT);
+  return validateLayout(cloneLayout(DEFAULT_LAYOUT));   // gives every display its empty slots
 }
 
 function saveLayout(layout) {
@@ -760,8 +953,17 @@ function canPlace(layout, cand, ignoreId, playerTile) {
   for (const t of tiles) {
     if (taken.has(t.x + ',' + t.y)) return false;
     if (def.layer === 'solid' && playerTile && t.x === playerTile.x && t.y === playerTile.y) return false;
+    if (def.layer === 'solid' && layout.backDoor && t.y === 1 && t.x === layout.backDoor.x) return false;   // keep the stockroom door clear
   }
   return true;
+}
+
+// Tiles that must stay open: in front of each door (and the stockroom door).
+function protectedTiles(layout) {
+  const out = [];
+  for (const d of layout.doors || []) for (const [dx, dy] of DIRS) out.push({ x: d.x + dx, y: d.y + dy });
+  if (layout.backDoor) out.push({ x: layout.backDoor.x, y: 1 });
+  return out;
 }
 
 function tileCenter(x, y) {
@@ -1089,6 +1291,193 @@ ART['box-open'] = () => {
   return { box: [-5, 0, 42, 34], body: b };
 };
 
+// Decor delivery box: cardboard with a red ribbon and bow
+ART['dbox'] = () => ({ box: [-2, -4, 36, 38], body:
+  shadow(16, 30.5, 15, 3) + R(3, 12, 26, 17, '#c48a52', 2) + R(3, 2, 26, 11, '#e0ad74', 2) +
+  RF(13.5, 2, 5, 27, '#d64545') + RF(3.5, 17.5, 25, 4, '#d64545') +
+  `<path d="M16 2.5 C10 -3 7 2 15 2.6 M16 2.5 C22 -3 25 2 17 2.6" fill="#e05555" ${ST}/>` + `<circle cx="16" cy="2.4" r="1.8" fill="#d64545" ${ST}/>` });
+// "Something's waiting in the stockroom" badge over the back door
+ART['badge-box'] = () => ({ box: [-1, -1, 18, 18], body: `<circle cx="8" cy="8" r="7.2" fill="#81b29a" ${ST}/>` +
+  R(4, 6.5, 8, 5.5, '#e0ad74', 1, 'stroke-width=".9"') + R(4, 4.3, 8, 2.6, '#f2cc8f', 1, 'stroke-width=".9"') + RF(7.2, 4.5, 1.6, 7.3, '#f4a3c0') });
+
+// ---- holiday decor ----
+function pumpkin(cx, cy, rx, ry, face) {
+  let g = `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#f4a261" ${ST}/>` +
+    `<ellipse cx="${cx + rx * .35}" cy="${cy + ry * .15}" rx="${rx * .45}" ry="${ry * .75}" fill="#e98f45" opacity=".55"/>` +
+    `<path d="M${cx} ${cy - ry + .8} C${cx - rx * .55} ${cy - ry * .4} ${cx - rx * .55} ${cy + ry * .4} ${cx} ${cy + ry - .8} M${cx} ${cy - ry + .8} C${cx + rx * .55} ${cy - ry * .4} ${cx + rx * .55} ${cy + ry * .4} ${cx} ${cy + ry - .8}" fill="none" stroke="#d9822b" stroke-width="1"/>` +
+    `<path d="M${cx} ${cy - ry + 1} Q${cx - .4} ${cy - ry - 2.2} ${cx + 1.6} ${cy - ry - 3}" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>` +
+    `<path d="M${cx} ${cy - ry + 1} Q${cx - .4} ${cy - ry - 2.2} ${cx + 1.6} ${cy - ry - 3}" fill="none" stroke="#6a994e" stroke-width="1.3" stroke-linecap="round"/>`;
+  if (face) {
+    const s = rx / 10;
+    g += `<circle cx="${cx - 3.6 * s}" cy="${cy - 1 * s}" r="${1.4 * s}" fill="${INK}"/><circle cx="${cx + 3.6 * s}" cy="${cy - 1 * s}" r="${1.4 * s}" fill="${INK}"/>` +
+      `<path d="M${cx - 3 * s} ${cy + 2.2 * s} Q${cx} ${cy + 5 * s} ${cx + 3 * s} ${cy + 2.2 * s}" fill="none" stroke="${INK}" stroke-width="${Math.max(.8, 1.1 * s)}" stroke-linecap="round"/>`;
+  }
+  return g;
+}
+function snowflake(cx, cy, r, color) {
+  let g = '';
+  for (const a of [0, 60, 120]) g += `<path d="M${cx} ${cy - r} V${cy + r} M${cx - 2} ${cy - r + 1.5} L${cx} ${cy - r + 3} L${cx + 2} ${cy - r + 1.5} M${cx - 2} ${cy + r - 1.5} L${cx} ${cy + r - 3} L${cx + 2} ${cy + r - 1.5}" transform="rotate(${a} ${cx} ${cy})" stroke="${color}" stroke-width="1.4" stroke-linecap="round" fill="none"/>`;
+  return g;
+}
+function tier(pts, fill) {   // one flat tier of a tree, with a darker right half
+  const [l, t, r] = pts;
+  return `<path d="M${l[0]} ${l[1]} L${t[0]} ${t[1]} L${r[0]} ${r[1]} Z" fill="${fill}"/><path d="M${t[0]} ${t[1]} L${r[0]} ${r[1]} L${t[0]} ${r[1]} Z" fill="${shade(fill, .87)}"/>` +
+    `<path d="M${l[0]} ${l[1]} L${t[0]} ${t[1]} L${r[0]} ${r[1]} Z" fill="none" ${ST}/>`;
+}
+Object.assign(ART, {
+  'hw-pumpkins': () => ({ box: [-2, -14, 36, 48], body:
+    shadow(16, 30.5, 14, 3) + pumpkin(14, 22, 10.5, 7.5, true) + pumpkin(14, 10.2, 6.8, 5, false) + pumpkin(25.5, 26.5, 5.5, 4, false) +
+    leaf(6, 27, -60, 6, '#6a994e') }),
+  'hw-ghost': () => {
+    let b = shadow(16, 30.5, 10, 2.6) + R(9, 26, 14, 4, PAL.woodDark, 1.5) +
+      `<path d="M5 25 V2 C5 -13 27 -13 27 2 V25 L23.3 21.5 L19.7 25 L16 21.5 L12.3 25 L8.7 21.5 Z" fill="#fbf8ff" ${ST}/>` +
+      `<path d="M22 -8 C26 -5 27 -1 27 2 V25 L23.3 21.5 L22 22.7 Z" fill="#e6dff2"/>` +
+      `<path d="M5 25 V2 C5 -13 27 -13 27 2 V25 L23.3 21.5 L19.7 25 L16 21.5 L12.3 25 L8.7 21.5 Z" fill="none" ${ST}/>` +
+      `<ellipse cx="12" cy="-1" rx="1.7" ry="2.3" fill="${INK}"/><ellipse cx="20" cy="-1" rx="1.7" ry="2.3" fill="${INK}"/>` +
+      `<ellipse cx="9.5" cy="3.5" rx="2" ry="1.2" fill="#f4978e" opacity=".7"/><ellipse cx="22.5" cy="3.5" rx="2" ry="1.2" fill="#f4978e" opacity=".7"/>` +
+      `<ellipse cx="16" cy="5" rx="1.7" ry="2" fill="${INK}"/>` +
+      `<path d="M5 8 Q1 9 1.5 13" fill="none" stroke="${INK}" stroke-width="3.6" stroke-linecap="round"/><path d="M5 8 Q1 9 1.5 13" fill="none" stroke="#fbf8ff" stroke-width="1.8" stroke-linecap="round"/>` +
+      R(11, 12, 10, 6, PAL.coral, 1.5, 'stroke-width=".9"') + txt(16, 16.4, 'BOO', 3.8, PAL.cream);
+    return { box: [-2, -14, 36, 48], body: b };
+  },
+  'hw-cauldron': () => {
+    let b = shadow(16, 30.5, 13, 3) + R(7, 25, 3, 5, '#3b3b46', 1) + R(22, 25, 3, 5, '#3b3b46', 1) +
+      `<ellipse cx="16" cy="13" rx="13" ry="3.6" fill="#2f2e3a" ${ST}/>`;
+    ['#f08fb3', '#f2cc8f', '#81c784', '#9c89b8', '#f4a261', '#6aa5c9'].forEach((c, i) => {
+      const x = 7.5 + i * 3.4, y = 11.5 - (i % 2) * 2.2;
+      b += `<path d="M${x - 3.6} ${y - 1.4} L${x - 2} ${y} L${x - 3.6} ${y + 1.4} Z M${x + 3.6} ${y - 1.4} L${x + 2} ${y} L${x + 3.6} ${y + 1.4} Z" fill="${c}" stroke="${INK}" stroke-width=".7" stroke-linejoin="round"/>` +
+        `<circle cx="${x}" cy="${y}" r="2.3" fill="${c}" stroke="${INK}" stroke-width=".8"/>`;
+    });
+    b += `<path d="M3 13 Q16 18.5 29 13 C30.5 22 24 29.5 16 29.5 C8 29.5 1.5 22 3 13 Z" fill="#4d4b5c" ${ST}/>` +
+      `<path d="M7 18 Q8 24 13 26.5" fill="none" stroke="#6d6a7f" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<path d="M3.5 13.4 Q16 18.8 28.5 13.4" fill="none" stroke="#6d6a7f" stroke-width="1.4"/>` +
+      R(11, 19, 10, 5.5, '#f4a261', 1.5, 'stroke-width=".9"') + `<circle cx="14" cy="21.6" r=".8" fill="${INK}"/><circle cx="18" cy="21.6" r=".8" fill="${INK}"/>`;
+    return { box: [-4, 4, 40, 30], body: b };
+  },
+  'hw-rug': () => {
+    let b = R(5, 5, 86, 54, '#f4a261', 12) + `<rect x="10" y="10" width="76" height="44" rx="8" fill="none" stroke="#6d597a" stroke-width="2.4"/>` +
+      `<rect x="14" y="14" width="68" height="36" rx="5" fill="none" stroke="#f9c48f" stroke-width="1.2" stroke-dasharray="3 2.5"/>`;
+    for (const x of [26, 48, 70]) b += pumpkin(x, 33, 6.5, 4.8, true);
+    for (const x of [37, 59]) b += star(x, 24, 2.2, '#fff1cf', false) + star(x, 41, 2.2, '#fff1cf', false);
+    return { box: [0, 0, 96, 64], body: b };
+  },
+  'hw-minipumpkin': () => ({ box: [-9, -14, 18, 15], body: shadow(0, .2, 6.5, 1.4) + pumpkin(0, -4.6, 6.4, 4.6, true) }),
+  'hw-cat': () => ({ box: [-9, -19, 19, 20], body:
+    shadow(0, .2, 6, 1.4) +
+    `<path d="M4 -2 Q9.5 -3 7.5 -9" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M4 -2 Q9.5 -3 7.5 -9" fill="none" stroke="#4a4757" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<ellipse cx="0" cy="-5" rx="4.8" ry="5.2" fill="#4a4757" ${ST}/>` +
+    `<path d="M-3.8 -12 L-3.4 -17 L-.6 -14.4 Z M3.8 -12 L3.4 -17 L.6 -14.4 Z" fill="#4a4757" ${ST}/>` +
+    `<circle cx="0" cy="-12" r="3.9" fill="#4a4757" ${ST}/>` + RF(-3.2, -8.9, 6.4, 1.6, '#f4a261', .8) +
+    `<circle cx="-1.5" cy="-12.3" r=".95" fill="#ffd166"/><circle cx="1.5" cy="-12.3" r=".95" fill="#ffd166"/>` }),
+  'xm-tree': () => {
+    let b = shadow(16, 30.5, 13, 3) + R(14, 18, 4, 5, PAL.woodDark, .8) + R(10, 21.5, 12, 8.5, '#d64545', 2) + RF(10.6, 24.3, 10.8, 2, '#ffd166') +
+      tier([[2, 21], [16, 1], [30, 21]], '#4c9a7a') + tier([[5, 8], [16, -12], [27, 8]], '#4c9a7a') + tier([[8.5, -5], [16, -22], [23.5, -5]], '#4c9a7a');
+    for (const [x, y, c] of [[9, 17, '#e07a5f'], [21, 15, '#ffd166'], [15, 11, '#6aa5c9'], [12, 3, '#f08fb3'], [20, 1, '#e07a5f'], [16, -9, '#ffd166'], [13.5, -14, '#e07a5f'], [24, 18.5, '#f08fb3']])
+      b += `<circle cx="${x}" cy="${y}" r="1.9" fill="${c}" stroke="${INK}" stroke-width=".8"/>`;
+    b += `<path d="M6 13 Q16 17 26 12" fill="none" stroke="#fff1cf" stroke-width="1.1" stroke-dasharray="1.6 1.6"/>` + star(16, -23.5, 5.4, '#ffd166') +
+      R(0, 23, 8, 7, '#5b82b8', 1.2, 'stroke-width="1"') + RF(3.2, 23.4, 1.6, 6.3, '#f2cc8f') + R(24, 24, 8, 6, '#f08fb3', 1.2, 'stroke-width="1"') + RF(27.2, 24.4, 1.6, 5.3, '#fff8ec');
+    return { box: [-2, -32, 36, 66], body: b };
+  },
+  'xm-snowman': () => {
+    let b = shadow(16, 30.5, 11, 2.8) +
+      `<path d="M7 13 L-.5 8 M25 13 L32.5 8" stroke="${PAL.woodDark}" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<circle cx="16" cy="20" r="10" fill="#fdfdff" ${ST}/><path d="M21 12.5 A8.5 8.5 0 0 1 22 27" fill="none" stroke="#e1e6f0" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<circle cx="16" cy="3.5" r="7.5" fill="#fdfdff" ${ST}/>` +
+      R(9.2, 8.6, 13.6, 3.6, '#d64545', 1.6) + R(17.5, 10.5, 3.8, 7, '#d64545', 1.2, 'stroke-width="1"') +
+      R(10.5, -5.4, 11, 2.6, '#3b3b46', 1) + R(12.5, -13.5, 7, 8.4, '#3b3b46', 1.2) + RF(12.9, -7.8, 6.2, 1.6, '#81b29a') +
+      `<circle cx="13.6" cy="2.3" r="1.1" fill="${INK}"/><circle cx="18.4" cy="2.3" r="1.1" fill="${INK}"/>` +
+      `<path d="M16 4.2 L20.6 5.2 L16 6.2 Z" fill="#f4a261" stroke="${INK}" stroke-width=".7" stroke-linejoin="round"/>` +
+      `<ellipse cx="11.6" cy="5.6" rx="1.6" ry="1" fill="#f4978e" opacity=".7"/><ellipse cx="20.4" cy="5.6" rx="1.6" ry="1" fill="#f4978e" opacity=".7"/>`;
+    for (const y of [16.5, 21, 25.5]) b += `<circle cx="16" cy="${y}" r="1.05" fill="${INK}"/>`;
+    return { box: [-4, -16, 40, 50], body: b };
+  },
+  'xm-presents': () => ({ box: [-2, -10, 36, 44], body:
+    shadow(16, 30.5, 15, 3) +
+    R(3, 12, 18, 17, '#d64545', 1.5) + RF(10.5, 12.6, 3, 16, '#ffd166') +
+    R(17, 17, 13, 12, '#4c9a7a', 1.5) + RF(22, 17.6, 3, 11, '#f7f1e3') + RF(17.6, 21.6, 11.8, 2.6, '#f7f1e3') +
+    R(6, 3, 12, 9.5, '#5b82b8', 1.5) + RF(10.6, 3.6, 2.8, 8.4, '#f08fb3') +
+    `<path d="M12 3 C8 -2 6 2.5 11.5 3 M12 3 C16 -2 18 2.5 12.5 3" fill="#f08fb3" ${ST}/>` +
+    `<path d="M3 12 H21" stroke="${INK}" stroke-width="1"/>` }),
+  'xm-rug': () => {
+    let b = R(5, 5, 86, 54, '#d64545', 12) + `<rect x="10" y="10" width="76" height="44" rx="8" fill="none" stroke="#4c9a7a" stroke-width="2.6"/>` +
+      `<rect x="14" y="14" width="68" height="36" rx="5" fill="none" stroke="#f7c4c4" stroke-width="1.2" stroke-dasharray="3 2.5"/>`;
+    for (const x of [26, 48, 70]) b += snowflake(x, 32, 7, '#fff8ec');
+    for (const x of [37, 59]) b += `<circle cx="${x}" cy="24" r="1.3" fill="#fff8ec"/><circle cx="${x}" cy="40" r="1.3" fill="#fff8ec"/>`;
+    return { box: [0, 0, 96, 64], body: b };
+  },
+  'xm-snowglobe': () => ({ box: [-9, -18, 18, 19], body:
+    shadow(0, .2, 6.5, 1.4) + `<circle cx="0" cy="-9.5" r="6.8" fill="#d6ecf7" ${ST}/>` +
+    `<path d="M0 -14 L3.2 -8 H-3.2 Z" fill="#4c9a7a" stroke="${INK}" stroke-width=".7" stroke-linejoin="round"/><rect x="-.7" y="-8" width="1.4" height="1.8" fill="${PAL.woodDark}"/>` +
+    `<circle cx="-3.4" cy="-11.5" r=".7" fill="#fff"/><circle cx="3.3" cy="-12.8" r=".6" fill="#fff"/><circle cx="2.4" cy="-6" r=".6" fill="#fff"/><circle cx="-2" cy="-14.5" r=".55" fill="#fff"/>` +
+    `<path d="M-4.5 -12 A5 5 0 0 1 -1.5 -15" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>` +
+    `<path d="M-6 -1 L-5 -4.4 H5 L6 -1 Z" fill="${PAL.wood}" ${ST}/>` }),
+  'xm-gingerbread': () => ({ box: [-10, -18, 20, 19], body:
+    shadow(0, .2, 7, 1.4) + R(-6.5, -9, 13, 9, '#c8834a', 1) +
+    `<path d="M-8.5 -8 L0 -16.5 L8.5 -8 Z" fill="#f6efe6" ${ST}/><path d="M-6 -9.2 L0 -14.6 L6 -9.2 Z" fill="#a8683a"/>` +
+    R(-1.7, -5.2, 3.4, 5.2, '#e07a5f', 1.5, 'stroke-width=".8"') + R(-5.2, -6.6, 2.6, 2.6, '#ffd166', .5, 'stroke-width=".7"') + R(2.6, -6.6, 2.6, 2.6, '#ffd166', .5, 'stroke-width=".7"') +
+    `<circle cx="-3" cy="-11" r=".9" fill="#d64545"/><circle cx="0" cy="-13" r=".9" fill="#4c9a7a"/><circle cx="3" cy="-11" r=".9" fill="#d64545"/>` }),
+});
+// Where a decoration sits on top of furniture: [x, y] in the furniture's art, by drawing
+const TOPPER_AT = { 'shelf-front': [78, -44], 'shelf-back': [78, -44], 'shelf-side': [16, -26],
+  'lowshelf-front': [50, -12.5], 'lowshelf-back': [50, -12.5], 'lowshelf-side': [16, 10],
+  'register-front': [48, -3], 'register-back': [35, -3], 'register-side': [16, 34] };
+
+// Wall decor, drawn on the back wall (and on shop previews). `top` = top of the wall.
+const BUNTING_COLORS = { fair: ['#e07a5f', '#f2cc8f', '#81b29a', '#3d5a80', '#9c89b8', '#f4a261'],
+  'hw-bunting': ['#f4a261', '#6d597a', '#3b3b46'], 'xm-bunting': ['#d64545', '#4c9a7a', '#f7f1e3'] };
+function buntingArt(id, W, top, skip) {
+  const flags = BUNTING_COLORS[id] || BUNTING_COLORS.fair, y = top + 12;
+  let g = `<path d="M0 ${y} L${W} ${y}" stroke="${INK}" stroke-width="1"/>`;
+  for (let i = 0, x = 6; x < W - 8; x += 16, i++) {
+    if (skip && x + 12 > skip[0] && x < skip[1]) continue;
+    const c = flags[i % flags.length];
+    g += `<path d="M${x} ${y} L${x + 12} ${y} L${x + 6} ${y + 9} Z" fill="${c}" stroke="${INK}" stroke-width="1" stroke-linejoin="round"/>`;
+    if (id === 'hw-bunting' && c === '#f4a261') g += `<circle cx="${x + 4.6}" cy="${y + 2.6}" r=".8" fill="${INK}"/><circle cx="${x + 7.4}" cy="${y + 2.6}" r=".8" fill="${INK}"/><path d="M${x + 4.4} ${y + 4.4} Q${x + 6} ${y + 5.6} ${x + 7.6} ${y + 4.4}" fill="none" stroke="${INK}" stroke-width=".6"/>`;
+    if (id === 'hw-bunting' && c === '#3b3b46') g += `<circle cx="${x + 4.8}" cy="${y + 2.8}" r=".7" fill="#ffd166"/><circle cx="${x + 7.2}" cy="${y + 2.8}" r=".7" fill="#ffd166"/>`;
+    if (id === 'xm-bunting' && c === '#f7f1e3') g += snowflake(x + 6, y + 3.4, 2.3, '#6aa5c9').replace(/stroke-width="1.4"/g, 'stroke-width=".7"');
+    if (id === 'xm-bunting' && c !== '#f7f1e3') g += `<circle cx="${x + 6}" cy="${y + 3}" r="1" fill="#fff8ec"/>`;
+  }
+  return g;
+}
+function lightsArt(id, W, top) {
+  const y = top + 4;
+  let wire = `M0 ${y}`;
+  for (let x = 0; x < W; x += 40) wire += ` Q${x + 20} ${y + 4} ${x + 40} ${y}`;
+  let g = `<path d="${wire}" fill="none" stroke="#3d4d3a" stroke-width="1"/>`;
+  const cols = ['#e05555', '#ffd166', '#5fbf8a', '#6aa5c9', '#f08fb3'];
+  for (let i = 0, x = 6; x < W - 2; x += 10, i++) {
+    const t = (x % 40) / 40, yy = y + 8 * t * (1 - t);   // follows the wire's sag
+    if (id === 'hw-lights') g += pumpkin(x, yy + 3.2, 2.6, 2.1, false).replace(/stroke-width="2.8"/g, 'stroke-width="1.2"').replace(/stroke-width="1.3"/g, 'stroke-width=".6"');
+    else { const c = cols[i % cols.length];
+      g += `<circle cx="${x}" cy="${yy + 3.6}" r="3.4" fill="${c}" opacity=".28"/><rect x="${x - .9}" y="${yy}" width="1.8" height="1.6" fill="#3d4d3a"/>` +
+        `<ellipse cx="${x}" cy="${yy + 3.6}" rx="1.6" ry="2.2" fill="${c}" stroke="${INK}" stroke-width=".7"/>`; }
+  }
+  return g;
+}
+function bannerArt(id, W, top) {
+  const hw = id === 'hw-banner', w = Math.min(124, W - 10), cx = W / 2, x0 = cx - w / 2, y = top + 7, h = 13;
+  const band = hw ? '#6d597a' : '#d64545', ends = hw ? '#3b3b46' : '#4c9a7a', ink = hw ? '#f4a261' : '#fff8ec';
+  return `<path d="M${x0 + 6} ${top + 1} L${x0 + 10} ${y} M${x0 + w - 6} ${top + 1} L${x0 + w - 10} ${y}" stroke="${INK}" stroke-width=".9"/>` +
+    `<path d="M${x0 - 7} ${y + 2} H${x0 + 6} V${y + h + 2} H${x0 - 7} L${x0 - 3} ${y + h / 2 + 2} Z" fill="${ends}" ${ST}/>` +
+    `<path d="M${x0 + w + 7} ${y + 2} H${x0 + w - 6} V${y + h + 2} H${x0 + w + 7} L${x0 + w + 3} ${y + h / 2 + 2} Z" fill="${ends}" ${ST}/>` +
+    `<path d="M${x0} ${y} Q${cx} ${y + 3} ${x0 + w} ${y} V${y + h} Q${cx} ${y + h + 3} ${x0} ${y + h} Z" fill="${band}" ${ST}/>` +
+    txt(cx, y + 9.8, hw ? 'HAPPY HALLOWEEN' : 'MERRY &amp; BRIGHT', 7.4, ink) +
+    (hw ? star(x0 + 7, y + 6.8, 2.4, '#f2cc8f', false) + star(x0 + w - 7, y + 6.8, 2.4, '#f2cc8f', false)
+        : snowflake(x0 + 7, y + 6.8, 2.8, '#fff8ec').replace(/stroke-width="1.4"/g, 'stroke-width=".8"') + snowflake(x0 + w - 7, y + 6.8, 2.8, '#fff8ec').replace(/stroke-width="1.4"/g, 'stroke-width=".8"'));
+}
+function wallDecorArt(wd, W, top) {
+  const banner = wd && wd.banner, skip = banner ? [W / 2 - 72, W / 2 + 72] : null;
+  return (wd && wd.lights ? lightsArt(wd.lights, W, top) : '') + buntingArt(wd && wd.bunting, W, top, skip) + (banner ? bannerArt(banner, W, top) : '');
+}
+// A small picture of any decoration (shop, inventory, Arrange palette)
+function decorArt(id) {
+  const d = DECOR_BY_ID[id];
+  if (d.place !== 'wall') return ART[id]();
+  const W = 96, top = -30;
+  const strip = d.slot === 'bunting' ? buntingArt(id, W, top) : d.slot === 'lights' ? lightsArt(id, W, top) : bannerArt(id, W + 40, top).replace(/^/, `<g transform="translate(-20 0)">`) + '</g>';
+  return { box: [-2, top - 2, W + 4, 30], body: RF(-2, top - 2, W + 4, 30, '#f6ead3', 4) + strip };
+}
+
 // ---- people ----
 // One body, recolored for every character. Feet sit at the bottom of the tile.
 let PLAYER_LOOK = { shirt: '#e07a5f', hair: '#5a3825', skin: '#f1c27d', pants: '#3d5a80' };   // set from the chosen player
@@ -1155,6 +1544,11 @@ function floorArt(kind, x0, y0, w, h) {
     g += RF(x0, y0, w, h, '#5b82b8');
     for (let y = y0 + 5, j = 0; y < y0 + h; y += 9, j++)
       for (let x = x0 + 4 + (j % 2) * 4.5; x < x0 + w; x += 9) g += `<circle cx="${x}" cy="${y}" r="1.1" fill="#7da0cf"/>`;
+  } else if (kind === 'concrete') {   // the stockroom: smooth painted concrete
+    g += RF(x0, y0, w, h, '#d9d0c3');
+    for (let x = x0 + 64; x < x0 + w; x += 64) g += `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + h}" stroke="#c9bfb1" stroke-width="1"/>`;
+    for (let y = y0 + 64; y < y0 + h; y += 64) g += `<line x1="${x0}" y1="${y}" x2="${x0 + w}" y2="${y}" stroke="#c9bfb1" stroke-width="1"/>`;
+    for (let i = 0; i < w * h / 260; i++) g += `<circle cx="${(x0 + (i * 73.7) % w).toFixed(1)}" cy="${(y0 + (i * 41.3 + (i % 7) * 13) % h).toFixed(1)}" r=".8" fill="#c4b9aa"/>`;
   } else {   // wood planks
     for (let y = y0, i = 0; y < y0 + h; y += 16, i++) {
       g += RF(x0, y, w, 16, i % 2 ? '#e8c38f' : '#e2bb85');
@@ -1174,17 +1568,45 @@ function wallFaceArt(kind, W) {
   } else if (kind === 'stars') {
     g += RF(0, top + 6, W, T - top - 12, '#3d4a7a');
     for (let x = 10; x < W; x += 23) g += `<circle cx="${x}" cy="${top + 14 + (x * 7) % 34}" r="1.2" fill="#f2cc8f"/>`;
+  } else if (kind === 'brick') {   // the stockroom: warm painted brick
+    g += RF(0, top + 6, W, T - top - 12, '#d99a7f');
+    for (let y = top + 6, j = 0; y < T - 6; y += 7, j++) {
+      g += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#f0d2c2" stroke-width="1"/>`;
+      for (let x = (j % 2) * 8; x < W; x += 16) g += `<line x1="${x}" y1="${y}" x2="${x}" y2="${Math.min(y + 7, T - 6)}" stroke="#f0d2c2" stroke-width="1"/>`;
+    }
   } else {   // sage wainscot
     g += RF(0, top + 6, W, T - top - 12, '#f6ead3') + RF(0, 2, W, 24, '#8fb3a0');
     for (let x = 0; x < W; x += 12) g += `<line x1="${x}" y1="4" x2="${x}" y2="24" stroke="#7fa390" stroke-width="1"/>`;
     g += RF(0, 0, W, 3, PAL.coral);
   }
   g += RF(0, T - 6, W, 6, '#6f5a73');
-  // book-fair bunting
-  const flags = ['#e07a5f', '#f2cc8f', '#81b29a', '#3d5a80', '#9c89b8', '#f4a261'];
-  g += `<path d="M0 ${top + 12} L${W} ${top + 12}" stroke="${INK}" stroke-width="1"/>`;
-  for (let i = 0, x = 6; x < W - 8; x += 16, i++)
-    g += `<path d="M${x} ${top + 12} L${x + 12} ${top + 12} L${x + 6} ${top + 21} Z" fill="${flags[i % flags.length]}" stroke="${INK}" stroke-width="1" stroke-linejoin="round"/>`;
+  return g;
+}
+
+// The stockroom door, set into the back wall at column bx
+function backDoorArt(bx) {
+  const T = CONFIG.TILE, x = bx * T, top = -27;
+  return R(x + 2, top, T - 4, T - top + .5, PAL.woodDark, 3) + R(x + 5, top + 3, T - 10, T - top - 2.5, PAL.wood, 2) +
+    R(x + 8, top + 7, T - 16, 15, '#c28652', 1.5, 'stroke-width=".9"') + R(x + 8, top + 27, T - 16, 26, '#c28652', 1.5, 'stroke-width=".9"') +
+    R(x + 7, top + 8.5, T - 14, 12, PAL.cream, 1.5, 'stroke-width=".8"') +
+    txt(x + T / 2, top + 13.6, 'STOCK', 3.9, INK) + txt(x + T / 2, top + 18.4, 'ROOM', 3.9, INK) +
+    `<circle cx="${x + T - 9}" cy="${top + 34}" r="1.7" fill="#f2cc8f" ${ST}/>`;
+}
+// Little things on the stockroom wall: a corkboard of notes and a clock
+function stockroomWallArt(W) {
+  const top = -CONFIG.WALL_UP;
+  let g = R(46, top + 10, 46, 30, PAL.woodLight, 2) + R(49, top + 13, 40, 24, '#c9965f', 1, 'stroke-width=".9"');
+  [['#fff1a8', 52, top + 15, -4], ['#f7c6d9', 65, top + 16, 3], ['#cfe8f5', 77, top + 14, -2], ['#fff8ec', 58, top + 26, 2], ['#d8f0d2', 73, top + 26, -3]].forEach(([c, x, y, r]) => {
+    g += `<g transform="rotate(${r} ${x + 5} ${y + 4})">${R(x, y, 10, 8, c, .6, 'stroke-width=".8"')}<line x1="${x + 2}" y1="${y + 3}" x2="${x + 8}" y2="${y + 3}" stroke="#b8a99a" stroke-width=".8"/><line x1="${x + 2}" y1="${y + 5.5}" x2="${x + 7}" y2="${y + 5.5}" stroke="#b8a99a" stroke-width=".8"/></g>` +
+      `<circle cx="${x + 5}" cy="${y + .8}" r="1.1" fill="#e07a5f" stroke="${INK}" stroke-width=".6"/>`;
+  });
+  g += R(54, top + 2, 30, 7, PAL.cream, 1.5, 'stroke-width=".9"') + txt(69, top + 7.2, 'DELIVERIES', 4.2, INK);
+  // a hand-made thank-you sign
+  g += `<g transform="rotate(-3 ${W - 100} ${top + 22})">` + R(W - 128, top + 12, 56, 20, PAL.cream, 1.5) +
+    txt(W - 100, top + 20, 'THANK YOU,', 4.6, PAL.coral) + txt(W - 100, top + 27, 'VOLUNTEERS!', 4.6, '#4c9a7a') + `</g>` +
+    `<path d="M${W - 76} ${top + 15} c-1.6 -2.4 -4.6 -.6 -2.6 1.8 l2.6 2.6 l2.6 -2.6 c2 -2.4 -1 -4.2 -2.6 -1.8z" fill="${PAL.pink}" stroke="${INK}" stroke-width=".7"/>`;
+  const cx = W - 46, cy = top + 22;
+  g += `<circle cx="${cx}" cy="${cy}" r="9" fill="${PAL.cream}" ${ST}/><path d="M${cx} ${cy} V${cy - 5.5} M${cx} ${cy} L${cx + 4} ${cy + 1.5}" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>`;
   return g;
 }
 
@@ -1194,6 +1616,9 @@ function roomArt(layout) {
   const wallTop = '#6d597a', wallEdge = '#584866', wallFace = '#4e4060';
   let g = floorArt(layout.decor.floor, 0, 0, W, H);
   g += wallFaceArt(layout.decor.wall, W);
+  if (layout.stockroom) g += stockroomWallArt(W);
+  if (layout.backDoor) g += backDoorArt(layout.backDoor.x);
+  if (!layout.stockroom) g += wallDecorArt(layout.wallDecor, W, -up);
   // side walls (seen from above) and bottom wall, with gaps for doors
   for (let y = -1; y < layout.rows; y++) {
     for (const x of [0, layout.cols - 1]) {
@@ -1214,9 +1639,9 @@ function roomArt(layout) {
   for (const d of layout.doors) {
     const x = d.x * T, y = d.y * T;
     g += floorArt(layout.decor.floor, x, y, T, T + (d.y === layout.rows - 1 ? down : 0)) +
-      R(x + 3, y + 8, T - 6, 16, '#b5654d', 3) +
-      `<line x1="${x + 7}" y1="${y + 13}" x2="${x + T - 7}" y2="${y + 13}" stroke="#d9876c" stroke-width="1.5"/>` +
-      `<line x1="${x + 7}" y1="${y + 19}" x2="${x + T - 7}" y2="${y + 19}" stroke="#d9876c" stroke-width="1.5"/>`;
+      R(x + 3, y + 8, T - 6, 16, layout.stockroom ? '#6d8a7a' : '#b5654d', 3) +
+      `<line x1="${x + 7}" y1="${y + 13}" x2="${x + T - 7}" y2="${y + 13}" stroke="${layout.stockroom ? '#8fae9d' : '#d9876c'}" stroke-width="1.5"/>` +
+      `<line x1="${x + 7}" y1="${y + 19}" x2="${x + T - 7}" y2="${y + 19}" stroke="${layout.stockroom ? '#8fae9d' : '#d9876c'}" stroke-width="1.5"/>`;
   }
   return { box: [0, -up, W, H + up + down], body: g };
 }
@@ -1254,8 +1679,15 @@ function makeTexture(scene, key, art, res = CONFIG.ART_RES) {
 }
 
 function roomSignature(layout) {
-  return [layout.cols, layout.rows, layout.decor.floor, layout.decor.wall, JSON.stringify(layout.doors)].join('|');
+  return [layout.cols, layout.rows, layout.decor.floor, layout.decor.wall, JSON.stringify(layout.doors), JSON.stringify(layout.backDoor), JSON.stringify(layout.wallDecor)].join('|');
 }
+
+// ---- the stockroom: a small room behind the back wall ----
+// Its boxes are saved with the player's game (Game.data.stockroom), not the
+// room layout, so resetting or importing the fair room leaves it alone.
+const STOCKROOM = { cols: 10, rows: 7, doors: [{ x: 4, y: 6 }, { x: 5, y: 6 }], spawn: { x: 4, y: 5 },
+  decor: { floor: 'concrete', wall: 'brick' }, stockroom: true };
+function stockroomLayout(items) { return { ...STOCKROOM, items }; }
 
 // ============================================================
 // 8. BOOK CATALOG
@@ -1683,33 +2115,34 @@ function booksInGenre(genre) { return BOOKS.filter(b => b.genre === genre); }
 const INTERACTIONS = {
   default(item, scene) {
     if (item.type === 'register' && scene.fair.waitingAtFront()) { Checkout.open(scene.fair); return null; }
-    if (STOCKABLE[item.type]) { Stocking.open(scene, item); return null; }   // every display opens its close-up
+    if (item.type === 'register') { Computer.open(scene); return null; }   // nobody waiting: the register computer
+    if (STOCKABLE[item.type]) { Stocking.open(scene, item, scene.justDropped); return null; }   // every display opens its close-up
     return FURNITURE[item.type].blurb;
   },
-  box(item, scene) {
-    const n = item.contents.length, books = item.kind === 'books';
-    if (item.returns) return `A returns basket with ${n} item${n === 1 ? '' : 's'} customers left behind. Tap a display to put them back.`;
-    return books ? `A box of ${n} book${n === 1 ? '' : 's'}. Tap a bookshelf or display table to unpack it.`
-                 : `A box of ${n} merch item${n === 1 ? '' : 's'}: bookmarks, posters and trinkets. Tap the spinner, poster rack, merch bin or checkout to unpack it.`;
+  box(item, scene) {   // only the returns basket lands here; other boxes get picked up (see RoomScene.boxAction)
+    const n = item.contents.length;
+    return `A returns basket with ${n} item${n === 1 ? '' : 's'} customers left behind. Tap a display to put them back.`;
   },
-  // register(item, scene) { scene.scene.start('RegisterScene'); return null; },
 };
-function actionVerb(type, scene) {   // label on the action button
+function actionVerb(type, scene, item) {   // label on the action button
   if (type === 'register' && scene && scene.fair.waitingAtFront()) return 'Ring up';
+  if (type === 'register') return 'Computer';
+  if (type === 'box' && item && !item.returns) return item.kind === 'decor' ? 'Unpack' : 'Pick up';
   return STOCKABLE[type] ? 'Stock' : 'Look';
 }
 
 
 // ============================================================
 // 10. STOCKING & DELIVERIES
-// Boxes arrive by the door: book boxes and merch boxes. Tap any
-// display to open its close-up view: the display on top, the open
-// box below. Tap an item in the box, then a spot. Tap a placed item
-// to move it, swap it, or put it back in the box.
+// Boxes arrive in the stockroom each morning: book boxes, merch boxes
+// and decor boxes. Carry a box out and tap any display to open its
+// close-up view: the display on top, the open box below. Tap an item
+// in the box, then a spot. Tap a placed item to move it, swap it, or
+// put it back in the box.
 //   stockable item: item.slots = [id | null] (count set in STOCKABLE)
-//   box item:       item.kind = 'books' | 'merch', item.contents = [id, ...]
-// Each book exists once. Merch (bookmarks, posters, trinkets) comes
-// in as many copies as you like.
+//   box item:       item.kind = 'books' | 'merch' | 'decor', item.contents = [id, ...]
+// You own what's in your room and stockroom: several copies of a book
+// are fine, and anything sold is gone until you order more.
 // ============================================================
 
 // What each display holds and how its close-up looks.
@@ -1794,15 +2227,6 @@ function pickRandom(list) { return list[Math.floor(Math.random() * list.length)]
 function emptySlots(type) { return new Array(slotCount(type)).fill(null); }
 function filledCount(item) { return (item.slots || []).filter(Boolean).length; }
 function boxesIn(layout, kind) { return layout.items.filter(it => it.type === 'box' && (!kind || it.kind === kind)); }
-function usedBookIds(layout) {
-  const used = new Set();
-  for (const it of layout.items) {
-    if (it.slots) for (const id of it.slots) if (id && BOOKS_BY_ID[id]) used.add(id);
-    if (it.type === 'box' && it.kind === 'books') for (const id of it.contents) used.add(id);
-  }
-  return used;
-}
-function stockroomBooks(layout) { const used = usedBookIds(layout); return BOOKS.filter(b => !used.has(b.id)); }
 // How full a display is, 0..1 (null for things that don't hold stock)
 function fillRatio(item) { return STOCKABLE[item.type] ? filledCount(item) / slotCount(item.type) : null; }
 
@@ -1846,22 +2270,6 @@ function merchBoxContents() {
   for (let i = 0; i < 3; i++) out.push(pickRandom(of('poster')));
   for (let i = 0; i < 9; i++) out.push(pickRandom(of('trinket')));
   return out;
-}
-
-// Tops up the boxes by the door. Returns { books, merch } boxes added.
-function deliverBoxes(layout, grid, player) {
-  const picks = shuffle(stockroomBooks(layout).map(b => b.id));
-  const wantBooks = Math.max(0, Math.min(STOCK.BOOK_BOXES - boxesIn(layout, 'books').length, Math.ceil(picks.length / STOCK.BOX_SIZE)));
-  const wantMerch = Math.max(0, STOCK.MERCH_BOXES - boxesIn(layout, 'merch').length);
-  const spots = findBoxSpots(layout, grid, wantBooks + wantMerch, player);
-  const got = { books: 0, merch: 0 };
-  for (const s of spots) {
-    const books = got.books < wantBooks;
-    layout.items.push({ id: newId(), type: 'box', x: s.x, y: s.y, rot: 0, opened: false,
-      kind: books ? 'books' : 'merch', contents: books ? picks.splice(0, STOCK.BOX_SIZE) : merchBoxContents() });
-    got[books ? 'books' : 'merch']++;
-  }
-  return got;
 }
 
 // ---- book covers (close-up) ----
@@ -2325,11 +2733,12 @@ const Stocking = {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.isOpen()) this.close(); });
   },
 
-  open(scene, item) {
+  open(scene, item, preferBox) {
     this.scene = scene; this.item = item; this.cfg = STOCKABLE[item.type]; this.held = null;
     if (!Array.isArray(item.slots) || item.slots.length !== slotCount(item.type)) item.slots = emptySlots(item.type);
     const boxes = this.boxes();
-    this.boxIdx = Math.max(0, boxes.findIndex(b => b.opened && this.usable(b).length));
+    const pref = preferBox ? boxes.findIndex(b => b.id === preferBox) : -1;   // the box you just carried over
+    this.boxIdx = pref >= 0 ? pref : Math.max(0, boxes.findIndex(b => b.opened && this.usable(b).length));
     const carry = scene.player.carry;
     if (carry && this.accepts(carry.id)) this.held = { from: 'hand', id: carry.id };   // put down what you're carrying
     this.$('stockTitle').textContent = this.cfg.title;
@@ -2419,7 +2828,8 @@ const Stocking = {
     const h = this.held, box = this.box();
     if (!h || h.from !== 'slot') return;
     this.item.slots[h.slot] = null;
-    if (box) box.contents.unshift(h.id);   // no box: merch just goes back to the stockroom
+    if (box) box.contents.unshift(h.id);
+    else this.hint(stashToStockroom(this.scene, [h.id]));   // no box out here: it goes back to the stockroom
     this.held = null;
     this.save();
     this.render();
@@ -2467,26 +2877,24 @@ const Stocking = {
     else info.textContent = filled ? 'Tap something placed here to move it.' : 'No boxes right now.';
 
     this.$('boxPrev').hidden = this.$('boxNext').hidden = boxes.length < 2;
-    this.$('btnReturn').hidden = !(h && h.from === 'slot' && (box || !isBooks));
+    this.$('btnReturn').hidden = !(h && h.from === 'slot');
     const helping = this.scene.fair.helping;
-    this.$('btnTake').hidden = !(h && h.from !== 'hand' && helping && !this.scene.player.carry);
+    this.$('btnTake').hidden = !(h && h.from !== 'hand' && helping && !this.scene.player.carry && !this.scene.player.box);
     if (helping) this.$('btnTake').textContent = `Take to ${helping.name}`;
-    this.$('btnReturn').textContent = box ? 'Put back in box' : 'Put away';
+    this.$('btnReturn').textContent = box ? 'Put back in box' : 'Back to stockroom';
     const tray = this.$('trayBooks');
     if (!box) {
       this.$('boxLabel').textContent = 'No boxes';
-      tray.innerHTML = `<p class="tray-empty">${isBooks && !stockroomBooks(this.scene.layout).length
-        ? 'Every book is out at the fair.'
-        : `No ${isBooks ? 'book' : 'merch'} boxes right now. Tap the door in the room for a delivery.`}</p>`;
+      tray.innerHTML = `<p class="tray-empty">No ${isBooks ? 'book' : 'merch'} boxes out here. Bring one from the stockroom (the door on the back wall), or order more on the register computer.</p>`;
       return;
     }
     const usable = this.usable(box);
     const what = isBooks ? 'book' : 'item';
-    this.$('boxLabel').textContent = (box.returns ? 'Returns basket · ' : boxes.length > 1 ? `Box ${this.boxIdx + 1} of ${boxes.length} · ` : 'Box · ') +
+    this.$('boxLabel').textContent = (box.returns ? 'Returns basket · ' : boxes.length > 1 ? `Box ${this.boxIdx + 1} of ${boxes.length} · ` : (box.label || 'Box') + ' · ') +
       `${usable.length} ${what}${usable.length === 1 ? '' : 's'}${isBooks ? '' : ' for here'}`;
     if (!usable.length) {
       const want = cfg.accepts.map(k => KIND_LABEL[k].toLowerCase() + 's').join(' or ');
-      tray.innerHTML = `<p class="tray-empty">No ${want} in this box. ${boxes.length > 1 ? 'Try another box.' : 'Tap the door in the room for a delivery.'}</p>`;
+      tray.innerHTML = `<p class="tray-empty">No ${want} in this box. ${boxes.length > 1 ? 'Try another box.' : 'Bring another box from the stockroom.'}</p>`;
       return;
     }
     if (isBooks) {
@@ -2505,6 +2913,238 @@ const Stocking = {
     }
   },
 };
+
+// ============================================================
+// 10b. STOCKROOM, ORDERING & DECOR
+// Orders placed on the register computer arrive in the stockroom
+// at the start of the next fair day, along with a free surprise box.
+//   Game.data.pending   = orders on the way [{ id, kind, cost, ... }]
+//   Game.data.stockroom = boxes waiting in the stockroom
+//   Game.data.owned     = decorations you own { id: count }
+// Prices are "balanced": surprise boxes are about 40% of what the
+// books sell for, genre boxes 50%, books you pick yourself 65%.
+// ============================================================
+let ROOM = null;   // the room scene, once it's running
+const ORDER = { SURPRISE: .40, GENRE: .50, TITLE: .65, MERCH: .60, MERCH_BOX: .40, BOX: 10, MERCH_PER_BOX: 24, DECOR_PER_BOX: 9 };
+function wholeDollars(c) { return Math.max(100, Math.round(c / 100) * 100); }
+function avgRetail(list) { return list.length ? list.reduce((a, b) => a + basePrice(b.id), 0) / list.length : 1299; }
+const Prices = {
+  surprise() { return wholeDollars(avgRetail(BOOKS) * ORDER.BOX * ORDER.SURPRISE); },
+  genre(g) { return wholeDollars(avgRetail(BOOKS.filter(b => b.genre === g)) * ORDER.BOX * ORDER.GENRE); },
+  title(id) { return Math.round(basePrice(id) * ORDER.TITLE); },
+  merch(id) { return Math.round(basePrice(id) * ORDER.MERCH); },
+  merchBox() {
+    const tr = MERCH.filter(m => m.kind === 'trinket'), avgT = tr.reduce((a, m) => a + basePrice(m.id), 0) / tr.length;
+    return wholeDollars((6 * basePrice('bm-star') + 3 * basePrice('po-kitten') + 9 * avgT) * ORDER.MERCH_BOX);
+  },
+};
+function listGenres() { return Object.keys(GENRES).filter(g => BOOKS.some(b => b.genre === g)); }
+
+// Everything you own, by id: { display, floor, stock, order } counts.
+function stockCounts(scene) {
+  const m = new Map();
+  const add = (id, where) => { let e = m.get(id); if (!e) m.set(id, e = { display: 0, floor: 0, stock: 0, order: 0 }); e[where]++; };
+  for (const it of scene.layout.items) {
+    if (it.slots) for (const id of it.slots) if (id) add(id, 'display');
+    if (it.type === 'box') for (const id of it.contents) add(id, 'floor');
+  }
+  for (const it of scene.sr.items) if (it.type === 'box' && it.kind !== 'decor') for (const id of it.contents) add(id, 'stock');
+  if (scene.player.box) for (const id of scene.player.box.contents) add(id, 'floor');
+  if (scene.player.carry) add(scene.player.carry.id, 'floor');
+  for (const o of Game.data.pending) if (o.kind === 'title' || o.kind === 'merch') add(o.item, 'order');
+  return m;
+}
+function ownedTotal(e) { return e ? e.display + e.floor + e.stock : 0; }
+
+// Decorations that are out in the room: id -> count
+function decorPlaced(layout) {
+  const m = new Map(), add = id => m.set(id, (m.get(id) || 0) + 1);
+  for (const it of layout.items) {
+    if (FURNITURE[it.type] && FURNITURE[it.type].decor) add(it.type);
+    if (it.topper) add(it.topper);
+  }
+  for (const slot of WALL_SLOTS) if (layout.wallDecor && layout.wallDecor[slot]) add(layout.wallDecor[slot]);
+  return m;
+}
+function decorAvailable(layout, id) { return (Game.data.owned[id] || 0) - (decorPlaced(layout).get(id) || 0); }
+function decorPending(id) { return Game.data.pending.filter(o => o.kind === 'decor' && o.item === id).length +
+  (ROOM ? ROOM.sr.items.filter(b => b.kind === 'decor').reduce((a, b) => a + b.contents.filter(x => x === id).length, 0) : 0); }
+// Decorations from this month's pack that are out, and the extra visitors they bring.
+function seasonDecorOut(layout) {
+  let n = 0; const packs = new Set();
+  for (const [id, c] of decorPlaced(layout)) { const d = DECOR_BY_ID[id]; if (d && inSeason(d.pack)) { n += c; packs.add(d.pack); } }
+  return { n, packs: [...packs], extra: Math.min(4, Math.floor(n / 2)) };
+}
+
+// ---- stockroom floor space ----
+function floodFrom(grid, from, blockKey) {
+  const seen = new Set([from.x + ',' + from.y]), order = [from];
+  for (let i = 0; i < order.length; i++) for (const [dx, dy] of DIRS) {
+    const nx = order[i].x + dx, ny = order[i].y + dy, k = nx + ',' + ny;
+    if (k !== blockKey && grid.walkable(nx, ny) && !seen.has(k)) { seen.add(k); order.push({ x: nx, y: ny }); }
+  }
+  return seen;
+}
+// A free stockroom spot, filling from the back. Every box stays reachable.
+function stockroomSpot(scene) {
+  const sr = scene.sr, grid = buildGrid(sr), entry = { x: STOCKROOM.spawn.x, y: STOCKROOM.spawn.y };
+  const keep = new Set(protectedTiles(sr).map(t => t.x + ',' + t.y));
+  if (scene.area === 'stock') keep.add(scene.player.x + ',' + scene.player.y);
+  const total = floodFrom(grid, entry, null).size;
+  const boxes = sr.items.filter(b => b.type === 'box');
+  for (let y = 1; y < sr.rows - 1; y++) for (let x = 1; x < sr.cols - 1; x++) {
+    const k = x + ',' + y;
+    if (keep.has(k) || !grid.walkable(x, y)) continue;
+    const open = floodFrom(grid, entry, k);
+    if (open.size !== total - 1) continue;
+    const reach = b => DIRS.some(([dx, dy]) => open.has((b.x + dx) + ',' + (b.y + dy)));
+    if (boxes.every(reach) && reach({ x, y })) return { x, y };
+  }
+  return null;
+}
+// Puts items back in the stockroom (in a "Put-away box"). Returns a message.
+function stashToStockroom(scene, ids) {
+  ids = ids.filter(id => id && (BOOKS_BY_ID[id] || MERCH_BY_ID[id]));
+  if (!ids.length) return '';
+  let later = false;
+  for (const kind of ['books', 'merch']) {
+    const these = ids.filter(id => (kind === 'books') === !!BOOKS_BY_ID[id]);
+    if (!these.length) continue;
+    let box = scene.sr.items.find(b => b.type === 'box' && b.kind === kind && b.label === 'Put-away box' && b.contents.length < 40);
+    if (!box) {
+      const spot = stockroomSpot(scene);
+      if (!spot) { Game.data.pending.push({ id: newId(), kind: 'stash', boxKind: kind, contents: these, cost: 0 }); later = true; continue; }
+      box = { id: newId(), type: 'box', x: spot.x, y: spot.y, rot: 0, opened: true, kind, label: 'Put-away box', contents: [] };
+      scene.sr.items.push(box);
+    }
+    box.contents.push(...these);
+  }
+  scene.saveStock();
+  scene.rebuild();
+  return later ? "The stockroom is full, so it's set aside for now. It'll be back in the stockroom tomorrow morning."
+    : `${ids.length === 1 ? 'It went' : `${ids.length} items went`} back to the stockroom.`;
+}
+
+// ---- ordering ----
+function pickBooks(genre, n, taken) {
+  const pool = BOOKS.filter(b => !genre || b.genre === genre);
+  if (!pool.length) return [];
+  const out = [];
+  for (const b of [...shuffle(pool.filter(b => !taken.has(b.id))), ...shuffle(pool.filter(b => taken.has(b.id)))]) { if (out.length >= n) break; out.push(b.id); }
+  while (out.length < n) out.push(pickRandom(pool).id);
+  out.forEach(id => taken.add(id));
+  return out;
+}
+function orderName(o) {
+  return o.kind === 'surprise' ? 'Surprise box (10 books)' : o.kind === 'genre' ? `${GENRES[o.genre].label} box (10 books)`
+    : o.kind === 'title' ? BOOKS_BY_ID[o.item].title : o.kind === 'merchbox' ? 'Mixed merch box (18 items)'
+    : o.kind === 'merch' ? MERCH_BY_ID[o.item].name : o.kind === 'decor' ? DECOR_BY_ID[o.item].name
+    : o.kind === 'stash' ? 'Put-away box' : 'Order';
+}
+const Orders = {
+  cost(spec) {
+    return spec.kind === 'surprise' ? Prices.surprise() : spec.kind === 'genre' ? Prices.genre(spec.genre)
+      : spec.kind === 'title' ? Prices.title(spec.item) : spec.kind === 'merchbox' ? Prices.merchBox()
+      : spec.kind === 'merch' ? Prices.merch(spec.item) : spec.kind === 'decor' ? DECOR_BY_ID[spec.item].price
+      : spec.kind === 'pack' ? packPrice(spec.pack) : 0;
+  },
+  // Buys something; it arrives tomorrow morning. Returns { ok, msg }.
+  buy(spec, qty = 1) {
+    const each = this.cost(spec), total = each * qty;
+    if (Game.data.money < total) return { ok: false, msg: `You need ${money(total - Game.data.money)} more for that. Sell a few more books first!` };
+    Game.data.money -= total;
+    if (spec.kind === 'pack') {   // a pack is one of each piece, at the pack price
+      const pieces = DECOR.filter(d => d.pack === spec.pack), sum = pieces.reduce((a, d) => a + d.price, 0);
+      for (const d of pieces) Game.data.pending.push({ id: newId(), kind: 'decor', item: d.id, cost: Math.round(total * d.price / sum), pack: spec.pack });
+    } else for (let i = 0; i < qty; i++) Game.data.pending.push({ id: newId(), ...spec, cost: each });
+    Game.save();
+    UI.setMoney();
+    const what = spec.kind === 'pack' ? `the ${DECOR_PACKS[spec.pack].label} pack` : qty > 1 ? `${qty} × ${orderName(spec)}` : orderName(spec);
+    return { ok: true, msg: `Ordered ${what} for ${money(total)}. It arrives in the stockroom tomorrow morning.` };
+  },
+  cancel(orderId) {
+    const P = Game.data.pending, i = P.findIndex(o => o.id === orderId);
+    if (i < 0 || P[i].kind === 'stash') return '';
+    const [o] = P.splice(i, 1);
+    Game.data.money += o.cost || 0;
+    Game.save(); UI.setMoney();
+    return `Canceled ${orderName(o)}. ${money(o.cost || 0)} refunded.`;
+  },
+  // Morning: everything on order (and a free surprise box) lands in the stockroom.
+  morning(scene, free = true) {
+    const P = Game.data.pending, specs = [];
+    const taken = new Set([...stockCounts(scene)].filter(([, e]) => ownedTotal(e)).map(([id]) => id));
+    for (const o of P) {
+      if (o.kind === 'surprise' || o.kind === 'genre')
+        specs.push({ orders: [o], kind: 'books', label: o.kind === 'surprise' ? 'Surprise box' : `${GENRES[o.genre].label} box`, make: () => pickBooks(o.kind === 'genre' ? o.genre : null, ORDER.BOX, taken) });
+      else if (o.kind === 'merchbox') specs.push({ orders: [o], kind: 'merch', label: 'Mixed merch box', make: () => merchBoxContents() });
+      else if (o.kind === 'stash') specs.push({ orders: [o], kind: o.boxKind, label: 'Put-away box', opened: true, make: () => o.contents });
+    }
+    const chunk = (kind, n, boxKind, label) => {
+      const list = P.filter(o => o.kind === kind);
+      for (let i = 0; i < list.length; i += n) { const g = list.slice(i, i + n); specs.push({ orders: g, kind: boxKind, label, make: () => g.map(o => o.item) }); }
+    };
+    chunk('title', ORDER.BOX, 'books', 'Your book order');
+    chunk('merch', ORDER.MERCH_PER_BOX, 'merch', 'Your merch order');
+    chunk('decor', ORDER.DECOR_PER_BOX, 'decor', 'Decor delivery');
+    if (free) specs.push({ orders: [], kind: 'books', label: 'Free surprise box', free: true, make: () => pickBooks(null, ORDER.BOX, taken) });
+    const report = { boxes: 0, free: false, freeMissed: false, waiting: 0, decor: 0 };
+    for (const sp of specs) {
+      const spot = stockroomSpot(scene);
+      if (!spot) { if (sp.free) report.freeMissed = true; else report.waiting += sp.orders.length; continue; }
+      const contents = sp.make();
+      scene.sr.items.push({ id: newId(), type: 'box', x: spot.x, y: spot.y, rot: 0, opened: !!sp.opened, kind: sp.kind, label: sp.label, contents });
+      for (const o of sp.orders) P.splice(P.indexOf(o), 1);
+      report.boxes++;
+      if (sp.free) report.free = true;
+      if (sp.kind === 'decor') report.decor += contents.length;
+    }
+    scene.saveStock();
+    scene.rebuild();
+    return report;
+  },
+  // A brand-new game: three boxes of books and a box of merch.
+  starter(scene, books = 3, merch = 1) {
+    const taken = new Set();
+    for (let i = 0; i < books + merch; i++) {
+      const spot = stockroomSpot(scene);
+      if (!spot) break;
+      const isBooks = i < books;
+      scene.sr.items.push({ id: newId(), type: 'box', x: spot.x, y: spot.y, rot: 0, opened: false, kind: isBooks ? 'books' : 'merch',
+        label: isBooks ? 'Starter box' : 'Merch box', contents: isBooks ? pickBooks(null, ORDER.BOX, taken) : merchBoxContents() });
+    }
+    scene.saveStock();
+    scene.rebuild();
+  },
+};
+
+// ---- the fair calendar: special days, planned 5 days ahead ----
+// Recess and the after-school rush stay random; these are scheduled.
+const SPECIALS = {
+  classVisit:   { icon: '🍎', name: e => `${e.teachers[0]}'s class visit`, desc: e => `${e.teachers[0]} brings their class to shop around ${clockAt(e.at[0])}.` },
+  twoClasses:   { icon: '🚌', name: () => 'Two class visits', desc: e => `${e.teachers[0]}'s class comes around ${clockAt(e.at[0])}, then ${e.teachers[1]}'s class around ${clockAt(e.at[1])}.` },
+  grandparents: { icon: '👵', name: () => "Grandparents' Day", desc: () => 'Grandparents stop by all day, with a big rush in the morning.' },
+};
+function clockAt(frac) {
+  const mins = FAIR.OPEN_HOUR * 60 + Math.min(1, frac) * (FAIR.CLOSE_HOUR - FAIR.OPEN_HOUR) * 60;
+  let h = Math.floor(mins / 60), m = Math.floor(mins % 60 / 15) * 15;
+  const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ap}`;
+}
+function ensureCalendar() {
+  const cal = Game.data.calendar || (Game.data.calendar = {}), day = Game.data.day;
+  for (const k of Object.keys(cal)) if (+k < day) delete cal[k];
+  for (let d = day; d < day + 5; d++) {
+    if (d in cal) continue;
+    const r = Math.random(), prev = cal[d - 1], ts = shuffle(TEACHER_NAMES.slice());
+    let ev = null;
+    if (r < .36) ev = { type: 'classVisit', teachers: [ts[0]], at: [.15 + Math.random() * .45] };
+    else if (r < .48) ev = { type: 'twoClasses', teachers: [ts[0], ts[1]], at: [.12 + Math.random() * .2, .45 + Math.random() * .2] };
+    else if (r < .62 && !(prev && prev.type === 'grandparents')) ev = { type: 'grandparents' };
+    cal[d] = ev;
+  }
+}
+function todaysSpecial() { const e = (Game.data.calendar || {})[Game.data.day]; return e && SPECIALS[e.type] ? e : null; }
 
 // ============================================================
 // 11. CUSTOMERS & FAIR DAYS
@@ -2548,13 +3188,34 @@ function itemName(id) { const b = BOOKS_BY_ID[id]; return b ? b.title : MERCH_BY
 // copies (Phase 8: extra copies of books), owned (Phase 9: furniture and
 // decor bought), unlockedMerch (Phase 10: themed merch sets),
 // projects (Phase 10: school project progress), scrapbook (thank-you notes).
+// Phase 8 added: stockroom (boxes in the stockroom), carrying (a box in your
+// arms), pending (orders on the way), history (each fair day), best (best
+// sellers), genreSales, wishes (books customers asked for that you didn't
+// have), calendar (special days ahead), owned (decorations you own).
 const Game = {
-  data: { saveVersion: 1, money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true,
+  data: { saveVersion: 2, money: 0, day: 1, dayLength: 'normal', busy: 'lively', patience: true,
           lifetime: { customers: 0, sold: 0, earned: 0 },
+          stockroom: [], carrying: null, pending: [], history: [], best: {}, genreSales: {}, wishes: {}, calendar: {},
           copies: {}, owned: {}, unlockedMerch: [], projects: {}, scrapbook: [] },
+  fresh: false, migrated: false,
   load() {
-    try { const d = JSON.parse(localStorage.getItem(playerKey('game'))); if (d && typeof d === 'object') this.data = { ...this.data, ...d }; } catch (e) {}
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(playerKey('game'))); } catch (e) {}
+    this.fresh = !(d && typeof d === 'object');
+    if (!this.fresh) this.data = { ...this.data, ...d };
+    if (!this.fresh && (this.data.saveVersion | 0) < 2) this.migrated = true;
+    this.data.saveVersion = 2;
     if (!FAIR.DAY_LENGTHS[this.data.dayLength]) this.data.dayLength = 'normal';
+    for (const k of ['pending', 'history', 'stockroom']) if (!Array.isArray(this.data[k])) this.data[k] = [];
+    for (const k of ['best', 'genreSales', 'wishes', 'calendar', 'owned']) if (!this.data[k] || typeof this.data[k] !== 'object') this.data[k] = {};
+    // only boxes with real things in them survive
+    const okId = (kind, id) => kind === 'decor' ? !!DECOR_BY_ID[id] : kind === 'merch' ? !!MERCH_BY_ID[id] : !!BOOKS_BY_ID[id];
+    const cleanBox = b => b && b.type === 'box' && Number.isInteger(b.x) && Number.isInteger(b.y) && Array.isArray(b.contents) &&
+      (b.contents = b.contents.filter(id => okId(b.kind, id))).length > 0;
+    this.data.stockroom = this.data.stockroom.filter(b => cleanBox(b) && isInterior(STOCKROOM, b.x, b.y));
+    if (this.data.carrying && !cleanBox(this.data.carrying)) this.data.carrying = null;
+    this.data.pending = this.data.pending.filter(o => o && o.kind && (o.kind !== 'title' || BOOKS_BY_ID[o.item]) && (o.kind !== 'merch' || MERCH_BY_ID[o.item]) &&
+      (o.kind !== 'decor' || DECOR_BY_ID[o.item]) && (o.kind !== 'genre' || GENRES[o.genre]));
   },
   save() { try { localStorage.setItem(playerKey('game'), JSON.stringify(this.data)); } catch (e) {} },
 };
@@ -2604,9 +3265,9 @@ function lookFor(type) {
 
 // ---- rushes ----
 const FAIR_EVENTS = {
-  classVisit:  { make: () => { const t = pickRandom(TEACHER_NAMES); return { msg: `${t}'s class is visiting the book fair!`, group: [['teacher', t], 'kid', 'kid', 'kid', 'kid', 'kid'] }; } },
+  classVisit:  { make: p => { const t = (p && p.teacher) || pickRandom(TEACHER_NAMES); return { msg: `${t}'s class is visiting the book fair!`, group: [['teacher', t], 'kid', 'kid', 'kid', 'kid', 'kid'] }; } },
   recess:      { make: () => ({ msg: 'Recess! A few kids ran over to browse.', group: ['kid', 'kid', 'kid', 'kid'] }) },
-  grandparents:{ make: () => ({ msg: "It's Grandparents' Day! Grandparents are stopping by.", group: ['grandparent', 'grandparent', 'grandparent', 'kid'] }) },
+  grandparents:{ make: () => ({ msg: "It's Grandparents' Day! A bunch of grandparents just came in.", group: ['grandparent', 'grandparent', 'grandparent', 'kid', 'grandparent', 'kid'] }) },
   afterSchool: { make: () => ({ msg: "School's out! Families are coming in.", group: ['parent', 'kid', 'parent', 'kid', 'parent', 'kid'] }) },
 };
 
@@ -2710,7 +3371,9 @@ function whereIsBook(layout, id) {
     if (it.slots && it.slots.includes(id)) return { place: 'display', item: it };
     if (it.type === 'box' && it.contents.includes(id)) return { place: 'box', item: it };
   }
-  return { place: 'stockroom' };
+  if (ROOM && ROOM.player.box && ROOM.player.box.contents.includes(id)) return { place: 'box' };
+  if (ROOM && ROOM.sr.items.some(b => b.type === 'box' && b.contents.includes(id))) return { place: 'stockroom' };
+  return { place: 'none' };
 }
 
 // Items a customer left behind go into a returns basket by the checkout.
@@ -2723,7 +3386,7 @@ function addToReturns(scene, ids, near) {
     if (!basket) {
       const starts = near ? [...approachTiles(grid, near)].map(k => { const [x, y] = k.split(',').map(Number); return { x, y }; }) : null;
       const avoid = scene.fair ? (scene.fair.queueSpots || []) : [];
-      const spot = findBoxSpots(L, grid, 1, scene.player, starts, avoid)[0];
+      const spot = findBoxSpots(L, grid, 1, scene.fairPlayer(), starts, [...avoid, ...protectedTiles(L)])[0];
       if (!spot) continue;   // no room anywhere: the items go back to the stockroom
       basket = { id: newId(), type: 'box', x: spot.x, y: spot.y, rot: 0, opened: true, kind, returns: true, contents: [] };
       L.items.push(basket);
@@ -2756,19 +3419,28 @@ class Fair {
     // regular customers, spread across the day
     this.spawnPlan = [];
     const every = busy().every;
-    for (let t = randInt(...every) * .3; t < this.dayMs * .93; t += randInt(...every))
-      this.spawnPlan.push({ at: t, type: weightedPick(['kid', 'parent', 'teacher', 'grandparent'], k => ({ kid: 4, parent: 3.5, teacher: 1, grandparent: 1.5 })[k]) });
-    // 2-3 rushes at random times (after-school always lands late in the day)
-    const names = shuffle(['classVisit', 'recess', 'grandparents']).slice(0, randInt(1, 2));
-    if (Math.random() < .75) names.push('afterSchool'); else names.push(pickRandom(['classVisit', 'recess']));
-    names.forEach((n, i) => {
-      const at = n === 'afterSchool' ? this.dayMs * (.78 + Math.random() * .08) : this.dayMs * (.12 + Math.random() * .55);
-      this.spawnPlan.push({ at, event: n });
-    });
+    // today's special day from the fair calendar (class visits, Grandparents' Day)
+    ensureCalendar();
+    const sp = this.special = todaysSpecial();
+    const weights = { kid: 4, parent: 3.5, teacher: 1, grandparent: sp && sp.type === 'grandparents' ? 4.5 : 1.5 };
+    const regular = () => weightedPick(['kid', 'parent', 'teacher', 'grandparent'], k => weights[k]);
+    for (let t = randInt(...every) * .3; t < this.dayMs * .93; t += randInt(...every)) this.spawnPlan.push({ at: t, type: regular() });
+    if (sp && sp.type === 'grandparents') this.spawnPlan.push({ at: this.dayMs * (.2 + Math.random() * .1), event: 'grandparents' });
+    if (sp && sp.at) sp.at.forEach((f, i) => this.spawnPlan.push({ at: this.dayMs * f, event: 'classVisit', teacher: sp.teachers[i] }));
+    // random rushes: recess some days, the after-school rush most days
+    if (Math.random() < .55) this.spawnPlan.push({ at: this.dayMs * (.18 + Math.random() * .45), event: 'recess' });
+    if (Math.random() < .75) this.spawnPlan.push({ at: this.dayMs * (.78 + Math.random() * .08), event: 'afterSchool' });
+    // in-season decorations draw a few extra visitors
+    const season = seasonDecorOut(L);
+    for (let i = 0; i < season.extra; i++) this.spawnPlan.push({ at: this.dayMs * (.1 + Math.random() * .8), type: regular() });
+    this.stats.seasonExtra = season.extra;
     this.spawnPlan.sort((a, b) => a.at - b.at);
     this.queueSpots = this.computeQueueSpots();
     UI.setFair(this);
-    UI.toast(`The fair is open! Day ${Game.data.day} has begun.`);
+    let msg = `The fair is open! Day ${Game.data.day} has begun.`;
+    if (sp) msg += ` Today: ${SPECIALS[sp.type].name(sp)}.`;
+    if (season.extra) msg += ` Your ${season.packs.map(k => DECOR_PACKS[k].label).join(' and ')} decorations are drawing a few extra visitors!`;
+    UI.toast(msg);
   }
 
   closeNow() {
@@ -2791,7 +3463,17 @@ class Fair {
     const s = this.stats;
     Game.data.lifetime.customers += s.customers; Game.data.lifetime.sold += s.sold; Game.data.lifetime.earned += s.earned;
     const summary = { day: Game.data.day, ...s, missed: [...s.missed] };
+    // sales history, plus wishes you couldn't grant (see the register computer)
+    const H = Game.data.history;
+    H.push({ day: Game.data.day, customers: s.customers, sold: s.sold, earned: s.earned, helped: s.helped, walkouts: s.walkouts,
+             special: this.special ? this.special.type : null, date: new Date().toISOString().slice(0, 10) });
+    if (H.length > 60) H.splice(0, H.length - 60);
+    for (const id of summary.missed) { const w = Game.data.wishes[id] || (Game.data.wishes[id] = { n: 0, last: 0 }); w.n++; w.last = Game.data.day; }
     Game.data.day++;
+    // the next morning: deliveries land in the stockroom
+    summary.morning = Orders.morning(this.scene);
+    ensureCalendar();
+    summary.tomorrow = todaysSpecial();
     Game.save();
     UI.setFair(this);
     UI.showSummary(summary);
@@ -2943,7 +3625,7 @@ class Fair {
     while (this.spawnPlan.length && this.spawnPlan[0].at <= this.elapsed) {
       const p = this.spawnPlan.shift();
       if (p.event) {
-        const ev = FAIR_EVENTS[p.event].make();
+        const ev = FAIR_EVENTS[p.event].make(p);
         UI.toast(ev.msg);
         this.stats.events.push(p.event);
         ev.group.forEach((g, i) => this.spawnPlan.push({ at: this.elapsed + 900 * (i + 1), type: Array.isArray(g) ? g[0] : g, name: Array.isArray(g) ? g[1] : null }));
@@ -3116,7 +3798,12 @@ class Fair {
   recordSale(c, total) {
     Game.data.money += total;
     this.stats.earned += total; this.stats.sold += c.cart.length;
-    for (const x of c.cart) this.stats.titles[x.id] = (this.stats.titles[x.id] || 0) + 1;
+    for (const x of c.cart) {
+      this.stats.titles[x.id] = (this.stats.titles[x.id] || 0) + 1;
+      Game.data.best[x.id] = (Game.data.best[x.id] || 0) + 1;
+      const b = BOOKS_BY_ID[x.id], g = b ? b.genre : 'merch';
+      Game.data.genreSales[g] = (Game.data.genreSales[g] || 0) + 1;
+    }
     Game.save();
     UI.setMoney();
   }
@@ -3206,7 +3893,8 @@ class Fair {
       const b = BOOKS_BY_ID[c.wish], where = whereIsBook(this.layout, c.wish);
       msg += ` Looking for ${b.title}` + (c.foundWish ? ' (found it!)' :
         where.place === 'display' ? ' (it\'s out on a display).' :
-        where.place === 'box' ? ' (it\'s in a box by the door!)' : ' (not here yet; it may come in a delivery).');
+        where.place === 'box' ? ' (it\'s in a box out here!)' : where.place === 'stockroom' ? ' (it\'s in a box in the stockroom!)'
+        : ' (you don\'t have it yet; you can order it on the register computer).');
     }
     if (c.request && c.state !== 'needHelp') msg += ` Asked you: "${requestText(c)}"`;
     if (c.cart.length) msg += ` Carrying ${c.cart.length} item${c.cart.length === 1 ? '' : 's'}.`;
@@ -3291,7 +3979,7 @@ const Checkout = {
     this.typed = ''; this.pile = []; this.counted = []; this.paid = 0;
     // sometimes they grab a little something from the counter, too
     const reg = fair.register();
-    if (reg && Math.random() < .35) {
+    if (reg && reg.slots && Math.random() < .35) {
       const i = reg.slots.findIndex(Boolean);
       if (i >= 0) { c.cart.push({ id: reg.slots[i], price: salePrice(reg.slots[i], reg.sale), sale: reg.sale || 0, impulse: true }); reg.slots[i] = null; saveLayout(fair.layout); fair.scene.drawItems(); }
     }
@@ -3317,8 +4005,10 @@ const Checkout = {
   pay() {
     const t = this.total(), c = this.c;
     const r = Math.random();
-    c.payWith = c.payWith || (c.type === 'kid' ? (t <= 2500 && r < .45 ? 'coins' : 'cash')
-      : c.type === 'teacher' ? (r < .7 ? 'card' : 'cash') : c.type === 'parent' ? (r < .55 ? 'card' : 'cash') : (r < .4 ? 'card' : 'cash'));
+    // About 55% cash, 25% card, 20% piggy bank overall. Only kids bring piggy
+    // banks; teachers lean card.
+    c.payWith = c.payWith || (c.type === 'kid' ? (t <= 2500 && r < .5 ? 'coins' : 'cash')
+      : c.type === 'teacher' ? (r < .65 ? 'card' : 'cash') : c.type === 'parent' ? (r < .42 ? 'card' : 'cash') : (r < .3 ? 'card' : 'cash'));
     if (c.payWith === 'card') { this.phase = 'card'; this.typed = ''; return; }
     if (c.payWith === 'coins') { this.pile = piggyPile(piggyAmount(c.cart)); this.counted = []; this.phase = 'coins'; return; }
     // exact change sometimes; otherwise the smallest easy amount that covers it
@@ -3472,7 +4162,8 @@ const Help = {
     if (mode === 'ask') {
       if (c.request.kind === 'wish') {
         const w = whereIsBook(scene.layout, c.request.id);
-        hint = w.place === 'display' ? 'It\'s out on a display.' : w.place === 'box' ? 'It\'s in a box by the door.' : 'It isn\'t at the fair right now.';
+        hint = w.place === 'display' ? 'It\'s out on a display.' : w.place === 'box' ? 'It\'s in a box out here.'
+          : w.place === 'stockroom' ? 'It\'s in a box in the stockroom. Carry the box out to a display to find it.' : 'You don\'t have it right now. You can order it on the register computer.';
       } else hint = 'Pick a book from any display or box that fits what they asked for.';
       acts = [['accept', "I'll find it!", true], ['decline', c.request.kind === 'wish' ? "Sorry, we don't have it" : 'Sorry, not right now'], ['close', 'Back']];
     } else acts = [['close', 'OK', true]];
@@ -3496,6 +4187,235 @@ const Help = {
 // Buttons and panels live in HTML over the canvas: easier to
 // tap on phones and to style. They call into the Room scene.
 // ============================================================
+// ---- the register computer: a retro school computer showing the book-fair website ----
+// Tabs: Ordering, Decor shop, Inventory, Sales history, Customer wishes, Fair calendar.
+// The fair clock stops while you're on it.
+function boxName(b) { return b.returns ? 'Returns basket' : b.label || (b.kind === 'merch' ? 'Merch box' : b.kind === 'decor' ? 'Decor box' : 'Box of books'); }
+function boxWhat(b) { const n = b.contents.length; return `${n} ${b.kind === 'books' ? 'book' : b.kind === 'decor' ? 'decoration' : 'merch item'}${n === 1 ? '' : 's'}`; }
+function svgInline(art, h) { const [, , w, hh] = art.box; return svgString(art, 1).replace(/width="[^"]*" height="[^"]*"/, `width="${(w / hh * h).toFixed(1)}" height="${h}"`); }
+// An open box with books in one genre's colors
+function genreBoxArt(g) {
+  const c = GENRES[g].color;
+  let b = shadow(16, 30.5, 15, 3) + RF(4, 8, 24, 6, '#6e4a2c', 1);
+  [-.12, .06, -.04, .12, 0].forEach((d, i) => { b += R(6 + i * 4.3, 2 + (i % 2) * 2, 3.8, 12, tweakColor(c, 0, d), .8, 'stroke-width=".9"'); });
+  b += `<path d="M3 12 L-3 5 L4 4 L8 12 Z" fill="#e0ad74" ${ST}/><path d="M29 12 L35 5 L28 4 L24 12 Z" fill="#e0ad74" ${ST}/>` +
+    R(3, 12, 26, 17, '#c48a52', 2) + `<circle cx="16" cy="20.5" r="4.6" fill="${c}" ${ST}/>`;
+  return { box: [-5, 0, 42, 34], body: b };
+}
+const PLACE_TEXT = { floor: 'Stands on the floor', top: 'Sits on top of a shelf or the checkout', wall: 'Hangs on the back wall' };
+const Computer = {
+  tab: 'order', filter: { q: '', genre: '', inv: 'all', invQ: '' }, msg: '',
+  TABS: [['order', '🛒 Ordering', '#f7b3a6'], ['decor', '🎃 Decor shop', '#cdb8ea'], ['inv', '📦 Inventory', '#9fd8c8'],
+         ['sales', '📈 Sales history', '#ffd98a'], ['wishes', '💭 Customer wishes', '#f7b7d2'], ['cal', '📅 Fair calendar', '#a9c8f0']],
+  $(id) { return document.getElementById(id); },
+  isOpen() { return !this.$('pc').hidden; },
+  init() {
+    this.$('pcTabs').innerHTML = this.TABS.map(([k, label, c]) => `<button role="tab" data-tab="${k}" style="--tab:${c}">${label}</button>`).join('');
+    this.$('pcTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) { this.tab = b.dataset.tab; this.msg = ''; this.render(); this.$('pcBody').scrollTop = 0; } };
+    this.$('pcClose').onclick = () => this.close();
+    this.$('pcCounter').onclick = () => { const reg = this.scene.fair.register(); this.close(); if (reg) Stocking.open(this.scene, reg); };
+    this.$('pc').addEventListener('click', e => { if (e.target.id === 'pc') this.close(); });
+    this.$('pcBody').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.buy) { const r = Orders.buy(JSON.parse(b.dataset.buy), +(b.dataset.qty || 1)); this.say(r.msg); }
+      else if (b.dataset.cancel) this.say(Orders.cancel(b.dataset.cancel));
+      else if (b.dataset.unwish) { delete Game.data.wishes[b.dataset.unwish]; Game.save(); this.render(); }
+      else if (b.dataset.inv) { this.filter.inv = b.dataset.inv; this.renderList(); this.render(); }
+      else if (b.dataset.goto) { this.tab = b.dataset.goto; this.msg = ''; this.render(); }
+    });
+    this.$('pcBody').addEventListener('input', e => {
+      if (e.target.id === 'pcQ') { this.filter.q = e.target.value; this.renderList(); }
+      if (e.target.id === 'pcGenre') { this.filter.genre = e.target.value; this.renderList(); }
+      if (e.target.id === 'pcInvQ') { this.filter.invQ = e.target.value; this.renderList(); }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && this.isOpen()) this.close(); });
+  },
+  open(scene) {
+    this.scene = scene; this.msg = '';
+    this.$('pc').hidden = false;
+    scene.setInputEnabled(false);
+    this.render();
+  },
+  close() {
+    if (!this.isOpen()) return;
+    this.$('pc').hidden = true;
+    this.scene.setInputEnabled(true);
+    this.scene.drawBadges();
+  },
+  say(msg) { this.msg = msg; const top = this.$('pcBody').scrollTop; this.render(); this.$('pcBody').scrollTop = top; },
+
+  render() {
+    for (const b of this.$('pcTabs').children) { b.classList.toggle('on', b.dataset.tab === this.tab); b.setAttribute('aria-selected', b.dataset.tab === this.tab); }
+    const season = Object.keys(DECOR_PACKS).find(inSeason);
+    this.$('pcTabs').querySelector('[data-tab="decor"]').textContent = `${season ? DECOR_PACKS[season].icon : '🎀'} Decor shop`;
+    this.$('pcMoney').textContent = money(Game.data.money);
+    const counter = this.scene.fair.register();
+    this.$('pcCounter').hidden = !counter;
+    const body = this[{ order: 'orderTab', decor: 'decorTab', inv: 'invTab', sales: 'salesTab', wishes: 'wishTab', cal: 'calTab' }[this.tab]]();
+    this.$('pcBody').innerHTML = (this.msg ? `<div class="site-msg" role="status">${xmlEsc(this.msg)}</div>` : '') + body;
+    if (this.tab === 'order' || this.tab === 'inv') this.renderList();
+  },
+  buyBtn(spec, label = 'Order', qty = 1, light = false) {
+    const cost = Orders.cost(spec) * qty, can = Game.data.money >= cost;
+    return `<button class="s-btn${light ? ' light' : ''}" data-buy='${xmlEsc(JSON.stringify(spec))}' data-qty="${qty}"${can ? '' : ' disabled'} title="${can ? '' : 'Not enough money yet'}">${label}</button>`;
+  },
+  have(e) {
+    const n = ownedTotal(e);
+    if (!n && !(e && e.order)) return '<span class="s-pill none">Not in stock</span>';
+    const parts = [];
+    if (e.display) parts.push(`${e.display} out`);
+    if (e.floor) parts.push(`${e.floor} in a box out here`);
+    if (e.stock) parts.push(`${e.stock} in the stockroom`);
+    if (e.order) parts.push(`${e.order} on order`);
+    return `<small>${parts.join(' · ')}</small>`;
+  },
+
+  // ----- Ordering -----
+  pendingBox() {
+    const P = Game.data.pending;
+    if (!P.length) return '';
+    const groups = new Map();
+    for (const o of P) { const k = o.kind === 'decor' || o.kind === 'title' || o.kind === 'merch' ? o.kind + o.item : o.kind === 'genre' ? 'g' + o.genre : o.id; (groups.get(k) || groups.set(k, []).get(k)).push(o); }
+    return `<div class="s-h">🚚 Coming tomorrow morning</div><div class="s-pending">` + [...groups.values()].map(g => {
+      const o = g[g.length - 1], total = g.reduce((a, x) => a + (x.cost || 0), 0);
+      return `<div class="s-row"><div class="t"><b>${xmlEsc(orderName(o))}${g.length > 1 ? ` ×${g.length}` : ''}</b><small>${o.kind === 'stash' ? 'Set aside from your room' : money(total)}</small></div>` +
+        (o.kind === 'stash' ? '' : `<button class="s-btn light" data-cancel="${o.id}">Cancel${g.length > 1 ? ' one' : ''}</button>`) + '</div>';
+    }).join('') + '</div>';
+  },
+  orderTab() {
+    const box = svgInline(ART.box(), 54), mbox = svgInline(ART.mbox(), 54);
+    const genres = listGenres();
+    return this.pendingBox() +
+      `<div class="s-h">📦 Book boxes</div><p class="s-sub">Everything you order arrives in the stockroom at the start of the next fair day. A free surprise box comes every morning, too.</p>` +
+      `<div class="s-cards"><div class="s-card"><div class="art">${box}</div><b>Surprise box</b><small>10 random books from your list, mostly ones you don't have yet. The best deal.</small>` +
+      `<div class="s-buy"><span class="s-price">${money(Prices.surprise())}</span>${this.buyBtn({ kind: 'surprise' })}</div></div>` +
+      genres.map(g => `<div class="s-card"><div class="art">${svgInline(genreBoxArt(g), 54)}</div>` +
+        `<b>${xmlEsc(GENRES[g].label)} box</b><small>10 ${xmlEsc(GENRES[g].label.toLowerCase())} books.</small>` +
+        `<div class="s-buy"><span class="s-price">${money(Prices.genre(g))}</span>${this.buyBtn({ kind: 'genre', genre: g })}</div></div>`).join('') + '</div>' +
+      `<div class="s-h">🔎 Pick your own books</div><p class="s-sub">Order the exact titles you want (as many copies as you like). Wished-for books are at the top.</p>` +
+      `<div class="s-tools"><input id="pcQ" type="search" placeholder="Search titles, authors, series" value="${xmlEsc(this.filter.q)}" autocomplete="off">` +
+      `<select id="pcGenre"><option value="">All genres</option>${genres.map(g => `<option value="${g}"${this.filter.genre === g ? ' selected' : ''}>${xmlEsc(GENRES[g].label)}</option>`).join('')}</select></div>` +
+      `<div id="pcList"></div>` +
+      `<div class="s-h">✏️ Merch</div><div class="s-cards"><div class="s-card"><div class="art">${mbox}</div><b>Mixed merch box</b><small>6 bookmarks, 3 posters and 9 trinkets, picked at random.</small>` +
+      `<div class="s-buy"><span class="s-price">${money(Prices.merchBox())}</span>${this.buyBtn({ kind: 'merchbox' })}</div></div></div>` +
+      `<p class="s-sub" style="margin-top:10px">Or pick exactly what you want (costs a little more):</p>` +
+      MERCH.map(m => { const e = this.counts.get(m.id);
+        return `<div class="s-row"><span class="mini">${merchSVG(m, 26, m.kind === 'poster' ? 34 : 32)}</span><div class="t"><b>${xmlEsc(m.name)}</b>${this.have(e)}</div>` +
+          `<span class="s-price">${money(Prices.merch(m.id))}</span>${this.buyBtn({ kind: 'merch', item: m.id }, '+1', 1, true)}${this.buyBtn({ kind: 'merch', item: m.id }, '+5', 5)}</div>`; }).join('');
+  },
+  get counts() { return stockCounts(this.scene); },
+  renderList() {
+    const el = this.$('pcList');
+    if (!el) return;
+    const counts = this.counts;
+    if (this.tab === 'order') {
+      const q = this.filter.q.trim().toLowerCase(), wish = Game.data.wishes;
+      let list = BOOKS.filter(b => (!this.filter.genre || b.genre === this.filter.genre) &&
+        (!q || (b.title + ' ' + b.author + ' ' + (b.series || '')).toLowerCase().includes(q)));
+      list.sort((a, b) => ((wish[b.id] ? wish[b.id].n : 0) - (wish[a.id] ? wish[a.id].n : 0)) || (ownedTotal(counts.get(a.id)) ? 1 : 0) - (ownedTotal(counts.get(b.id)) ? 1 : 0) || a.title.localeCompare(b.title));
+      const shown = list.slice(0, 40);
+      el.innerHTML = shown.map(b => `<div class="s-row"><span class="gdot" style="background:${GENRES[b.genre].color}"></span><div class="t"><b>${xmlEsc(b.title)}</b>` +
+        `<small>${xmlEsc(b.author)}${b.series ? ' · ' + xmlEsc(b.series) : ''}</small> ${wish[b.id] ? `<span class="s-pill wish">Wished ×${wish[b.id].n}</span> ` : ''}${this.have(counts.get(b.id))}</div>` +
+        `<span class="s-price">${money(Prices.title(b.id))}</span>${this.buyBtn({ kind: 'title', item: b.id }, '+ Order')}</div>`).join('') +
+        (list.length > shown.length ? `<p class="s-sub" style="margin-top:8px">Showing ${shown.length} of ${list.length}. Search or pick a genre to find more.</p>` : '') +
+        (!list.length ? '<p class="s-empty">No books match that search.</p>' : '');
+    } else {
+      const f = this.filter.inv, q = this.filter.invQ.trim().toLowerCase(), rows = [];
+      if (f === 'all' || f === 'books') for (const b of BOOKS) {
+        if (q && !(b.title + ' ' + b.author + ' ' + (b.series || '')).toLowerCase().includes(q)) continue;
+        rows.push({ sort: ownedTotal(counts.get(b.id)) ? 0 : 1, name: b.title, html: `<span class="gdot" style="background:${GENRES[b.genre].color}"></span><div class="t"><b>${xmlEsc(b.title)}</b><small>${xmlEsc(b.author)} · ${xmlEsc(GENRES[b.genre].label)}</small><br>${this.have(counts.get(b.id))}</div>` +
+          (ownedTotal(counts.get(b.id)) ? '' : this.buyBtn({ kind: 'title', item: b.id }, `Order · ${money(Prices.title(b.id))}`, 1, true)) });
+      }
+      if (f === 'all' || f === 'merch') for (const m of MERCH) {
+        if (q && !m.name.toLowerCase().includes(q)) continue;
+        rows.push({ sort: ownedTotal(counts.get(m.id)) ? 0 : 1, name: m.name, html: `<span class="mini">${merchSVG(m, 26, m.kind === 'poster' ? 34 : 32)}</span><div class="t"><b>${xmlEsc(m.name)}</b><small>${KIND_LABEL[m.kind]}</small><br>${this.have(counts.get(m.id))}</div>` });
+      }
+      if (f === 'all' || f === 'decor') for (const d of DECOR) {
+        if (q && !d.name.toLowerCase().includes(q)) continue;
+        const own = Game.data.owned[d.id] || 0, out = decorPlaced(this.scene.layout).get(d.id) || 0, coming = decorPending(d.id);
+        if (!own && !coming && f === 'all') continue;
+        rows.push({ sort: own ? 0 : 1, name: d.name, html: `<span class="mini">${svgInline(decorArt(d.id), 26)}</span><div class="t"><b>${xmlEsc(d.name)}</b><small>${DECOR_PACKS[d.pack].label} decor</small><br>` +
+          (own || coming ? `<small>${own ? `You have ${own}: ${out} out, ${own - out} in storage` : ''}${own && coming ? ' · ' : ''}${coming ? `${coming} on the way` : ''}</small>` : '<span class="s-pill none">Not owned</span>') + '</div>' });
+      }
+      rows.sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+      const shown = rows.slice(0, 80);
+      el.innerHTML = shown.map(r => `<div class="s-row">${r.html}</div>`).join('') +
+        (rows.length > shown.length ? `<p class="s-sub" style="margin-top:8px">Showing ${shown.length} of ${rows.length}. Search to find more.</p>` : '') +
+        (!rows.length ? '<p class="s-empty">Nothing here yet.</p>' : '');
+    }
+  },
+
+  // ----- Decor shop -----
+  decorTab() {
+    const owned = Game.data.owned;
+    return `<p class="s-sub">Buy a whole pack (about 25% off) or just the pieces you like. Decorations arrive in the stockroom the next morning: open the box there, then put them out with Arrange. Use them any time of year!</p>` +
+      Object.entries(DECOR_PACKS).map(([k, P]) => {
+        const items = DECOR.filter(d => d.pack === k), sum = items.reduce((a, d) => a + d.price, 0), on = inSeason(k);
+        return `<div class="s-h">${P.icon} ${P.label}${on ? ' <span class="s-pill season">In season!</span>' : ''}</div>` +
+          (on ? `<p class="s-sub">It's ${new Date().toLocaleString('en-US', { month: 'long' })}! ${P.label} decorations out in the fair this month bring a few extra visitors each day.</p>` : '') +
+          `<div class="s-cards"><div class="s-card pack"><b>The whole ${P.label} pack · ${items.length} pieces</b><small>${xmlEsc(P.blurb)}</small>` +
+          `<div class="s-strip">${items.map(d => svgInline(decorArt(d.id), 50)).join('')}</div>` +
+          `<div class="s-buy"><span><span class="s-was">${money(sum)}</span><span class="s-price">${money(packPrice(k))}</span></span>${this.buyBtn({ kind: 'pack', pack: k }, 'Buy the pack')}</div></div>` +
+          items.map(d => `<div class="s-card"><div class="art">${svgInline(decorArt(d.id), d.place === 'wall' ? 40 : d.w ? 44 : 62)}</div><b>${xmlEsc(d.name)}</b>` +
+            `<small>${d.w ? 'A rug for the floor' : PLACE_TEXT[d.place]}${owned[d.id] ? ` · You have ${owned[d.id]}` : ''}${decorPending(d.id) ? ` · ${decorPending(d.id)} on the way` : ''}</small>` +
+            `<div class="s-buy"><span class="s-price">${money(d.price)}</span>${this.buyBtn({ kind: 'decor', item: d.id }, 'Buy')}</div></div>`).join('') + '</div>';
+      }).join('');
+  },
+
+  // ----- Inventory -----
+  invTab() {
+    const counts = this.counts;
+    let titles = 0, books = 0, merch = 0;
+    for (const [id, e] of counts) { const n = ownedTotal(e); if (!n) continue; if (BOOKS_BY_ID[id]) { titles++; books += n; } else merch += n; }
+    const decor = Object.values(Game.data.owned).reduce((a, b) => a + b, 0);
+    const boxes = this.scene.sr.items.filter(b => b.type === 'box').length;
+    const chips = [['all', 'Everything'], ['books', 'Books'], ['merch', 'Merch'], ['decor', 'Decor']];
+    return `<div class="s-grid"><div><b>${books}</b>books (${titles} titles)</div><div><b>${merch}</b>merch items</div><div><b>${decor}</b>decorations</div><div><b>${boxes}</b>boxes in the stockroom</div></div>` +
+      `<div class="s-chips">${chips.map(([k, l]) => `<button data-inv="${k}" class="${this.filter.inv === k ? 'on' : ''}">${l}</button>`).join('')}</div>` +
+      `<div class="s-tools"><input id="pcInvQ" type="search" placeholder="Search" value="${xmlEsc(this.filter.invQ)}" autocomplete="off"></div><div id="pcList"></div>`;
+  },
+
+  // ----- Sales history -----
+  salesTab() {
+    const H = Game.data.history, L = Game.data.lifetime;
+    if (!H.length) return `<p class="s-empty">No fair days yet. Open the fair, and your sales will show up here.</p>`;
+    const last = H.slice(-10), max = Math.max(...last.map(d => d.earned), 1);
+    const best = Object.entries(Game.data.best).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const gs = Object.entries(Game.data.genreSales).sort((a, b) => b[1] - a[1]).slice(0, 8), gmax = Math.max(1, ...gs.map(g => g[1]));
+    return `<div class="s-grid"><div><b>${H.length}</b>fair days</div><div><b>${L.customers}</b>customers</div><div><b>${L.sold}</b>items sold</div><div><b>${money(L.earned)}</b>earned in all</div></div>` +
+      `<div class="s-h">Earnings by day</div><div class="bars">${last.map(d => `<div class="bar"><span>${money(d.earned).replace('.00', '')}</span><i style="height:${Math.max(2, d.earned / max * 100)}%"></i></div>`).join('')}</div>` +
+      `<div class="bar-days">${last.map(d => `<span>Day ${d.day}</span>`).join('')}</div>` +
+      `<div class="s-h">Recent days</div>` + last.slice().reverse().slice(0, 6).map(d => `<div class="s-row"><div class="t"><b>Day ${d.day}${d.special && SPECIALS[d.special] ? ' · ' + SPECIALS[d.special].icon : ''}</b>` +
+        `<small>${d.customers} customers · ${d.sold} sold${d.helped ? ` · helped ${d.helped}` : ''}</small></div><span class="s-price">${money(d.earned)}</span></div>`).join('') +
+      `<div class="s-h">Best sellers</div>` + (best.length ? best.map(([id, n], i) => `<div class="s-row"><b style="width:20px">${i + 1}.</b><div class="t"><b>${xmlEsc(itemName(id))}</b></div><span class="s-pill">${n} sold</span></div>`).join('') : '<p class="s-sub">Nothing sold yet.</p>') +
+      `<div class="s-h">Top genres</div>` + gs.map(([g, n]) => `<div class="hbar"><span>${g === 'merch' ? 'Merch' : xmlEsc(GENRES[g] ? GENRES[g].label : g)}</span><i style="width:${n / gmax * 70}%;background:${GENRES[g] ? GENRES[g].color : '#f2cc8f'}"></i><b>${n}</b></div>`).join('');
+  },
+
+  // ----- Customer wishes -----
+  wishTab() {
+    const counts = this.counts, W = Object.entries(Game.data.wishes).filter(([id]) => BOOKS_BY_ID[id]).sort((a, b) => b[1].n - a[1].n || b[1].last - a[1].last);
+    if (!W.length) return `<p class="s-empty">When a customer asks for a book you don't have out, it shows up here so you can order it.</p>`;
+    return `<p class="s-sub">Books customers came looking for but didn't find. Get them out on a display and wish-list customers will snap them up.</p>` +
+      W.map(([id, w]) => { const b = BOOKS_BY_ID[id], e = counts.get(id);
+        return `<div class="s-row"><span class="gdot" style="background:${GENRES[b.genre].color}"></span><div class="t"><b>${xmlEsc(b.title)}</b><small>${xmlEsc(b.author)} · asked ${w.n === 1 ? 'once' : w.n + ' times'}, last on day ${w.last}</small><br>${this.have(e)}</div>` +
+          `${this.buyBtn({ kind: 'title', item: id }, `Order · ${money(Prices.title(id))}`)}<button class="s-btn light" data-unwish="${id}" aria-label="Remove from the list">✕</button></div>`; }).join('');
+  },
+
+  // ----- Fair calendar -----
+  calTab() {
+    ensureCalendar();
+    const cal = Game.data.calendar, d0 = Game.data.day, f = this.scene.fair;
+    const season = Object.entries(DECOR_PACKS).filter(([k]) => inSeason(k));
+    return (season.length ? season.map(([k, P]) => `<div class="cal-day" style="margin-bottom:8px;background:#fff4e6"><span class="ic">${P.icon}</span><div class="t"><b>It's ${new Date().toLocaleString('en-US', { month: 'long' })}: ${P.label} decor is in season!</b><small>Put ${P.label} decorations out for a few extra visitors each day. <button class="s-btn light" data-goto="decor">Decor shop</button></small></div></div>`).join('') : '') +
+      `<div class="cal">` + [0, 1, 2, 3, 4].map(i => {
+        const d = d0 + i, e = cal[d], S = e && SPECIALS[e.type];
+        const when = i === 0 ? (f.open ? 'Today' : 'Next up') : i === 1 ? 'Then' : '';
+        return `<div class="cal-day${i === 0 ? ' today' : ''}"><div class="d">Day ${d}<small>${when}</small></div><span class="ic">${S ? S.icon : '📚'}</span>` +
+          `<div class="t"><b>${S ? xmlEsc(S.name(e)) : 'A regular fair day'}</b><small>${S ? xmlEsc(S.desc(e)) : 'Families, kids and teachers drop in all day.'}</small></div></div>`;
+      }).join('') + `</div><p class="s-sub" style="margin-top:10px">Recess and the after-school rush can happen on any day.</p>`;
+  },
+};
+
 const UI = {
   scene: null,
   _toastTimer: null,
@@ -3507,6 +4427,7 @@ const UI = {
     this.buildPalette();
     Stocking.init();
     Checkout.init();
+    Computer.init();
     this.setMoney();
     const sel = this.$('dayLength');
     sel.innerHTML = Object.entries(FAIR.DAY_LENGTHS).map(([k, d]) => `<option value="${k}">${d.label}</option>`).join('');
@@ -3519,10 +4440,10 @@ const UI = {
     const pat = this.$('patience');
     pat.checked = Game.data.patience !== false;
     pat.onchange = () => { Game.data.patience = pat.checked; Game.save(); };
-    this.$('carryDrop').onclick = () => scene.dropCarry();
+    this.$('carryDrop').onclick = () => { if (scene.player.box) scene.putDownBox(); else scene.dropCarry(); };
     Help.init();
     this.$('btnFair').onclick = () => { const f = scene.fair; if (!f.open) f.start(); else if (!f.closing) f.closeNow(); };
-    this.$('sumClose').onclick = () => { this.$('summary').hidden = true; };
+    this.$('sumClose').onclick = () => { this.$('summary').hidden = true; scene.drawBadges(); };
     this.setFair(scene.fair);
     this.$('btnEdit').onclick = () => scene.toggleEdit();
     this.$('btnMenu').onclick = () => this.openMenu();
@@ -3543,7 +4464,12 @@ const UI = {
       location.reload();
     };
     this.$('btnReset').onclick = () => {
-      if (confirm('Reset the room to the starting layout?')) { scene.applyLayout(cloneLayout(DEFAULT_LAYOUT)); this.closeMenu(); this.toast('Room reset.'); }
+      if (!confirm('Reset the room to the starting layout? Everything on your displays and in boxes out here goes back to the stockroom.')) return;
+      const L = scene.layout, ids = [];
+      for (const it of L.items) { if (it.slots) ids.push(...it.slots.filter(Boolean)); if (it.type === 'box') ids.push(...it.contents); }
+      scene.applyLayout(validateLayout(cloneLayout(DEFAULT_LAYOUT)));
+      const msg = stashToStockroom(scene, ids);
+      this.closeMenu(); this.toast('Room reset. ' + (ids.length ? msg : ''));
     };
   },
 
@@ -3563,16 +4489,33 @@ const UI = {
   buildPalette() {
     const pal = this.$('palette');
     pal.innerHTML = '';
-    for (const [type, def] of Object.entries(FURNITURE)) {
-      if (def.hidden) continue;
+    const add = (type, art, label, onclick, cls, qty) => {
       const b = document.createElement('button');
       b.dataset.type = type;
+      if (cls) b.className = cls;
       const img = document.createElement('img');
       img.alt = '';
-      img.src = svgDataUrl(ART[paletteArtKey(type)](), 2);
-      b.append(img, document.createTextNode(def.label));
-      b.onclick = () => this.scene.setPlaceType(type);
+      img.src = svgDataUrl(art, 2);
+      b.append(img, document.createTextNode(label));
+      if (qty != null) { const q = document.createElement('span'); q.className = 'qty'; q.textContent = qty; b.appendChild(q); }
+      b.onclick = onclick;
       pal.appendChild(b);
+    };
+    const sep = text => { const el = document.createElement('span'); el.className = 'sep'; el.textContent = text; pal.appendChild(el); };
+    // decorations you own come first (bought on the register computer)
+    const L = this.scene.layout, owned = DECOR.filter(d => Game.data.owned[d.id]);
+    if (owned.length) {
+      sep('YOUR DECOR');
+      for (const d of owned) {
+        const left = decorAvailable(L, d.id), hung = d.place === 'wall' && L.wallDecor[d.slot] === d.id;
+        add(d.id, decorArt(d.id), d.name, () => this.scene.useDecor(d.id),
+          'decor' + (hung ? ' hung' : !left ? ' none' : ''), d.place === 'wall' ? (hung ? 'On wall' : 'Hang') : '×' + left);
+      }
+      sep('FURNITURE');
+    }
+    for (const [type, def] of Object.entries(FURNITURE)) {
+      if (def.hidden) continue;
+      add(type, ART[paletteArtKey(type)](), def.label, () => this.scene.setPlaceType(type));
     }
   },
 
@@ -3598,7 +4541,8 @@ const UI = {
     const b = this.$('btnAct');
     if (!item) { b.hidden = true; return; }
     b.hidden = false;
-    b.textContent = actionVerb(item.type, this.scene) + ' · ' + FURNITURE[item.type].label;
+    if (typeof item === 'string') { b.textContent = item; return; }
+    b.textContent = actionVerb(item.type, this.scene, item) + ' · ' + (item.type === 'box' ? boxName(item) : FURNITURE[item.type].label);
   },
 
   refreshEdit() {
@@ -3606,10 +4550,13 @@ const UI = {
     if (!s) return;
     for (const b of this.$('palette').children) b.classList.toggle('on', b.dataset.type === s.edit.placeType);
     const sel = s.getItem(s.edit.selectedId);
-    this.$('btnRotate').disabled = !sel && !s.edit.placeType;
+    const topper = s.edit.placeType && DECOR_BY_ID[s.edit.placeType] && DECOR_BY_ID[s.edit.placeType].place === 'top';
+    this.$('btnRotate').disabled = (!sel && !s.edit.placeType) || topper;
     this.$('btnDelete').disabled = !sel;
+    this.$('btnDelete').textContent = sel && sel.topper ? 'Take off decor' : sel && FURNITURE[sel.type].decor ? 'Put away' : 'Remove';
     this.$('editHint').textContent =
-      s.edit.placeType ? 'Tap the floor to place a ' + FURNITURE[s.edit.placeType].label + '.'
+      topper ? `Tap a bookshelf, low bookcase or the checkout to set the ${DECOR_BY_ID[s.edit.placeType].name} on top.`
+      : s.edit.placeType ? 'Tap the floor to place a ' + FURNITURE[s.edit.placeType].label + '.'
       : sel ? 'Tap the floor to move it, or rotate / remove.'
       : 'Pick an item, or tap furniture to move it.';
   },
@@ -3629,19 +4576,23 @@ const UI = {
       `<div class="sum-grid"><div><b>${s.customers}</b>customers</div><div><b>${s.sold}</b>items sold</div><div><b>${money(s.earned)}</b>earned</div></div>` +
       (s.helped || s.walkouts ? `<p>You helped <b>${s.helped}</b> customer${s.helped === 1 ? '' : 's'} find something${s.walkouts ? `, and ${s.walkouts} got tired of waiting in line` : ''}.</p>` : '') +
       (best.length ? `<p><b>Best sellers:</b></p><ul>${best.map(([id, n]) => `<li>${xmlEsc(itemName(id))}${n > 1 ? ` ×${n}` : ''}</li>`).join('')}</ul>` : '<p>No sales today. Stock up and try again tomorrow!</p>') +
-      (s.missed.length ? `<p><b>Wishes you missed:</b></p><ul>${s.missed.slice(0, 6).map(id => `<li>${xmlEsc(itemName(id))}</li>`).join('')}</ul><p class="muted">Get these out on a display and wish-list customers will find them.</p>` : '') +
-      `<p class="muted">Total earnings: ${money(Game.data.money)}</p>`;
+      (s.missed.length ? `<p><b>Wishes you missed:</b></p><ul>${s.missed.slice(0, 6).map(id => `<li>${xmlEsc(itemName(id))}</li>`).join('')}</ul><p class="muted">They're on the Customer wishes page of the register computer, so you can order them.</p>` : '') +
+      (s.morning ? `<p><b>🚚 Overnight delivery:</b> ${s.morning.boxes ? `${s.morning.boxes} box${s.morning.boxes === 1 ? ' is' : 'es are'} waiting in the stockroom${s.morning.free ? ' (including your free surprise box)' : ''}.` : 'nothing new this time.'}` +
+        `${s.morning.waiting ? ` The stockroom is full, so ${s.morning.waiting} order${s.morning.waiting === 1 ? ' waits' : 's wait'} until there's room.` : ''}${s.morning.freeMissed ? " There wasn't room for today's free box." : ''}</p>` : '') +
+      (s.tomorrow ? `<p><b>${SPECIALS[s.tomorrow.type].icon} Next fair day:</b> ${xmlEsc(SPECIALS[s.tomorrow.type].name(s.tomorrow))}!</p>` : '') +
+      `<p class="muted">Money: ${money(Game.data.money)}</p>`;
     this.$('summary').hidden = false;
   },
 
   openMenu() { this.$('menu').hidden = false; if (this.scene) this.scene.input.keyboard.enabled = false; },
   closeMenu() { this.$('menu').hidden = true; if (this.scene) this.scene.input.keyboard.enabled = true; },
-  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden || !this.$('players').hidden; },
+  menuOpen() { return !this.$('menu').hidden || !this.$('summary').hidden || !this.$('help').hidden || !this.$('players').hidden || !this.$('pc').hidden; },
 
-  setCarry(carry, helping) {
+  setCarry(carry, helping, box) {
     const el = this.$('carry');
-    el.hidden = !carry;
-    if (carry) this.$('carryText').textContent = `Carrying ${itemName(carry.id)}` + (helping ? ` for ${helping.name}` : '');
+    el.hidden = !carry && !box;
+    if (box) this.$('carryText').textContent = `Carrying ${boxName(box).toLowerCase()} (${boxWhat(box)}). Tap a display to unpack it.`;
+    else if (carry) this.$('carryText').textContent = `Carrying ${itemName(carry.id)}` + (helping ? ` for ${helping.name}` : '');
   },
 };
 
@@ -3655,6 +4606,7 @@ class BootScene extends Phaser.Scene {
     const layout = loadLayout();
     const jobs = Object.entries(ART).map(([key, fn]) => makeTexture(this, key, fn()));
     jobs.push(makeTexture(this, 'room-bg', roomArt(layout)));
+    jobs.push(makeTexture(this, 'stock-bg', roomArt(stockroomLayout([]))));
     LOOKS.forEach((look, i) => { for (const v of ['front', 'side', 'back']) jobs.push(makeTexture(this, `cust-${i}-${v}`, personArt(v, look))); });
     Game.load();
     Promise.all(jobs).then(() => this.scene.start('Room', { layout }));
@@ -3668,16 +4620,21 @@ class RoomScene extends Phaser.Scene {
   constructor() { super('Room'); }
 
   create(data) {
+    ROOM = this;
     this.layout = (data && data.layout) || loadLayout();
     this.roomSig = roomSignature(this.layout);
     this.mode = 'play';                                // 'play' | 'edit'
+    this.area = 'fair';                                // 'fair' | 'stock' (the stockroom)
+    this.sr = stockroomLayout(Game.data.stockroom);    // the stockroom sits off to the right of the fair in world space
     this.edit = { placeType: null, placeRot: 0, selectedId: null };
-    this.player = { x: 0, y: 0, facing: { x: 0, y: 1 }, moving: false, path: [], arrive: null };
+    this.player = { x: 0, y: 0, facing: { x: 0, y: 1 }, moving: false, path: [], arrive: null, box: Game.data.carrying || null };
     this.lastActionId = undefined;
     this.itemSprites = new Map();                      // item id -> image
+    this.toppers = new Map();                          // item id -> decoration sitting on top of it
     this.bgVersion = 0;
 
     this.bg = this.add.image(0, -CONFIG.WALL_UP, 'room-bg').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES).setDepth(-10);
+    this.srBg = this.add.image(0, -CONFIG.WALL_UP, 'stock-bg').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES).setDepth(-10);
     this.selectGfx = this.add.graphics().setDepth(100000);
     this.ghostGfx = this.add.graphics().setDepth(100001);
     this.ghostImg = this.add.image(0, 0, 'plant').setOrigin(0, 0).setScale(1 / CONFIG.ART_RES)
@@ -3685,6 +4642,7 @@ class RoomScene extends Phaser.Scene {
 
     this.fair = new Fair(this);
     this.makePlayer();
+    this.reconcileDecor();
     this.rebuild();
     this.placePlayerAt(nearestWalkable(this.grid, this.layout.spawn.x, this.layout.spawn.y));
 
@@ -3696,15 +4654,130 @@ class RoomScene extends Phaser.Scene {
     this.fitCamera();
     this.cameras.main.startFollow(this.playerObj, true, 0.15, 0.15);
 
-    // First visit (or nothing stocked yet): a delivery is waiting by the door.
-    const anyStocked = this.layout.items.some(it => filledCount(it));
-    if (!anyStocked && !boxesIn(this.layout).length) {
-      const got = deliverBoxes(this.layout, this.grid, this.player);
-      if (got.books + got.merch) this.commit();
-      this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! Boxes of books and merch are waiting by the door. Tap any display to stock it.'));
+    // A new game starts with 3 boxes of books, a box of merch and $50.
+    // Players from before the stockroom get a thank-you box.
+    if (Game.fresh) {
+      Game.data.money = 5000; Game.fresh = false;
+      Orders.starter(this);
+      this.time.delayedCall(400, () => UI.toast('Welcome to the book fair! Your first boxes are in the stockroom. Tap the door on the back wall to go get them.'));
+    } else if (Game.migrated) {
+      Game.migrated = false;
+      Orders.starter(this, 1, 0);
+      this.time.delayedCall(400, () => UI.toast('New: a stockroom behind the back wall! Deliveries land there each morning, and a free surprise box is waiting now.'));
     } else {
       this.time.delayedCall(400, () => UI.toast('Welcome back to the book fair!'));
     }
+    ensureCalendar();
+    Game.save();
+    UI.setMoney();
+    this.refreshCarry();
+  }
+
+  // ---------- Areas: the fair and the stockroom ----------
+  get A() {
+    return this.area === 'stock' ? { key: 'stock', layout: this.sr, grid: this.srGrid, ox: this.srOX }
+                                 : { key: 'fair', layout: this.layout, grid: this.grid, ox: 0 };
+  }
+  fairPlayer() { return this.area === 'fair' ? this.player : null; }   // your tile, if you're out in the fair
+  saveStock() { Game.data.stockroom = this.sr.items; Game.data.carrying = this.player.box || null; Game.save(); }
+
+  goToBackDoor() {
+    const bd = this.layout.backDoor;
+    if (!bd) return;
+    this.walkTo((x, y) => x === bd.x && y === 1, () => { this.setFacing(0, -1); this.enterStockroom(); });
+  }
+  switchArea(area, tile, face) {
+    if (this.areaBusy) return;
+    this.areaBusy = true;
+    this.player.path = []; this.player.arrive = null;
+    const cam = this.cameras.main;
+    cam.fadeOut(150, 43, 34, 53);
+    cam.once('camerafadeoutcomplete', () => {
+      this.area = area;
+      this.placePlayerAt(nearestWalkable(this.A.grid, tile.x, tile.y));
+      this.setFacing(face.x, face.y);
+      this.fitCamera();
+      cam.centerOn(this.playerObj.x, this.playerObj.y);
+      cam.fadeIn(180, 43, 34, 53);
+      this.areaBusy = false;
+      this.lastActionId = undefined;
+      this.drawBadges();
+      if (area === 'stock') {
+        const n = this.sr.items.filter(b => b.type === 'box').length;
+        UI.toast(n ? `The stockroom. ${n} box${n === 1 ? '' : 'es'} in here. Tap one to pick it up, then carry it out to a display.` : 'The stockroom is empty. Order more on the register computer, and a free box comes every morning.');
+      }
+    });
+  }
+  enterStockroom() { if (this.mode === 'play') this.switchArea('stock', { x: STOCKROOM.spawn.x, y: STOCKROOM.spawn.y }, { x: 0, y: -1 }); }
+  exitStockroom() { const bd = this.layout.backDoor; this.switchArea('fair', { x: bd.x, y: 1 }, { x: 0, y: 1 }); }
+
+  // ---------- Boxes in your arms ----------
+  boxAction(item) {
+    if (item.kind === 'decor') { this.unpackDecor(item); return; }
+    if (this.player.box) { UI.toast('Your arms are full! Put this box down first.'); return; }
+    if (this.player.carry) { UI.toast(`You're carrying ${itemName(this.player.carry.id)}. Hand it over or put it down first.`); return; }
+    const L = this.A.layout;
+    L.items = L.items.filter(it => it.id !== item.id);
+    this.player.box = item;
+    this.commit();
+    this.refreshCarry();
+    UI.toast(`You picked up ${boxName(item).toLowerCase()} (${boxWhat(item)}). ` +
+      (this.area === 'stock' ? 'Carry it out the door and tap a display to unpack it.' : 'Tap a display to unpack it, or put it down.'));
+  }
+  // Sets the box down in front of you (or close by). Never blocks a path.
+  putDownBox(quiet) {
+    const box = this.player.box, p = this.player, A = this.A;
+    if (!box) return false;
+    const avoid = new Set([...protectedTiles(A.layout), ...(A.key === 'fair' && this.fair.open ? this.fair.queueSpots || [] : [])].map(t => t.x + ',' + t.y));
+    const total = floodFrom(A.grid, p, null).size;
+    const order = [[p.facing.x, p.facing.y], ...DIRS].map(([dx, dy]) => ({ x: p.x + dx, y: p.y + dy }));
+    for (const [dx, dy] of DIRS) for (const [ex, ey] of DIRS) order.push({ x: p.x + dx + ex, y: p.y + dy + ey });
+    let spot = null;
+    for (const c of order) {
+      const k = c.x + ',' + c.y;
+      if ((c.x === p.x && c.y === p.y) || avoid.has(k) || !A.grid.walkable(c.x, c.y)) continue;
+      if (floodFrom(A.grid, p, k).size === total - 1) { spot = c; break; }
+    }
+    if (!spot) { UI.toast('No room to set the box down right here. Try a more open spot.'); return false; }
+    box.x = spot.x; box.y = spot.y; box.rot = 0;
+    A.layout.items.push(box);
+    p.box = null;
+    this.commit();
+    this.refreshCarry();
+    if (!quiet) UI.toast(A.key === 'fair' ? 'Box down! Tap a display nearby to unpack it.' : 'You put the box back down.');
+    return true;
+  }
+  unpackDecor(box) {
+    for (const id of box.contents) Game.data.owned[id] = (Game.data.owned[id] || 0) + 1;
+    const names = [...new Set(box.contents)].map(id => DECOR_BY_ID[id].name);
+    this.sr.items = this.sr.items.filter(it => it.id !== box.id);
+    this.commit();
+    UI.buildPalette();
+    UI.toast(`You unpacked ${box.contents.length === 1 ? names[0] : box.contents.length + ' decorations'}! ${box.contents.length === 1 ? "It's" : "They're"} in storage now. Tap Arrange out in the fair to put ${box.contents.length === 1 ? 'it' : 'them'} out.`);
+  }
+
+  // ---------- Decor ----------
+  // You can't have more decorations out than you own (e.g. after importing a room).
+  reconcileDecor() {
+    const L = this.layout, placed = decorPlaced(L), owned = Game.data.owned;
+    for (const [id, n] of placed) {
+      let extra = n - (owned[id] || 0);
+      if (extra <= 0) continue;
+      for (const slot of WALL_SLOTS) if (extra > 0 && L.wallDecor[slot] === id) { L.wallDecor[slot] = null; extra--; }
+      for (const it of L.items) if (extra > 0 && it.topper === id) { delete it.topper; extra--; }
+      L.items = L.items.filter(it => !(extra > 0 && it.type === id && extra--));
+    }
+  }
+  useDecor(id) {
+    const d = DECOR_BY_ID[id], L = this.layout, left = decorAvailable(L, id);
+    if (d.place === 'wall') {
+      if (L.wallDecor[d.slot] === id) { L.wallDecor[d.slot] = null; UI.toast(`Took down the ${d.name}. It's back in storage.`); }
+      else { const old = L.wallDecor[d.slot]; L.wallDecor[d.slot] = id; UI.toast(`Hung the ${d.name} on the back wall${old ? ` (the ${DECOR_BY_ID[old].name} went back in storage)` : ''}.`); }
+      this.commit(); this.refreshBackground(); UI.buildPalette(); UI.refreshEdit();
+      return;
+    }
+    if (left <= 0 && this.edit.placeType !== id) { UI.toast(`All your ${d.name} decorations are out. Buy another in the Decor shop on the register computer.`); return; }
+    this.setPlaceType(id);
   }
 
   setInputEnabled(on) {
@@ -3714,33 +4787,21 @@ class RoomScene extends Phaser.Scene {
     if (!on) { this.player.path = []; this.player.arrive = null; }
   }
 
-  requestDelivery() {
-    const bookBoxes = boxesIn(this.layout, 'books').length, merchBoxes = boxesIn(this.layout, 'merch').length;
-    const moreBooks = stockroomBooks(this.layout).length > 0;
-    if ((bookBoxes >= STOCK.BOOK_BOXES || !moreBooks) && merchBoxes >= STOCK.MERCH_BOXES) {
-      UI.toast(moreBooks ? 'There are boxes waiting by the door already. Unpack those first!' : 'Every book is out at the fair! Merch boxes come when you run out.');
-      return;
-    }
-    const got = deliverBoxes(this.layout, this.grid, this.player);
-    if (!got.books && !got.merch) { UI.toast('No room by the door for boxes. Clear a little space and try again.'); return; }
-    this.commit();
-    const parts = [];
-    if (got.books) parts.push(`${got.books} box${got.books === 1 ? '' : 'es'} of books`);
-    if (got.merch) parts.push('a box of merch');
-    UI.toast(`Delivery! ${parts.join(' and ')} just arrived by the door.`);
-  }
-
   // ---------- Layout ----------
-  getItem(id) { return id ? this.layout.items.find(it => it.id === id) || null : null; }
+  getItem(id) { return id ? this.layout.items.find(it => it.id === id) || this.sr.items.find(it => it.id === id) || null : null; }
 
   rebuild() {
     this.grid = buildGrid(this.layout);
+    this.srGrid = buildGrid(this.sr);
+    this.srOX = this.layout.cols * CONFIG.TILE + 3200;   // far enough that the two rooms never share the screen
+    this.srBg.setX(this.srOX);
     this.drawItems();
     this.drawSelection();
   }
 
   commit() {          // call after any layout change
     saveLayout(this.layout);
+    this.saveStock();
     this.rebuild();
     UI.refreshEdit();
   }
@@ -3760,6 +4821,8 @@ class RoomScene extends Phaser.Scene {
 
   applyLayout(layout) {
     this.layout = layout;
+    this.reconcileDecor();
+    if (this.area === 'stock') { this.area = 'fair'; }
     this.edit.selectedId = null;
     this.edit.placeType = null;
     this.player.path = [];
@@ -3783,11 +4846,11 @@ class RoomScene extends Phaser.Scene {
         return { key, make: () => maker(item.slots) };
       }
     }
-    if (item.type === 'box') return { key: item.returns ? 'basket' : (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
+    if (item.type === 'box') return { key: item.returns ? 'basket' : item.kind === 'decor' ? 'dbox' : (item.kind === 'merch' ? 'mbox' : 'box') + (item.opened ? '-open' : '') };
     return null;
   }
 
-  spriteFor(item, img) {
+  spriteFor(item, img, ox = 0) {
     const T = CONFIG.TILE;
     let { key, flip } = artFor(item);
     const dyn = this.dynamicArt(item);
@@ -3802,7 +4865,7 @@ class RoomScene extends Phaser.Scene {
     const [bx, by, bw] = art.box;
     const { w, h } = itemDims(item);
     const footW = w * T;
-    const x = item.x * T + (flip ? footW - (bx + bw) : bx);
+    const x = ox + item.x * T + (flip ? footW - (bx + bw) : bx);
     const y = item.y * T + by;
     img = img || this.add.image(0, 0, key);
     if (!this.textures.exists(key)) key = artFor(item).key;
@@ -3818,17 +4881,49 @@ class RoomScene extends Phaser.Scene {
       live.add(it.id);
       this.itemSprites.set(it.id, this.spriteFor(it, this.itemSprites.get(it.id)));
     }
+    for (const it of this.sr.items) {
+      live.add(it.id);
+      this.itemSprites.set(it.id, this.spriteFor(it, this.itemSprites.get(it.id), this.srOX));
+    }
     for (const [id, img] of this.itemSprites) {
       if (!live.has(id)) { img.destroy(); this.itemSprites.delete(id); }
     }
+    this.drawToppers();
     if (this.saleTags) for (const [id, t] of this.saleTags) if (!live.has(id)) { t.destroy(); this.saleTags.delete(id); }
     this.drawBadges();
+  }
+
+  // Decorations sitting on top of shelves and the checkout
+  drawToppers() {
+    const T = CONFIG.TILE, seen = new Set();
+    for (const it of this.layout.items) {
+      if (!it.topper || !ART[it.topper]) continue;
+      const { key, flip } = artFor(it), at = TOPPER_AT[key];
+      if (!at) continue;
+      seen.add(it.id);
+      let img = this.toppers.get(it.id);
+      if (!img) { img = this.add.image(0, 0, it.topper).setScale(1 / CONFIG.ART_RES); this.toppers.set(it.id, img); }
+      const [bx, by, bw, bh] = ART[it.topper]().box, { w, h } = itemDims(it);
+      img.setTexture(it.topper).setOrigin(-bx / bw, -by / bh)
+        .setPosition(it.x * T + (flip ? w * T - at[0] : at[0]), it.y * T + at[1]).setDepth((it.y + h) * T + 1);
+    }
+    for (const [id, img] of this.toppers) if (!seen.has(id)) { img.destroy(); this.toppers.delete(id); }
   }
 
   // A small "!" over displays that are running low (yellow) or empty (coral).
   drawBadges() {
     this.badges = this.badges || new Map();
     const seen = new Set();
+    // a box badge over the stockroom door when unopened deliveries are waiting
+    const bd = this.layout.backDoor, waitingBoxes = this.sr.items.some(b => b.type === 'box' && !b.opened);
+    if (bd && waitingBoxes && this.mode === 'play') {
+      if (!this.doorBadge) {
+        this.doorBadge = this.add.image(0, 0, 'badge-box').setOrigin(.5, 1).setScale(1 / CONFIG.ART_RES).setDepth(95000);
+        this.tweens.add({ targets: this.doorBadge, y: '-=3', duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
+      this.doorBadge.setVisible(true).setX(bd.x * CONFIG.TILE + CONFIG.TILE / 2);
+      if (!this.doorBadge._placed) { this.doorBadge.setY(-27); this.doorBadge._placed = true; }
+    } else if (this.doorBadge) this.doorBadge.setVisible(false);
     const waiting = this.fair && this.fair.waitingAtFront();
     for (const it of this.layout.items) {
       this.drawSaleTag(it);
@@ -3863,13 +4958,14 @@ class RoomScene extends Phaser.Scene {
   // tall part of a shelf, not just its footprint.
   itemAtPoint(wx, wy, layer = 'solid') {
     let best = null, bestDepth = -Infinity;
-    for (const it of this.layout.items) {
+    const A = this.A;
+    for (const it of A.layout.items) {
       if (FURNITURE[it.type].layer !== layer) continue;
       const img = this.itemSprites.get(it.id);
       if (!img || !img.getBounds().contains(wx, wy)) continue;
       // ignore transparent corners: require the point to be over the footprint or above it
       const { w } = itemDims(it), T = CONFIG.TILE;
-      if (wx < it.x * T - 2 || wx > (it.x + w) * T + 2) continue;
+      if (wx < A.ox + it.x * T - 2 || wx > A.ox + (it.x + w) * T + 2) continue;
       if (img.depth > bestDepth) { best = it; bestDepth = img.depth; }
     }
     return best;
@@ -3890,6 +4986,7 @@ class RoomScene extends Phaser.Scene {
     g.clear();
     this.ghostImg.setVisible(false);
     if (this.mode !== 'edit' || tx == null) return;
+    if (this.edit.placeType && !FURNITURE[this.edit.placeType]) return;   // a tabletop decoration: no floor ghost
     let cand = null, ignore = null;
     if (this.edit.placeType) cand = { type: this.edit.placeType, x: tx, y: ty, rot: this.edit.placeRot };
     else {
@@ -3914,7 +5011,7 @@ class RoomScene extends Phaser.Scene {
   placePlayerAt(t) {
     this.player.x = t.x; this.player.y = t.y;
     const c = tileCenter(t.x, t.y);
-    this.playerObj.setPosition(c.x, c.y);
+    this.playerObj.setPosition(c.x + this.A.ox, c.y);
   }
 
   setFacing(dx, dy) {
@@ -3925,12 +5022,17 @@ class RoomScene extends Phaser.Scene {
   }
 
   stepTo(nx, ny) {
-    const p = this.player;
+    const p = this.player, A = this.A;
     this.setFacing(Math.sign(nx - p.x), Math.sign(ny - p.y));
-    if (!this.grid.walkable(nx, ny)) return false;
+    if (this.areaBusy) return false;
+    // walking through a door: the stockroom door in the back wall, or back out
+    const bd = this.layout.backDoor;
+    if (A.key === 'fair' && this.mode === 'play' && bd && nx === bd.x && ny === 0 && p.y === 1) { this.enterStockroom(); return false; }
+    if (A.key === 'stock' && isDoor(this.sr, nx, ny)) { this.exitStockroom(); return false; }
+    if (!A.grid.walkable(nx, ny)) return false;
     p.moving = true;
     p.x = nx; p.y = ny;
-    const c = tileCenter(nx, ny);
+    const c = tileCenter(nx, ny); c.x += A.ox;
     this.tweens.add({
       targets: this.playerObj, x: c.x, y: c.y, duration: CONFIG.STEP_MS,
       onComplete: () => { p.moving = false; },
@@ -3944,28 +5046,49 @@ class RoomScene extends Phaser.Scene {
 
   facedItem() {
     const p = this.player;
-    return this.getItem(this.grid.solidAt(p.x + p.facing.x, p.y + p.facing.y));
+    return this.getItem(this.A.grid.solidAt(p.x + p.facing.x, p.y + p.facing.y));
   }
 
   faceItem(item) {
     for (const [dx, dy] of DIRS) {
-      if (this.grid.solidAt(this.player.x + dx, this.player.y + dy) === item.id) { this.setFacing(dx, dy); return; }
+      if (this.A.grid.solidAt(this.player.x + dx, this.player.y + dy) === item.id) { this.setFacing(dx, dy); return; }
     }
   }
 
+  // Facing a doorway? ('in' = the stockroom door, 'out' = back to the fair)
+  facedDoor() {
+    const p = this.player, bd = this.layout.backDoor;
+    if (this.area === 'fair' && bd && p.x === bd.x && p.y === 1 && p.facing.y === -1) return 'in';
+    if (this.area === 'stock' && p.facing.y === 1 && isDoor(this.sr, p.x, p.y + 1)) return 'out';
+    return null;
+  }
+
   tryInteract() {
-    if (this.mode !== 'play' || Stocking.isOpen() || Checkout.isOpen()) return;
-    const item = this.facedItem();
+    if (this.mode !== 'play' || Stocking.isOpen() || Checkout.isOpen() || this.areaBusy) return;
+    const item = this.facedItem(), door = this.facedDoor();
     if (item) this.interact(item);
+    else if (door === 'in') this.enterStockroom();
+    else if (door === 'out') this.exitStockroom();
+    else if (this.player.box) this.putDownBox();
   }
 
   interact(item) {
+    if (item.type === 'box' && !item.returns) { this.boxAction(item); return; }
+    // Carrying a box to a display: set it down next to you, then unpack from it.
+    this.justDropped = null;
+    const box = this.player.box;
+    if (box && STOCKABLE[item.type] && !(item.type === 'register' && this.fair.waitingAtFront())) {
+      const fits = boxKindFor(item.type) === box.kind;
+      if (fits && this.putDownBox(true)) this.justDropped = box.id;
+      if (item.type === 'register' && fits) { Stocking.open(this, item, this.justDropped); this.justDropped = null; return; }
+    }
     const fn = INTERACTIONS[item.type] || INTERACTIONS.default;
     UI.toast(fn(item, this));
+    this.justDropped = null;
   }
 
   walkTo(goalTest, onArrive) {
-    const path = findPath(this.grid, this.player, goalTest);
+    const path = findPath(this.A.grid, this.player, goalTest);
     if (path === null) { UI.toast("Can't get there right now. Try moving some furniture!"); return false; }
     this.player.path = path;
     this.player.arrive = onArrive || null;
@@ -3997,12 +5120,13 @@ class RoomScene extends Phaser.Scene {
   }
 
   pointerTile(pointer) {
-    const tx = Math.floor(pointer.worldX / CONFIG.TILE), ty = Math.floor(pointer.worldY / CONFIG.TILE);
-    return this.grid.inBounds(tx, ty) ? { x: tx, y: ty } : null;
+    const A = this.A;
+    const tx = Math.floor((pointer.worldX - A.ox) / CONFIG.TILE), ty = Math.floor(pointer.worldY / CONFIG.TILE);
+    return A.grid.inBounds(tx, ty) ? { x: tx, y: ty } : null;
   }
 
   onTap(pointer) {
-    if (UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen()) return;
+    if (UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen() || this.areaBusy) return;
     if (pointer.downElement && pointer.downElement !== this.game.canvas) return;
     if (Phaser.Math.Distance.Between(pointer.downX, pointer.downY, pointer.upX, pointer.upY) > 14) return;
     const t = this.pointerTile(pointer);
@@ -4013,16 +5137,24 @@ class RoomScene extends Phaser.Scene {
   }
 
   handlePlayTap(t, hit) {
-    const who = this.fair.open && this.lastPointer && this.fair.customerAt(this.lastPointer.x, this.lastPointer.y);
-    if (who) { this.tapCustomer(who); return; }
-    if (t && isDoor(this.layout, t.x, t.y)) { this.requestDelivery(); return; }
-    const item = hit || (t && this.getItem(this.grid.solidAt(t.x, t.y)));
+    const A = this.A, T = CONFIG.TILE, lp = this.lastPointer;
+    if (A.key === 'fair') {
+      const who = this.fair.open && lp && this.fair.customerAt(lp.x, lp.y);
+      if (who) { this.tapCustomer(who); return; }
+      const bd = this.layout.backDoor;   // the stockroom door, anywhere on its drawing
+      if (bd && lp && lp.x >= bd.x * T && lp.x < (bd.x + 1) * T && lp.y >= -30 && lp.y < T) { this.goToBackDoor(); return; }
+      if (t && isDoor(this.layout, t.x, t.y)) { UI.toast('Deliveries come to the stockroom now: the door on the back wall. Order more on the register computer.'); return; }
+    } else if (t && isDoor(this.sr, t.x, t.y)) {
+      this.walkTo((x, y) => isDoor(this.sr, x, y + 1), () => { this.setFacing(0, 1); this.exitStockroom(); });
+      return;
+    }
+    const item = hit || (t && this.getItem(A.grid.solidAt(t.x, t.y)));
     if (item) {
-      const goals = approachTiles(this.grid, item);
+      const goals = approachTiles(A.grid, item);
       this.walkTo((x, y) => goals.has(x + ',' + y), () => { this.faceItem(item); this.interact(item); });
       return;
     }
-    if (t && this.grid.walkable(t.x, t.y)) {
+    if (t && A.grid.walkable(t.x, t.y)) {
       if (this.walkTo((x, y) => x === t.x && y === t.y)) this.tapMarker(t.x, t.y);
     }
   }
@@ -4049,9 +5181,18 @@ class RoomScene extends Phaser.Scene {
     this.refreshCarry();
   }
   refreshCarry() {
-    const carry = this.player.carry;
-    UI.setCarry(carry, this.fair.helping);
+    const carry = this.player.carry, box = this.player.box;
+    UI.setCarry(carry, this.fair.helping, box);
     if (this.carryIcon) { this.carryIcon.destroy(); this.carryIcon = null; }
+    if (box) {   // a box held up in your arms
+      const g = this.add.graphics(), tape = box.kind === 'merch' ? 0xf4a3c0 : box.kind === 'decor' ? 0xd64545 : 0xf2dfb0;
+      g.fillStyle(0xc48a52, 1).lineStyle(1.2, 0x3b2f3f, 1).fillRoundedRect(-9, -38, 18, 12, 1.5).strokeRoundedRect(-9, -38, 18, 12, 1.5);
+      g.fillStyle(0xe0ad74, 1).fillRoundedRect(-9, -42, 18, 5, 1.5).strokeRoundedRect(-9, -42, 18, 5, 1.5);
+      g.fillStyle(tape, 1).fillRect(-1.6, -41.5, 3.2, 15);
+      this.carryIcon = g;
+      this.playerObj.add(g);
+      return;
+    }
     if (!carry) return;
     const b = BOOKS_BY_ID[carry.id], color = parseInt((b ? GENRES[b.genre].color : MERCH_BY_ID[carry.id].color).slice(1), 16);
     const g = this.add.graphics();
@@ -4071,13 +5212,15 @@ class RoomScene extends Phaser.Scene {
 
   tapMarker(tx, ty) {
     const c = tileCenter(tx, ty);
-    const m = this.add.circle(c.x, c.y, 7, 0xffffff, 0.85).setDepth(ty * CONFIG.TILE);
+    const m = this.add.circle(c.x + this.A.ox, c.y, 7, 0xffffff, 0.85).setDepth(ty * CONFIG.TILE);
     this.tweens.add({ targets: m, scale: 1.8, alpha: 0, duration: 450, onComplete: () => m.destroy() });
   }
 
   // ---------- Arrange (edit) mode ----------
   toggleEdit() {
     if (this.mode !== 'edit' && this.fair.open) { UI.toast('Close the fair before rearranging the room.'); return; }
+    if (this.mode !== 'edit' && this.area === 'stock') { UI.toast('Arrange works out in the fair. Head back through the door first.'); return; }
+    if (this.mode !== 'edit') UI.buildPalette();   // fresh decor counts
     this.mode = this.mode === 'edit' ? 'play' : 'edit';
     this.player.path = [];
     this.player.arrive = null;
@@ -4119,12 +5262,27 @@ class RoomScene extends Phaser.Scene {
 
   handleEditTap(tx, ty, hitArt) {
     const hit = hitArt || this.topItemAt(tx, ty);
+    const pd = this.edit.placeType && DECOR_BY_ID[this.edit.placeType];
+
+    if (pd && pd.place === 'top') {   // set a decoration on top of a shelf or the checkout
+      if (hit && TOPPER_OK[hit.type]) {
+        const old = hit.topper;
+        hit.topper = pd.id;
+        this.commit();
+        UI.toast(old ? `Swapped in the ${pd.name}. The ${DECOR_BY_ID[old].name} went back in storage.` : `Set the ${pd.name} on the ${FURNITURE[hit.type].label.toLowerCase()}.`);
+        if (decorAvailable(this.layout, pd.id) <= 0) this.edit.placeType = null;
+        UI.buildPalette(); UI.refreshEdit();
+      } else UI.toast(`Tap a bookshelf, low bookcase or the checkout to set the ${pd.name} on top.`);
+      return;
+    }
 
     if (this.edit.placeType) {
       const cand = { id: newId(), type: this.edit.placeType, x: tx, y: ty, rot: this.edit.placeRot };
+      if (pd && decorAvailable(this.layout, pd.id) <= 0) { this.edit.placeType = null; UI.refreshEdit(); return; }
       if (canPlace(this.layout, cand, null, this.player)) {
         this.layout.items.push(cand);
         this.commit();
+        if (pd) { UI.buildPalette(); if (decorAvailable(this.layout, pd.id) <= 0) { this.edit.placeType = null; UI.refreshEdit(); this.drawGhost(null); return; } }
         this.drawGhost(tx, ty);
       } else if (hit) {
         this.edit.placeType = null;
@@ -4176,18 +5334,30 @@ class RoomScene extends Phaser.Scene {
     const id = this.edit.selectedId;
     if (!id) return;
     const gone = this.getItem(id);
-    const n = gone ? (gone.type === 'box' ? gone.contents.length : filledCount(gone)) : 0;
-    if (n) UI.toast(`Its ${n} item${n === 1 ? '' : 's'} went back to the stockroom.`);
+    if (!gone) return;
+    if (gone.topper) {   // take the decoration off first
+      const d = DECOR_BY_ID[gone.topper];
+      delete gone.topper;
+      this.commit(); UI.buildPalette();
+      UI.toast(`Took the ${d.name} off. It's back in storage.`);
+      return;
+    }
+    const ids = gone.type === 'box' ? gone.contents.slice() : (gone.slots || []).filter(Boolean);
     this.layout.items = this.layout.items.filter(it => it.id !== id);
     this.edit.selectedId = null;
     this.commit();
+    if (FURNITURE[gone.type].decor) { UI.buildPalette(); UI.toast(`Put the ${FURNITURE[gone.type].label} away in storage.`); }
+    else if (ids.length) {
+      const msg = stashToStockroom(this, ids);
+      UI.toast(msg.startsWith('The stockroom is full') ? msg : `Its ${ids.length} item${ids.length === 1 ? '' : 's'} went back to the stockroom.`);
+    }
   }
 
   // ---------- Camera ----------
   fitCamera() {
-    const cam = this.cameras.main, T = CONFIG.TILE;
-    const W = this.layout.cols * T;
-    const top = -CONFIG.WALL_UP, bottom = this.layout.rows * T + CONFIG.WALL_DOWN, H = bottom - top;
+    const cam = this.cameras.main, T = CONFIG.TILE, A = this.A;
+    const W = A.layout.cols * T, ox = A.ox;
+    const top = -CONFIG.WALL_UP, bottom = A.layout.rows * T + CONFIG.WALL_DOWN, H = bottom - top;
     const vw = this.scale.width / DPR, vh = this.scale.height / DPR;   // screen size in CSS px
     const fit = Math.min(vw / (W + 32), vh / (H + CONFIG.HUD_TOP + CONFIG.HUD_BOTTOM));
     const zoom = Phaser.Math.Clamp(fit, CONFIG.ZOOM_MIN, CONFIG.ZOOM_MAX);
@@ -4197,19 +5367,22 @@ class RoomScene extends Phaser.Scene {
     const padTop = CONFIG.HUD_TOP / zoom, padBot = CONFIG.HUD_BOTTOM / zoom, padX = 16;
     const bw = Math.max(W + padX * 2, vw / zoom);
     const bh = Math.max(H + padTop + padBot, vh / zoom);
-    const cx = W / 2, cy = (top - padTop + bottom + padBot) / 2;
+    const cx = ox + W / 2, cy = (top - padTop + bottom + padBot) / 2;
     cam.setBounds(cx - bw / 2, cy - bh / 2, bw, bh);
   }
 
   // ---------- Loop ----------
   update(time, delta) {
     const p = this.player, k = this.keys;
-    const paused = UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen();
+    const paused = UI.menuOpen() || Stocking.isOpen() || Checkout.isOpen() || this.areaBusy;
     if (this.fair.helping && !this.fair.customers.includes(this.fair.helping)) { this.fair.helping = null; this.refreshCarry(); }
     if (!paused && this.fair.open) {
       const wasWaiting = !!this.fair.waitingAtFront();
       this.fair.tick(Math.min(delta, 100));
-      if (!!this.fair.waitingAtFront() !== wasWaiting) { this.drawBadges(); this.lastActionId = undefined; }
+      if (!!this.fair.waitingAtFront() !== wasWaiting) {
+        this.drawBadges(); this.lastActionId = undefined;
+        if (!wasWaiting && this.area === 'stock') UI.toast('Someone is waiting at the checkout!');
+      }
       if ((this._clockT = (this._clockT || 0) + delta) > 500) { this._clockT = 0; UI.setFair(this.fair); }
     }
     if (!p.moving && !paused) {
@@ -4237,18 +5410,21 @@ class RoomScene extends Phaser.Scene {
 
     // Show the Look button when facing something (play mode only)
     const faced = this.mode === 'play' && !p.moving ? this.facedItem() : null;
-    const id = faced ? faced.id : null;
-    if (id !== this.lastActionId) { this.lastActionId = id; UI.setAction(faced); }
+    const door = !faced && this.mode === 'play' && !p.moving ? this.facedDoor() : null;
+    const id = faced ? faced.id : door;
+    if (id !== this.lastActionId) { this.lastActionId = id; UI.setAction(faced || (door === 'in' ? 'Go in · Stockroom' : door === 'out' ? 'Go out · Book fair' : null)); }
   }
 }
 
 // ============================================================
 // 16. FUTURE PHASES (stubs / notes)
 // Planned additions, each meant to slot in without rewrites:
-//  - STOCKING extras: drag-and-drop, ordering deliveries with earnings.
-//  - EARNINGS + DECORATING: spend on new furniture and on
-//    layout.decor (floor: wood/checker/carpet, wall: sage/stripes/stars
-//    already drawn), plus seasonal decor sets.
+//  - PHASE 9 SHOP: furniture and floors/walls bought on the register
+//    computer's Decor shop (layout.decor floor: wood/checker/carpet and
+//    wall: sage/stripes/stars are already drawn), more decor packs. Decor
+//    ownership (Game.data.owned), delivery (decor boxes in the stockroom)
+//    and the Arrange palette's "Your decor" group are ready for it.
+//  - STOCKING extras: drag-and-drop.
 //  - BROWSE MODE: same room, you're a shopper instead of staff.
 // ============================================================
 
@@ -4325,7 +5501,8 @@ const PlayerPicker = {
 };
 
 window.addEventListener('resize', () => { if (game && game.isBooted) game.scale.resize(innerWidth * DPR, innerHeight * DPR); });
-window.BookFair = { game, Players, PlayerPicker, startGame, ALL_BOOKS, KIDS_BOOKS, get BOOKS() { return BOOKS; }, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText };
+window.BookFair = { game, Players, PlayerPicker, startGame, ALL_BOOKS, KIDS_BOOKS, get BOOKS() { return BOOKS; }, CONFIG, FURNITURE, DEFAULT_LAYOUT, ART, GENRES, MERCH, STOCKABLE, STOCK, Stocking, Checkout, Game, FAIR, Help, makeRequest, matchQuality, requestText,
+  Computer, Orders, Prices, DECOR, DECOR_PACKS, STOCKROOM, stockCounts, decorPlaced, seasonDecorOut, ensureCalendar, SPECIALS, migrateLayout, validateLayout };
 
 // Start: a "New game" goes straight back to the same player; otherwise ask who's playing.
 (function boot() {
